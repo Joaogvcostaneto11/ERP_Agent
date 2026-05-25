@@ -39,6 +39,12 @@ This is the most critical component. Business rules are not hard-coded — they 
 - The AI reads these documents at runtime as part of its system context — changing a rule means editing a document, not touching code
 - Documents must be versioned; breaking changes require a migration note
 
+**Active domains:**
+
+| Domain | Document | Status |
+|---|---|---|
+| Payroll | [business_rules/payroll.yaml](business_rules/payroll.yaml) | Active |
+
 **Design principles:**
 - No business logic lives in the UI or the database layer — only here
 - Every write operation must pass through this layer; direct DB writes are never allowed from the UI
@@ -66,18 +72,20 @@ Handles all persistence. The business logic layer calls this layer; the UI never
 ERP_Agent/
 ├── CLAUDE.md
 ├── business_rules/        # Enterprise documents (YAML/JSON/MD)
+│   ├── payroll.yaml       ✓ active
 │   ├── sales.yaml
 │   ├── invoicing.yaml
 │   ├── procurement.yaml
 │   └── ...
 ├── ui/                    # Adaptive frontend
-│   └── ...
+│   └── payroll/           ✓ scaffolded
 ├── logic/                 # AI business logic engine
-│   └── ...
+│   └── payroll/           ✓ scaffolded
 ├── db/                    # Database access layer
 │   ├── migrations/
 │   └── ...
 └── tests/
+    └── payroll/           ✓ scaffolded
 ```
 
 ## Key Constraints
@@ -87,6 +95,22 @@ ERP_Agent/
 - **Audit trail is non-negotiable** — every data mutation must be traceable
 - **Voice commands must degrade gracefully** — if speech-to-text fails, text input takes over without breaking the flow
 - **Enterprise documents are the source of truth** for what is and is not a valid ERP operation; when in doubt, consult or update the relevant document
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.12+ |
+| API framework | FastAPI + Uvicorn |
+| AI engine | Anthropic SDK (`anthropic`) — Claude Sonnet 4.6 |
+| Data models | Pydantic v2 |
+| Rule documents | YAML (`pyyaml`) |
+| Tests | pytest + pytest-asyncio |
+| HTTP test client | httpx |
+
+Run the server: `uvicorn logic.main:app --reload`
+Run tests: `pytest tests/`
+Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`.
 
 ## Development Notes
 

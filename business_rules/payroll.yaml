@@ -1,0 +1,154 @@
+version: "1.0.0"
+domain: payroll
+description: >
+  Governs all payroll operations: employee compensation, deductions,
+  pay period processing, and payroll approval. The AI business logic
+  layer must load this document for any payroll-related user request.
+
+# ─────────────────────────────────────────
+# EMPLOYEE TYPES
+# ─────────────────────────────────────────
+employee_types:
+  - id: salaried
+    description: Fixed annual compensation, divided across pay periods.
+    pay_basis: annual
+  - id: hourly
+    description: Compensated per hour worked; requires time tracking records.
+    pay_basis: hourly
+  - id: contractor
+    description: External party; paid per invoice, not through standard payroll.
+    pay_basis: invoice
+    note: Contractors must not receive company benefits or deductions.
+
+# ─────────────────────────────────────────
+# PAY PERIODS
+# ─────────────────────────────────────────
+pay_periods:
+  supported:
+    - weekly       # 52 periods/year
+    - biweekly     # 26 periods/year
+    - monthly      # 12 periods/year
+  default: monthly
+  rules:
+    - Pay period must be set at employee onboarding and cannot be changed
+      mid-period without HR approval.
+    - The last business day of the period is always the processing deadline.
+    - If the processing deadline falls on a public holiday, advance by one
+      business day.
+
+# ─────────────────────────────────────────
+# COMPENSATION
+# ─────────────────────────────────────────
+compensation:
+  salary:
+    gross_per_period: "annual_salary / pay_periods_per_year"
+    minimum_wage_check: required  # reject payroll runs where net < legal minimum
+  hourly:
+    regular_hours_per_week: 40
+    overtime_threshold: 40  # hours/week above which overtime rate applies
+    overtime_multiplier: 1.5
+    source: time_tracking_records  # must be present and approved before processing
+  bonuses:
+    allowed: true
+    requires_approval: true
+    approval_roles: [hr_manager, finance_director]
+    taxable: true
+
+# ─────────────────────────────────────────
+# DEDUCTIONS
+# ─────────────────────────────────────────
+deductions:
+  mandatory:
+    - id: income_tax
+      description: Withheld per applicable tax bracket; calculated by the logic layer.
+      basis: gross_pay
+    - id: social_security
+      description: Statutory social security contribution.
+      basis: gross_pay
+  optional:
+    - id: health_insurance
+      description: Employee share of health plan premium.
+      requires_employee_consent: true
+    - id: retirement_plan
+      description: Voluntary retirement contribution (e.g., 401k equivalent).
+      requires_employee_consent: true
+      max_percentage: 0.20  # 20% of gross
+  rules:
+    - Total deductions must never exceed gross pay; reject and flag if so.
+    - Mandatory deductions are applied before optional ones.
+    - Deduction changes take effect at the start of the next pay period only.
+
+# ─────────────────────────────────────────
+# PAYROLL RUN WORKFLOW
+# ─────────────────────────────────────────
+payroll_run:
+  steps:
+    - step: 1
+      id: collect
+      description: Gather all inputs — time records (hourly), salary figures,
+        approved bonuses, and current deduction elections.
+      validation:
+        - All hourly employees must have approved time records for the full period.
+        - No employee may appear more than once in the same payroll run.
+
+    - step: 2
+      id: calculate
+      description: Compute gross pay, apply all deductions, derive net pay.
+      validation:
+        - Net pay must be >= 0.
+        - Minimum wage check must pass for every employee.
+
+    - step: 3
+      id: review
+      description: Present a payroll summary to the authorized approver before
+        any funds are disbursed or records are committed.
+      approval_required: true
+      approval_roles: [hr_manager, finance_director]
+
+    - step: 4
+      id: commit
+      description: Write payroll records to the database and mark the period as closed.
+      rules:
+        - A closed pay period is immutable. Corrections require a separate
+          adjustment run, never a direct edit.
+        - Trigger audit log entry for every employee record written.
+
+    - step: 5
+      id: disburse
+      description: Initiate payment (bank transfer, check) per employee payment method.
+      rules:
+        - Disbursement may only occur after step 4 is committed.
+        - Failed disbursements must be logged and flagged for manual resolution;
+          they do not roll back the payroll commit.
+
+# ─────────────────────────────────────────
+# ADJUSTMENTS & CORRECTIONS
+# ─────────────────────────────────────────
+adjustments:
+  description: >
+    If an error is discovered after a payroll run is committed, an adjustment
+    run must be created. It references the original run ID and records only
+    the delta (overpayment, underpayment, missed deduction).
+  requires_approval: true
+  approval_roles: [hr_manager, finance_director]
+  immutable_fields: [employee_id, pay_period_id, original_run_id]
+
+# ─────────────────────────────────────────
+# PERMISSIONS
+# ─────────────────────────────────────────
+permissions:
+  view_own_payslip: [employee]
+  view_team_payroll: [hr_manager]
+  initiate_payroll_run: [hr_manager]
+  approve_payroll_run: [finance_director]
+  create_adjustment: [hr_manager]
+  approve_adjustment: [finance_director]
+  view_all_payroll: [finance_director, auditor]
+
+# ─────────────────────────────────────────
+# AUDIT REQUIREMENTS
+# ─────────────────────────────────────────
+audit:
+  every_write_must_log: [employee_id, run_id, period, gross, net, rule_version]
+  retention_years: 7
+  tamper_proof: true  # audit records must never be updatable or deletable
