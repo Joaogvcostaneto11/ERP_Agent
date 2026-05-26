@@ -1,0 +1,23 @@
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  base_salary:
+    type: earning
+    phase: gross
+    primitive: BaseSalary
+    parameters: {}
+    inputs_required: []
+    taxable: true
+    subject_to_tsu: true
+  tsu_employee:
+    type: deduction
+    phase: tax
+    primitive: TSUContribution
+    parameters:
+      rate: "0.11"
+      base_components: ["base_salary"]
+    inputs_required: ["base_salary"]
+    taxable: false
+    subject_to_tsu: false
