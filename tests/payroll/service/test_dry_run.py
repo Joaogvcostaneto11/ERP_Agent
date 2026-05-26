@@ -145,3 +145,50 @@ def test_set_time_input_idempotent(service):
     service.set_time_input("2026-05", "e-1", TimeInputDraft(normal_hours=Decimal("170")))
     ti = service.get_time_input("2026-05", "e-1")
     assert ti.normal_hours == Decimal("170")
+
+
+def test_build_calculation_plan_minimum(service):
+    service.create_employee(CreateEmployeeInput(
+        employee_id="e-1", full_name="x", tax_id="123456789",
+        social_security_id="11122233344",
+        birth_date=date(1990, 1, 1), hire_date=date(2025, 1, 1),
+        fiscal_profile=FiscalProfile(irs_table_code="x"),
+    ))
+    service.create_contract(CreateContractInput(
+        contract_id="c-1", employee_id="e-1", type="CT",
+        start_date=date(2025, 1, 1), role_category="dev",
+        weekly_hours=Decimal("40"), fte_percent=Decimal("1"),
+        base_monthly_salary=Decimal("1500"), company_id="acme",
+    ))
+    service.open_period("acme", PeriodDefinition(
+        period_id="2026-05", pay_frequency="monthly",
+        start_date=date(2026, 5, 1), end_date=date(2026, 5, 31),
+        pay_date=date(2026, 5, 31),
+    ))
+    plan = service.build_calculation_plan("2026-05", "e-1")
+    codes = [s.component_code for s in plan.steps]
+    assert codes == ["base_salary", "tsu_employee"]
+
+
+def test_dry_run_payslip_end_to_end(service):
+    service.create_employee(CreateEmployeeInput(
+        employee_id="e-1", full_name="x", tax_id="123456789",
+        social_security_id="11122233344",
+        birth_date=date(1990, 1, 1), hire_date=date(2025, 1, 1),
+        fiscal_profile=FiscalProfile(irs_table_code="solteiro_sem_dependentes"),
+    ))
+    service.create_contract(CreateContractInput(
+        contract_id="c-1", employee_id="e-1", type="CT",
+        start_date=date(2025, 1, 1), role_category="dev",
+        weekly_hours=Decimal("40"), fte_percent=Decimal("1"),
+        base_monthly_salary=Decimal("1500"), company_id="acme",
+    ))
+    service.open_period("acme", PeriodDefinition(
+        period_id="2026-05", pay_frequency="monthly",
+        start_date=date(2026, 5, 1), end_date=date(2026, 5, 31),
+        pay_date=date(2026, 5, 31),
+    ))
+    service.set_time_input("2026-05", "e-1", TimeInputDraft(normal_hours=Decimal("160")))
+    result = service.dry_run_payslip("2026-05", "e-1")
+    assert result.net_pay == Decimal("1335.00")
+    assert len(result.audit) == 2

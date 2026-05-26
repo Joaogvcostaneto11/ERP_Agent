@@ -7,8 +7,12 @@ from logic.payroll.public.schemas import (
     CreateEmployeeInput, CreateContractInput, PeriodDefinition,
     TimeInputDraft, PayslipResult,
 )
-from logic.payroll.primitives.base import PrimitiveRegistry
+from logic.payroll.primitives.base import PrimitiveRegistry, ExecutionContext
 from logic.payroll.rules.loader import RuleLoader
+from logic.payroll.rules.plan import CalculationPlan, CalculationPlanBuilder
+from logic.payroll.rules.resolver import RuleResolver
+from logic.payroll.engine.executor import Executor
+from logic.payroll.engine.time_input import normalize_time_input
 from logic.payroll.clock import Clock
 from db.repositories.interfaces import (
     EmployeeRepository, ContractRepository, PeriodRepository,
@@ -150,3 +154,60 @@ class PayrollService:
                 msg_en=f"no time input for employee {employee_id!r} in period {period_id!r}",
             )
         return ti
+
+    # --- Plan & calculation (Plan 1 surface) ---
+
+    def build_calculation_plan(self, period_id: str, employee_id: str) -> CalculationPlan:
+        period = self.get_period(period_id)
+        employee = self.get_employee(employee_id)
+        contract = self.get_contract_for_employee(employee_id)
+        resolver = RuleResolver(self._rule_loader)
+        snapshot = resolver.resolve(
+            statutory_path=self._statutory_path,
+            cct_path=self._cct_path,
+            company_path=self._company_path,
+        )
+        company = self._resolve_company(period.company_id)
+        builder = CalculationPlanBuilder(self._registry)
+        return builder.build(
+            snapshot=snapshot,
+            employee_id=employee.employee_id,
+            contract_id=contract.contract_id,
+            period_id=period.period_id,
+            company_id=period.company_id,
+            rounding_policy=company.default_rounding_policy,
+        )
+
+    def dry_run_payslip(self, period_id: str, employee_id: str) -> PayslipResult:
+        period = self.get_period(period_id)
+        employee = self.get_employee(employee_id)
+        contract = self.get_contract_for_employee(employee_id)
+        time_input = self.get_time_input(period_id, employee_id)
+        company = self._resolve_company(period.company_id)
+        plan = self.build_calculation_plan(period_id, employee_id)
+        context = ExecutionContext(
+            period=period,
+            contract=contract,
+            employee=employee,
+            company=company,
+            rounding_policy=company.default_rounding_policy,
+            clock=self._clock,
+        )
+        executor = Executor(self._registry)
+        return executor.execute(
+            plan=plan,
+            context=context,
+            time_input=normalize_time_input(time_input),
+        )
+
+    def _resolve_company(self, company_id: str):
+        from logic.payroll.public.schemas import Company
+        from logic.payroll.rounding import RoundingPolicy
+        # Plan 1 has no Company repository yet; return a hard-coded default.
+        # Plan 3 wires this through a CompanyRepository.
+        return Company(
+            company_id=company_id,
+            legal_name=f"{company_id.title()} Default",
+            tax_id="000000000",
+            default_rounding_policy=RoundingPolicy(),
+        )
