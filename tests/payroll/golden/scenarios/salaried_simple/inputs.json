@@ -1,0 +1,36 @@
+{
+  "clock": "2026-05-26T12:00:00+00:00",
+  "employee": {
+    "employee_id": "e-1",
+    "full_name": "Maria Santos",
+    "tax_id": "123456789",
+    "social_security_id": "11122233344",
+    "birth_date": "1990-01-01",
+    "hire_date": "2025-01-01",
+    "fiscal_profile": {
+      "irs_table_code": "solteiro_sem_dependentes"
+    }
+  },
+  "contract": {
+    "contract_id": "c-1",
+    "employee_id": "e-1",
+    "type": "CT",
+    "start_date": "2025-01-01",
+    "role_category": "developer",
+    "weekly_hours": "40",
+    "fte_percent": "1",
+    "base_monthly_salary": "1500",
+    "company_id": "acme"
+  },
+  "period": {
+    "period_id": "2026-05",
+    "company_id": "acme",
+    "pay_frequency": "monthly",
+    "start_date": "2026-05-01",
+    "end_date": "2026-05-31",
+    "pay_date": "2026-05-31"
+  },
+  "time_input": {
+    "normal_hours": "160"
+  }
+}

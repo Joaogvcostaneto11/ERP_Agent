@@ -1,0 +1,18 @@
+{
+  "net_pay": "1335.00",
+  "gross_earnings": [
+    {
+      "component_code": "base_salary",
+      "amount": "1500.00",
+      "tax_treatment": "taxable"
+    }
+  ],
+  "deductions": [
+    {
+      "component_code": "tsu_employee",
+      "amount": "165.00",
+      "tax_treatment": "taxable"
+    }
+  ],
+  "employer_contributions": []
+}
