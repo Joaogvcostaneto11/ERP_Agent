@@ -3,8 +3,9 @@ from decimal import Decimal
 import dataclasses
 import pytest
 from logic.payroll.primitives.base import (
-    PrimitiveResult, ExecutionContext,
+    PrimitiveResult, ExecutionContext, Primitive, PrimitiveRegistry, register,
 )
+from pydantic import BaseModel
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
 )
@@ -54,3 +55,69 @@ def test_execution_context_is_frozen():
     assert dataclasses.is_dataclass(ctx)
     with pytest.raises(dataclasses.FrozenInstanceError):
         ctx.employee = None  # type: ignore
+
+
+class _DummyParams(BaseModel):
+    pass
+
+
+class _DummyInputs(BaseModel):
+    pass
+
+
+def test_registry_register_and_get():
+    reg = PrimitiveRegistry()
+
+    class FakePrim:
+        name = "FakePrim"
+        parameter_schema = _DummyParams
+        input_schema = _DummyInputs
+        output_schema = PrimitiveResult
+
+        def execute(self, params, inputs, context):
+            return PrimitiveResult(amount=Decimal("0"), tax_treatment="taxable")
+
+    reg.register("FakePrim", FakePrim)
+    assert reg.get("FakePrim") is FakePrim
+
+
+def test_registry_duplicate_name_rejected():
+    reg = PrimitiveRegistry()
+
+    class A:
+        name = "X"; parameter_schema = _DummyParams; input_schema = _DummyInputs
+        output_schema = PrimitiveResult
+
+        def execute(self, params, inputs, context): ...
+
+    class B:
+        name = "X"; parameter_schema = _DummyParams; input_schema = _DummyInputs
+        output_schema = PrimitiveResult
+
+        def execute(self, params, inputs, context): ...
+
+    reg.register("X", A)
+    with pytest.raises(ValueError, match="already registered"):
+        reg.register("X", B)
+
+
+def test_registry_get_unknown_raises():
+    reg = PrimitiveRegistry()
+    with pytest.raises(KeyError):
+        reg.get("Nonexistent")
+
+
+def test_register_decorator_attaches_to_supplied_registry():
+    reg = PrimitiveRegistry()
+
+    @register("Decorated", registry=reg)
+    class Decorated:
+        name = "Decorated"
+        parameter_schema = _DummyParams
+        input_schema = _DummyInputs
+        output_schema = PrimitiveResult
+
+        def execute(self, params, inputs, context):
+            return PrimitiveResult(amount=Decimal("0"), tax_treatment="taxable")
+
+    assert reg.get("Decorated") is Decorated

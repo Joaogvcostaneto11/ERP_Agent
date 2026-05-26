@@ -31,3 +31,38 @@ class ExecutionContext:
     company: Company
     rounding_policy: RoundingPolicy
     clock: Clock
+
+
+class Primitive(Protocol):
+    name: str
+    parameter_schema: type[BaseModel]
+    input_schema: type[BaseModel]
+    output_schema: type[BaseModel]
+
+    def execute(self, params: BaseModel, inputs: BaseModel, context: ExecutionContext) -> PrimitiveResult: ...
+
+
+class PrimitiveRegistry:
+    def __init__(self) -> None:
+        self._by_name: dict[str, type[Primitive]] = {}
+
+    def register(self, name: str, primitive_cls: type[Primitive]) -> None:
+        if name in self._by_name:
+            raise ValueError(f"Primitive {name!r} already registered")
+        self._by_name[name] = primitive_cls
+
+    def get(self, name: str) -> type[Primitive]:
+        return self._by_name[name]
+
+
+DEFAULT_REGISTRY = PrimitiveRegistry()
+
+
+def register(name: str, registry: PrimitiveRegistry | None = None):
+    target = registry if registry is not None else DEFAULT_REGISTRY
+
+    def decorator(cls):
+        target.register(name, cls)
+        return cls
+
+    return decorator
