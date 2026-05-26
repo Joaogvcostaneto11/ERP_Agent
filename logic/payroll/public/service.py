@@ -102,3 +102,51 @@ class PayrollService:
                 msg_en=f"no contract for employee {employee_id!r}",
             )
         return c
+
+    # --- Period management ---
+
+    def open_period(self, company_id: str, definition: PeriodDefinition) -> PayrollPeriod:
+        period = PayrollPeriod(
+            period_id=definition.period_id,
+            company_id=company_id,
+            pay_frequency=definition.pay_frequency,
+            start_date=definition.start_date,
+            end_date=definition.end_date,
+            pay_date=definition.pay_date,
+            status="open",
+        )
+        return self._periods.upsert(period)
+
+    def get_period(self, period_id: str) -> PayrollPeriod:
+        p = self._periods.get(period_id)
+        if p is None:
+            raise MissingInput(
+                code="PERIOD_NOT_FOUND",
+                msg_pt=f"período {period_id!r} não encontrado",
+                msg_en=f"period {period_id!r} not found",
+            )
+        return p
+
+    # --- Time / attendance ---
+
+    def set_time_input(self, period_id: str, employee_id: str, draft: TimeInputDraft) -> TimeInput:
+        self.get_period(period_id)
+        self.get_employee(employee_id)
+        ti = TimeInput(
+            period_id=period_id,
+            employee_id=employee_id,
+            normal_hours=draft.normal_hours,
+            meal_allowance_days=draft.meal_allowance_days,
+            notes=draft.notes,
+        )
+        return self._time_inputs.upsert(ti)
+
+    def get_time_input(self, period_id: str, employee_id: str) -> TimeInput:
+        ti = self._time_inputs.get(period_id, employee_id)
+        if ti is None:
+            raise MissingInput(
+                code="TIME_INPUT_NOT_FOUND",
+                msg_pt=f"sem dados de tempo para colaborador {employee_id!r} no período {period_id!r}",
+                msg_en=f"no time input for employee {employee_id!r} in period {period_id!r}",
+            )
+        return ti

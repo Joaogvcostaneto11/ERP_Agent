@@ -110,3 +110,38 @@ def test_create_contract_without_employee_raises(service):
             base_monthly_salary=Decimal("1500"), company_id="acme",
         ))
     assert exc.value.code == "EMPLOYEE_NOT_FOUND"
+
+
+def test_open_period_and_get(service):
+    p = service.open_period("acme", PeriodDefinition(
+        period_id="2026-05", pay_frequency="monthly",
+        start_date=date(2026, 5, 1), end_date=date(2026, 5, 31),
+        pay_date=date(2026, 5, 31),
+    ))
+    assert p.status == "open"
+    got = service.get_period("2026-05")
+    assert got.period_id == "2026-05"
+
+
+def test_get_period_missing_raises(service):
+    with pytest.raises(MissingInput) as exc:
+        service.get_period("nope")
+    assert exc.value.code == "PERIOD_NOT_FOUND"
+
+
+def test_set_time_input_idempotent(service):
+    service.create_employee(CreateEmployeeInput(
+        employee_id="e-1", full_name="x", tax_id="123456789",
+        social_security_id="11122233344",
+        birth_date=date(1990, 1, 1), hire_date=date(2025, 1, 1),
+        fiscal_profile=FiscalProfile(irs_table_code="x"),
+    ))
+    service.open_period("acme", PeriodDefinition(
+        period_id="2026-05", pay_frequency="monthly",
+        start_date=date(2026, 5, 1), end_date=date(2026, 5, 31),
+        pay_date=date(2026, 5, 31),
+    ))
+    service.set_time_input("2026-05", "e-1", TimeInputDraft(normal_hours=Decimal("160")))
+    service.set_time_input("2026-05", "e-1", TimeInputDraft(normal_hours=Decimal("170")))
+    ti = service.get_time_input("2026-05", "e-1")
+    assert ti.normal_hours == Decimal("170")
