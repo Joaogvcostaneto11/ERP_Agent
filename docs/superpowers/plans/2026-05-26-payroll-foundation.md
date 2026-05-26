@@ -429,17 +429,17 @@ git commit -m "feat: Clock protocol with SystemClock and FixedClock"
 ### Task 5: RoundingPolicy primitive utility
 
 **Files:**
-- Create: `logic/payroll/primitives/rounding.py`
-- Create: `tests/payroll/primitives/test_rounding.py`
+- Create: `logic/payroll/rounding.py`
+- Create: `tests/payroll/test_rounding.py`
 
 - [ ] **Step 1: Write failing tests**
 
 ```python
-# tests/payroll/primitives/test_rounding.py
+# tests/payroll/test_rounding.py
 from decimal import Decimal
 import pytest
 from pydantic import ValidationError
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 def test_default_policy_is_round_half_up_two_places():
@@ -484,13 +484,13 @@ def test_negative_decimal_places_rejected():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/payroll/primitives/test_rounding.py -v`
+Run: `pytest tests/payroll/test_rounding.py -v`
 Expected: FAIL with ImportError.
 
 - [ ] **Step 3: Implement**
 
 ```python
-# logic/payroll/primitives/rounding.py
+# logic/payroll/rounding.py
 from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_DOWN, ROUND_HALF_EVEN
 from typing import Literal
@@ -517,13 +517,13 @@ class RoundingPolicy(BaseModel):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/payroll/primitives/test_rounding.py -v`
+Run: `pytest tests/payroll/test_rounding.py -v`
 Expected: 7 passed.
 
 - [ ] **Step 5: Commit**
 
 ```
-git add logic/payroll/primitives/rounding.py tests/payroll/primitives/test_rounding.py
+git add logic/payroll/rounding.py tests/payroll/test_rounding.py
 git commit -m "feat: RoundingPolicy with HALF_UP/DOWN/EVEN modes"
 ```
 
@@ -716,7 +716,7 @@ from pydantic import ValidationError
 from logic.payroll.public.schemas.identity import (
     FiscalProfile, CCTReference, Company,
 )
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 def test_fiscal_profile_defaults():
@@ -787,7 +787,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 class FiscalProfile(BaseModel):
@@ -1251,7 +1251,7 @@ from logic.payroll.primitives.base import (
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
 )
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 
 
@@ -1316,7 +1316,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from logic.payroll.public.schemas import (
     Employee, Contract, Company, PayrollPeriod, RuleCitation,
 )
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import Clock
 
 
@@ -1517,7 +1517,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from logic.payroll.primitives.basesalary import BaseSalary, BaseSalaryParams, BaseSalaryInputs
 from logic.payroll.primitives.base import ExecutionContext
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
@@ -1647,7 +1647,7 @@ import pytest
 from pydantic import ValidationError
 from logic.payroll.primitives.tsu import TSUContribution, TSUContributionParams, TSUContributionInputs
 from logic.payroll.primitives.base import ExecutionContext
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
@@ -2714,7 +2714,7 @@ from logic.payroll.rules.plan import (
 from logic.payroll.rules.resolver import RuleResolver, RuleStackSnapshot, ResolvedComponent
 from logic.payroll.rules.loader import RuleLoader
 from logic.payroll.primitives.base import DEFAULT_REGISTRY
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.public.schemas import RuleCitation
 
 
@@ -2828,7 +2828,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from logic.payroll.errors import RuleValidationError
 from logic.payroll.primitives.base import PrimitiveRegistry
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.public.schemas import RuleCitation
 from logic.payroll.rules.resolver import RuleStackSnapshot, ResolvedComponent
 
@@ -3142,7 +3142,7 @@ import pytest
 from logic.payroll.engine.executor import Executor
 from logic.payroll.rules.plan import CalculationPlan, PlanStep
 from logic.payroll.primitives.base import ExecutionContext, DEFAULT_REGISTRY
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
@@ -3731,7 +3731,7 @@ from logic.payroll.public.schemas import (
     TimeInputDraft,
 )
 from logic.payroll.primitives.base import DEFAULT_REGISTRY
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.rules.loader import RuleLoader
 from logic.payroll.clock import FixedClock
 from db.repositories.memory import (
@@ -4202,7 +4202,7 @@ Append the following methods to the `PayrollService` class body (inside the clas
 
     def _resolve_company(self, company_id: str):
         from logic.payroll.public.schemas import Company
-        from logic.payroll.primitives.rounding import RoundingPolicy
+        from logic.payroll.rounding import RoundingPolicy
         # Plan 1 has no Company repository yet; return a hard-coded default.
         # Plan 3 wires this through a CompanyRepository.
         return Company(
@@ -4246,7 +4246,7 @@ from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
 )
 from logic.payroll.primitives.base import ExecutionContext
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 
 

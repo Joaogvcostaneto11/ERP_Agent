@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 class FiscalProfile(BaseModel):

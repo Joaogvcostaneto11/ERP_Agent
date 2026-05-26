@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,
 )
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 
 

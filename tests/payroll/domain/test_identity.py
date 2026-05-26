@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from logic.payroll.public.schemas.identity import (
     FiscalProfile, CCTReference, Company,
 )
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 def test_fiscal_profile_defaults():

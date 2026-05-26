@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 from logic.payroll.primitives.tsu import TSUContribution, TSUContributionParams, TSUContributionInputs
 from logic.payroll.primitives.base import ExecutionContext
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 from logic.payroll.clock import FixedClock
 from logic.payroll.public.schemas import (
     Employee, Contract, FiscalProfile, Company, PayrollPeriod,

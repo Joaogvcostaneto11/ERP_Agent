@@ -1,7 +1,7 @@
 from decimal import Decimal
 import pytest
 from pydantic import ValidationError
-from logic.payroll.primitives.rounding import RoundingPolicy
+from logic.payroll.rounding import RoundingPolicy
 
 
 def test_default_policy_is_round_half_up_two_places():
