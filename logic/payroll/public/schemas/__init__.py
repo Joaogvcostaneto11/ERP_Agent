@@ -15,3 +15,11 @@ __all__ = [
     "PayrollPeriod", "AbsenceEntry", "OvertimeBuckets", "TimeInput",
     "RuleCitation", "AuditTrailEntry", "PayslipLine", "PayslipResult",
 ]
+
+from logic.payroll.public.schemas.requests import (
+    CreateEmployeeInput, CreateContractInput, PeriodDefinition, TimeInputDraft,
+)
+
+__all__ = __all__ + [
+    "CreateEmployeeInput", "CreateContractInput", "PeriodDefinition", "TimeInputDraft",
+]
