@@ -100,7 +100,7 @@ ERP_Agent/
 
 | Layer | Technology |
 |---|---|
-| Language | Python 3.12+ |
+| Language | Python 3.10+ |
 | API framework | FastAPI + Uvicorn |
 | AI engine | Anthropic SDK (`anthropic`) — Claude Sonnet 4.6 |
 | Data models | Pydantic v2 |

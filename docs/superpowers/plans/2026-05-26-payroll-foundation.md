@@ -6,7 +6,7 @@
 
 **Architecture:** Hybrid — Python compensation primitives + YAML composition + layered rule resolver. This plan ships only two primitives (`BaseSalary`, `TSUContribution`) and stops short of `PayrollService.run_payroll` (deferred to Plan 3). The point is to land the framework correctly so subsequent plans add primitives and service methods without re-architecting.
 
-**Tech Stack:** Python 3.12+, Pydantic v2, PyYAML, pytest + pytest-asyncio, hypothesis (used lightly here), `decimal.Decimal` for all money.
+**Tech Stack:** Python 3.10+, Pydantic v2, PyYAML, pytest + pytest-asyncio, hypothesis (used lightly here), `decimal.Decimal` for all money.
 
 **Spec:** [`docs/superpowers/specs/2026-05-26-payroll-business-logic-design.md`](../specs/2026-05-26-payroll-business-logic-design.md)
 
@@ -131,7 +131,7 @@ ERP_Agent/
 name = "erp-agent"
 version = "0.0.1"
 description = "AI-native ERP — payroll module"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "anthropic>=0.40.0",
     "pydantic>=2.9.0",
@@ -173,7 +173,7 @@ ANTHROPIC_API_KEY=your-key-here
 
 Run:
 ```
-python3.12 -m venv .venv
+python3.10 -m venv .venv
 .venv/Scripts/activate    # Windows
 # or: source .venv/bin/activate
 pip install -e .[dev]
