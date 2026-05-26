@@ -59,3 +59,98 @@ def test_company_subsidio_mode_enum():
             default_rounding_policy=RoundingPolicy(),
             default_subsidio_payment_mode="quincenal",
         )
+
+
+from datetime import date as _date
+from logic.payroll.public.schemas.identity import (
+    Contract, Employee, CompensationEntitlement, CompensationPackage,
+)
+
+
+def _valid_contract_kwargs(**overrides):
+    base = dict(
+        contract_id="c-1",
+        employee_id="e-1",
+        type="CT",
+        start_date=_date(2025, 1, 1),
+        end_date=None,
+        role_category="developer",
+        weekly_hours=Decimal("40"),
+        fte_percent=Decimal("1.0"),
+        base_monthly_salary=Decimal("1500"),
+        cct_reference=None,
+        company_id="acme",
+        pay_frequency="monthly",
+    )
+    base.update(overrides)
+    return base
+
+
+def test_contract_valid():
+    c = Contract(**_valid_contract_kwargs())
+    assert c.type == "CT"
+    assert c.pay_frequency == "monthly"
+
+
+def test_contract_unknown_type_rejected():
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(type="freelancer"))
+
+
+def test_contract_negative_salary_rejected():
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(base_monthly_salary=Decimal("-1")))
+
+
+def test_contract_weekly_hours_must_be_positive():
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(weekly_hours=Decimal("0")))
+
+
+def test_contract_fte_percent_in_range():
+    Contract(**_valid_contract_kwargs(fte_percent=Decimal("0.5")))
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(fte_percent=Decimal("0")))
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(fte_percent=Decimal("1.5")))
+
+
+def test_contract_end_before_start_rejected():
+    with pytest.raises(ValidationError):
+        Contract(**_valid_contract_kwargs(
+            start_date=_date(2025, 6, 1),
+            end_date=_date(2025, 5, 1),
+        ))
+
+
+def test_employee_basic():
+    e = Employee(
+        employee_id="e-1",
+        full_name="Maria Santos",
+        tax_id="123456789",
+        social_security_id="11122233344",
+        birth_date=_date(1990, 1, 1),
+        hire_date=_date(2025, 1, 1),
+        fiscal_profile=FiscalProfile(irs_table_code="solteiro_sem_dependentes"),
+    )
+    assert e.status == "active"
+
+
+def test_employee_status_enum():
+    with pytest.raises(ValidationError):
+        Employee(
+            employee_id="e-1", full_name="x", tax_id="x", social_security_id="x",
+            birth_date=_date(1990, 1, 1), hire_date=_date(2025, 1, 1),
+            fiscal_profile=FiscalProfile(irs_table_code="x"),
+            status="vacation",
+        )
+
+
+def test_compensation_package_default_empty():
+    pkg = CompensationPackage(contract_id="c-1")
+    assert pkg.entitlements == []
+
+
+def test_compensation_entitlement_arbitrary_parameters():
+    ent = CompensationEntitlement(component_code="meal_allowance", parameters={"daily_rate": "6.00"})
+    assert ent.parameters["daily_rate"] == "6.00"
