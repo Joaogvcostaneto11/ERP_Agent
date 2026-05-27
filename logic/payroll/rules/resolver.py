@@ -63,14 +63,14 @@ def _merge_component(
     base_params.update(higher_decl.parameters)  # higher layer wins for scalar params
     return ResolvedComponent(
         component_code=code,
-        type=higher_decl.type if lower is None else lower.type,
-        phase=higher_decl.phase if lower is None else lower.phase,
-        primitive=higher_decl.primitive if lower is None else lower.primitive,
+        type=higher_decl.type,
+        phase=higher_decl.phase,
+        primitive=higher_decl.primitive,
         parameters=base_params,
         inputs_required=higher_decl.inputs_required or (lower.inputs_required if lower else []),
-        taxable=higher_decl.taxable if lower is None else lower.taxable,
-        subject_to_tsu=higher_decl.subject_to_tsu if lower is None else lower.subject_to_tsu,
-        locked=lower.locked if lower is not None else higher_decl.locked,
+        taxable=higher_decl.taxable,
+        subject_to_tsu=higher_decl.subject_to_tsu,
+        locked=True if (lower is not None and lower.locked) else higher_decl.locked,
         citations=(lower.citations if lower else []) + [_component_citation(higher_layer, higher_path, code)],
     )
 

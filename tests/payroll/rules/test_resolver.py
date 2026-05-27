@@ -217,3 +217,150 @@ components:
     with pytest.raises(RuleValidationError) as exc:
         resolver.resolve(statutory_path=statutory, company_path=company)
     assert exc.value.code == "LOCKED_COMPONENT_OVERRIDE"
+
+
+def test_resolver_company_flips_taxable_to_false(tmp_path):
+    statutory = _write(tmp_path, "statutory.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: gross
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+    taxable: true
+""")
+    company = _write(tmp_path, "company.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: gross
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+    taxable: false
+""")
+    loader = RuleLoader()
+    resolver = RuleResolver(loader)
+    snapshot = resolver.resolve(statutory_path=statutory, company_path=company)
+    assert snapshot.resolved_components["meal_allowance"].taxable is False
+
+
+def test_resolver_company_flips_subject_to_tsu(tmp_path):
+    statutory = _write(tmp_path, "statutory.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: gross
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+    subject_to_tsu: true
+""")
+    company = _write(tmp_path, "company.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: gross
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+    subject_to_tsu: false
+""")
+    loader = RuleLoader()
+    resolver = RuleResolver(loader)
+    snapshot = resolver.resolve(statutory_path=statutory, company_path=company)
+    assert snapshot.resolved_components["meal_allowance"].subject_to_tsu is False
+
+
+def test_resolver_company_moves_component_to_different_phase(tmp_path):
+    statutory = _write(tmp_path, "statutory.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: gross
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+""")
+    company = _write(tmp_path, "company.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  meal_allowance:
+    type: earning
+    phase: post_tax
+    primitive: MealAllowance
+    parameters:
+      daily_rate: "6.00"
+    inputs_required: []
+""")
+    loader = RuleLoader()
+    resolver = RuleResolver(loader)
+    snapshot = resolver.resolve(statutory_path=statutory, company_path=company)
+    assert snapshot.resolved_components["meal_allowance"].phase == "post_tax"
+
+
+def test_resolver_locked_blocks_structural_change(tmp_path):
+    from logic.payroll.errors import RuleValidationError
+    import pytest
+    statutory = _write(tmp_path, "statutory.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  tsu_employee:
+    type: deduction
+    phase: gross
+    primitive: TSUContribution
+    parameters:
+      rate: "0.11"
+    inputs_required: ["base_salary"]
+    locked: true
+""")
+    company = _write(tmp_path, "company.yaml", """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  tsu_employee:
+    type: deduction
+    phase: tax
+    primitive: TSUContribution
+    parameters: {}
+    inputs_required: ["base_salary"]
+""")
+    loader = RuleLoader()
+    resolver = RuleResolver(loader)
+    with pytest.raises(RuleValidationError) as exc:
+        resolver.resolve(statutory_path=statutory, company_path=company)
+    assert exc.value.code == "LOCKED_COMPONENT_OVERRIDE"
