@@ -80,6 +80,7 @@ class CalculationPlanBuilder:
         rounding_policy: RoundingPolicy,
     ) -> CalculationPlan:
         all_codes = set(snapshot.resolved_components.keys())
+        phase_index = {p: i for i, p in enumerate(PHASE_ORDER)}
         for comp in snapshot.resolved_components.values():
             for dep in comp.inputs_required:
                 if dep not in all_codes:
@@ -87,6 +88,13 @@ class CalculationPlanBuilder:
                         code="UNRESOLVED_DEPENDENCY",
                         msg_pt=f"componente {comp.component_code!r} depende de {dep!r}, que nao existe",
                         msg_en=f"component {comp.component_code!r} depends on {dep!r}, which does not exist in the resolved stack",
+                    )
+                dep_comp = snapshot.resolved_components[dep]
+                if phase_index[dep_comp.phase] > phase_index[comp.phase]:
+                    raise RuleValidationError(
+                        code="DEPENDENCY_PHASE_INVERTED",
+                        msg_pt=f"componente {comp.component_code!r} (fase {comp.phase!r}) depende de {dep!r} numa fase posterior ({dep_comp.phase!r})",
+                        msg_en=f"component {comp.component_code!r} in phase {comp.phase!r} depends on {dep!r} which is in later phase {dep_comp.phase!r}",
                     )
             try:
                 self._registry.get(comp.primitive)

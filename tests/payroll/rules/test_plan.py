@@ -94,6 +94,25 @@ def test_plan_builder_missing_dependency_raises():
     assert exc.value.code == "UNRESOLVED_DEPENDENCY"
 
 
+def test_plan_builder_rejects_inverted_phase_dependency():
+    snap = _make_snapshot_with({
+        "a": _comp("a", "tax", "TSUContribution",
+                   params={"rate": "0.11", "base_components": ["base_salary"]},
+                   inputs_required=["base_salary"], type_="deduction"),
+        "b": _comp("b", "pre_tax_deduction", "TSUContribution",
+                   params={"rate": "0.11", "base_components": ["base_salary"]},
+                   inputs_required=["a"], type_="deduction"),
+        "base_salary": _comp("base_salary", "gross", "BaseSalary"),
+    })
+    builder = CalculationPlanBuilder(registry=DEFAULT_REGISTRY)
+    with pytest.raises(RuleValidationError) as exc:
+        builder.build(
+            snapshot=snap, employee_id="e", contract_id="c",
+            period_id="p", company_id="x", rounding_policy=RoundingPolicy(),
+        )
+    assert exc.value.code == "DEPENDENCY_PHASE_INVERTED"
+
+
 def test_plan_builder_param_schema_validation():
     snap = _make_snapshot_with({
         "tsu_employee": _comp("tsu_employee", "tax", "TSUContribution",
