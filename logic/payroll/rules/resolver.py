@@ -10,7 +10,7 @@ from logic.payroll.errors import RuleValidationError
 
 
 class ResolvedComponent(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     component_code: str
     type: Literal["earning", "deduction", "employer_contribution"]

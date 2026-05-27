@@ -129,6 +129,31 @@ components: {}
     assert doc1 is doc2  # cached identity
 
 
+def test_loader_rejects_unknown_yaml_field(tmp_path: Path):
+    yaml_path = tmp_path / "unknown_field.yaml"
+    yaml_path.write_text(
+        """
+metadata:
+  jurisdiction: PT
+  effective_from: "2026-01-01"
+  version: "2026.1"
+components:
+  base_salary:
+    type: earning
+    phase: gross
+    primitive: BaseSalary
+    parameters: {}
+    inputs_required: []
+    unknown_field: foo
+""",
+        encoding="utf-8",
+    )
+    loader = RuleLoader()
+    with pytest.raises(RuleLoadError) as exc:
+        loader.load_document(yaml_path)
+    assert exc.value.code == "YAML_SCHEMA_INVALID"
+
+
 def test_loader_reload_clears_cache(tmp_path: Path):
     yaml_path = tmp_path / "statutory.yaml"
     yaml_path.write_text(

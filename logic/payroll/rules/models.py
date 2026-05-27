@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class RuleDocumentMetadata(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     jurisdiction: str
     effective_from: str
@@ -14,7 +14,7 @@ class RuleDocumentMetadata(BaseModel):
 class ComponentDecl(BaseModel):
     """Declaration of a payroll component within a rule document."""
 
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     type: Literal["earning", "deduction", "employer_contribution"]
     phase: Literal["input", "gross", "pre_tax_deduction", "tax", "post_tax", "employer_contribution"]
@@ -29,7 +29,7 @@ class ComponentDecl(BaseModel):
 
 
 class RuleDocument(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     metadata: RuleDocumentMetadata
     components: dict[str, ComponentDecl] = Field(default_factory=dict)

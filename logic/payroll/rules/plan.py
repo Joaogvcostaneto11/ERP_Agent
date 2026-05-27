@@ -19,7 +19,7 @@ PHASE_ORDER = [
 
 
 class PlanStep(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     index: int = Field(ge=0)
     phase: str
