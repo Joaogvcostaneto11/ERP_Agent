@@ -1,10 +1,12 @@
 from __future__ import annotations
+import json as _json
 import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
@@ -84,6 +86,25 @@ def get_report_pdf(report_id: str) -> Response:
             media_type="text/plain",
         )
     return Response(content=pdf, media_type="application/pdf")
+
+
+def _format_sse(event: dict) -> bytes:
+    name = event.get("type", "message")
+    data = _json.dumps(event.get("payload", {}), default=str)
+    return f"event: {name}\ndata: {data}\n\n".encode("utf-8")
+
+
+@app.post("/chat")
+async def post_chat(req: Request) -> StreamingResponse:
+    body = await req.json()
+    user_message = body.get("message", "")
+    svc = get_service()
+
+    async def gen():
+        async for ev in svc.stream_turn(user_message):
+            yield _format_sse(ev)
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 if _UI_DIR.exists():
