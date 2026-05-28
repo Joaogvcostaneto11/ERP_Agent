@@ -1,5 +1,9 @@
 import { streamSse } from "./sse.js";
 import { renderText } from "./renderers/text.js";
+import { renderValue } from "./renderers/value.js";
+import { renderTable } from "./renderers/table.js";
+import { renderChart } from "./renderers/chart.js";
+import { renderReport } from "./renderers/report.js";
 
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
@@ -8,7 +12,10 @@ const newChatBtn = document.getElementById("new-chat");
 
 const RENDERERS = {
   text: renderText,
-  // value, table, chart, report — added in Task 15
+  value: renderValue,
+  table: renderTable,
+  chart: renderChart,
+  report: renderReport,
 };
 
 function addMessage(role) {
