@@ -64,12 +64,13 @@ app = FastAPI(title="ERP Chat")
 
 def _session_id(request: Request, response: Response) -> str:
     sid = request.cookies.get(_SESSION_COOKIE)
-    if not sid:
-        sid = "s_" + secrets.token_hex(12)
-        response.set_cookie(
-            _SESSION_COOKIE, sid,
-            httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,
-        )
+    if sid:
+        return sid
+    sid = "s_" + secrets.token_hex(12)
+    response.set_cookie(
+        _SESSION_COOKIE, sid,
+        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,
+    )
     return sid
 
 
@@ -106,31 +107,30 @@ def _format_sse(event: dict) -> bytes:
 async def post_chat(request: Request) -> StreamingResponse:
     body = await request.json()
     user_message = body.get("message", "")
-    pre_response = Response()
-    sid = _session_id(request, pre_response)
 
     try:
         svc = get_service()
+        async def body_gen(sid: str):
+            async for ev in svc.stream_turn(sid, user_message):
+                yield _format_sse(ev)
     except RuntimeError as e:
         err = _format_sse({
             "type": EventType.ERROR.value,
             "payload": {"code": ErrorCode.CONFIG.value, "message": str(e)},
         })
         done = _format_sse({"type": EventType.DONE.value, "payload": {}})
-
-        async def err_gen():
+        async def body_gen(_sid: str):
             yield err
             yield done
 
-        return StreamingResponse(err_gen(), media_type="text/event-stream",
-                                 headers=dict(pre_response.headers))
-
-    async def gen():
-        async for ev in svc.stream_turn(sid, user_message):
-            yield _format_sse(ev)
-
-    return StreamingResponse(gen(), media_type="text/event-stream",
-                             headers=dict(pre_response.headers))
+    sid = request.cookies.get(_SESSION_COOKIE) or ("s_" + secrets.token_hex(12))
+    resp = StreamingResponse(body_gen(sid), media_type="text/event-stream")
+    if _SESSION_COOKIE not in request.cookies:
+        resp.set_cookie(
+            _SESSION_COOKIE, sid,
+            httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,
+        )
+    return resp
 
 
 if _UI_DIR.exists():

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import re
 import uuid
 from collections import OrderedDict
 from dataclasses import asdict
@@ -188,12 +189,13 @@ class ChatService:
 
     async def _emit_envelope(self, raw: str) -> AsyncIterator[dict]:
         try:
-            data = json.loads(raw)
+            data = _extract_envelope_object(raw)
             env = ClaudeEnvelope.model_validate(data)
-        except (json.JSONDecodeError, ValidationError) as e:
+        except (json.JSONDecodeError, ValidationError, ValueError) as e:
             yield _event(EventType.ERROR, {
                 "code": ErrorCode.ENVELOPE_PARSE.value,
                 "message": f"could not parse assistant reply: {e}",
+                "raw": raw[:500],
             })
             return
 
@@ -214,3 +216,32 @@ class ChatService:
 
 def _event(event_type: EventType, payload: dict) -> dict:
     return {"type": event_type.value, "payload": payload}
+
+
+_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
+
+
+def _extract_envelope_object(raw: str) -> dict:
+    """Locate the envelope JSON object inside prose / markdown fences.
+
+    Tries: (1) the whole string, (2) the first fenced ```json block, (3) the
+    first `{`-rooted object found via raw_decode anywhere in the string.
+    """
+    decoder = json.JSONDecoder()
+    for candidate in _envelope_candidates(raw):
+        try:
+            obj, _ = decoder.raw_decode(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and "blocks" in obj:
+            return obj
+    raise ValueError("no JSON object with a 'blocks' key found in reply")
+
+
+def _envelope_candidates(raw: str):
+    yield raw.strip()
+    for m in _FENCE_RE.finditer(raw):
+        yield m.group(1)
+    for i, ch in enumerate(raw):
+        if ch == "{":
+            yield raw[i:]
