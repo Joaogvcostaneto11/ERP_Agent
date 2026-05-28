@@ -111,6 +111,8 @@ ERP_Agent/
 Run the server: `uvicorn logic.main:app --reload`
 Run tests: `pytest tests/`
 Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`.
+Run the chat UI server: `uvicorn logic.chat.app:app --reload`, then open http://localhost:8000/.
+The chat UI requires `ANTHROPIC_API_KEY` and a `DATABASE_URL` pointing at a read-only SQL Server login.
 
 ## Development Notes
 
