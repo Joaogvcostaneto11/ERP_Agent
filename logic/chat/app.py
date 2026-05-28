@@ -21,6 +21,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCHEMA_PATH: Path = _REPO_ROOT / "docs" / "db_schema.md"
 _LOG_PATH: Path = _REPO_ROOT / "logs" / "queries.jsonl"
 _UI_DIR: Path = _REPO_ROOT / "ui" / "chat"
+_REPORT_CSS_PATH: Path = _UI_DIR / "report.css"
 
 
 @contextmanager
@@ -41,12 +42,13 @@ _service: ChatService | None = None
 def get_service() -> ChatService:
     global _service
     if _service is None:
+        css = _REPORT_CSS_PATH.read_text(encoding="utf-8") if _REPORT_CSS_PATH.exists() else ""
         _service = ChatService(
             anthropic_client=_build_anthropic_client(),
             sql_executor=SqlExecutor(_session_factory),
             audit=AuditLog(_LOG_PATH),
             schema_context=SchemaContext(_SCHEMA_PATH),
-            pdf_renderer=PdfRenderer(),
+            pdf_renderer=PdfRenderer(css=css),
             model="claude-sonnet-4-6",
         )
     return _service

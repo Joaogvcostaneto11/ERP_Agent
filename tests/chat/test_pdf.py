@@ -43,3 +43,13 @@ def test_get_pdf_renders_or_raises_unavailable(monkeypatch):
     monkeypatch.setattr("logic.chat.pdf._weasyprint_available", lambda: False)
     with pytest.raises(WeasyPrintUnavailable):
         r.get_pdf(rid)
+
+
+def test_pdf_renderer_css_param_defaults_to_empty():
+    r = PdfRenderer()
+    assert r._css == ""
+
+
+def test_pdf_renderer_accepts_css():
+    r = PdfRenderer(css="body { color: red; }")
+    assert r._css == "body { color: red; }"

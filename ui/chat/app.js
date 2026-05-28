@@ -41,6 +41,22 @@ function addError(parent, msg) {
   parent.appendChild(e);
 }
 
+function appendCitation(parent, c) {
+  let container = parent.querySelector(".citations");
+  if (!container) {
+    container = document.createElement("details");
+    container.className = "citations";
+    const sum = document.createElement("summary");
+    sum.textContent = "Sources";
+    container.appendChild(sum);
+    parent.appendChild(container);
+  }
+  const item = document.createElement("div");
+  item.className = "citation";
+  item.textContent = `• ${c.summary}`;
+  container.appendChild(item);
+}
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -60,7 +76,7 @@ async function send() {
         if (fn) asstEl.appendChild(fn(ev.data));
         else asstEl.appendChild(document.createTextNode(`[unsupported block: ${ev.data.kind}]`));
       } else if (ev.event === "citation") {
-        // wired in Task 15 if needed
+        appendCitation(asstEl, ev.data);
       } else if (ev.event === "error") {
         if (lastStatus) { lastStatus.remove(); lastStatus = null; }
         addError(asstEl, ev.data.message || "unknown");

@@ -21,8 +21,9 @@ def _weasyprint_available() -> bool:
 
 
 class PdfRenderer:
-    def __init__(self, max_entries: int = 20) -> None:
+    def __init__(self, max_entries: int = 20, css: str = "") -> None:
         self._max = max_entries
+        self._css = css
         self._store: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
     def register(self, html: str, title: str) -> str:
@@ -49,7 +50,7 @@ class PdfRenderer:
         wrapped = (
             f"<!doctype html><html><head><meta charset='utf-8'>"
             f"<title>{entry['title']}</title>"
-            f"<link rel='stylesheet' href='report.css'></head>"
+            f"<style>{self._css}</style></head>"
             f"<body>{entry['html']}</body></html>"
         )
         return weasyprint.HTML(string=wrapped).write_pdf()
