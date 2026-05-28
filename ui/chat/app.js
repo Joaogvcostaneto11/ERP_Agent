@@ -82,3 +82,33 @@ newChatBtn.addEventListener("click", async () => {
   await fetch("/chat/reset", { method: "POST" });
   messagesEl.innerHTML = "";
 });
+
+import { isAvailable, createRecognizer } from "./voice.js";
+
+const micBtn = document.getElementById("mic");
+
+(async function setupVoice() {
+  if (!isAvailable()) return;
+  const cfg = await fetch("/config").then(r => r.json()).catch(() => ({ voice_lang: "pt-PT" }));
+  const rec = createRecognizer(cfg.voice_lang);
+  micBtn.hidden = false;
+  let listening = false;
+  micBtn.addEventListener("click", () => {
+    if (listening) { rec.stop(); return; }
+    listening = true;
+    micBtn.textContent = "⏹";
+    rec.start();
+  });
+  rec.addEventListener("result", (ev) => {
+    const t = ev.results[0][0].transcript;
+    inputEl.value = (inputEl.value ? inputEl.value + " " : "") + t;
+  });
+  rec.addEventListener("end", () => {
+    listening = false;
+    micBtn.textContent = "🎙️";
+  });
+  rec.addEventListener("error", () => {
+    listening = false;
+    micBtn.textContent = "🎙️";
+  });
+})();
