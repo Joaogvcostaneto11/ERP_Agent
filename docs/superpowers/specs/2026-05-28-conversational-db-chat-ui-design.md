@@ -32,7 +32,7 @@ A single-page web app served from `http://localhost:8000/`:
 
 **Typing flow:** user types, presses Enter or clicks send, the assistant reply streams in as one or more blocks.
 
-**Voice flow:** user holds (or toggles) the mic; the browser uses the Web Speech API (`SpeechRecognition`) to transcribe in Portuguese (configurable). On stop, the transcript fills the text field; the user can edit before sending or have it auto-send. If `SpeechRecognition` is unavailable (e.g., Firefox) the mic button is hidden — text input continues to work.
+**Voice flow:** user holds (or toggles) the mic; the browser uses the Web Speech API (`SpeechRecognition`) to transcribe in Portuguese or English (configurable). On stop, the transcript fills the text field; the user can edit before sending or have it auto-send. If `SpeechRecognition` is unavailable (e.g., Firefox) the mic button is hidden — text input continues to work.
 
 **Answer shapes the user can receive in one reply:**
 

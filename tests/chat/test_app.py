@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -71,7 +70,35 @@ def test_chat_sse_streams_envelope(client):
         assert r.status_code == 200
         assert r.headers["content-type"].startswith("text/event-stream")
         body = b"".join(r.iter_bytes()).decode("utf-8")
-    # We expect at least one status, one block, and one done event.
     assert "event: status" in body
     assert "event: block" in body
     assert "event: done" in body
+
+
+def test_chat_sets_session_cookie(client):
+    r = client.post("/chat", json={"message": "hi"})
+    assert r.status_code == 200
+    assert "chat_session" in r.cookies
+    assert r.cookies["chat_session"].startswith("s_")
+
+
+def test_chat_reuses_session_cookie(client):
+    r1 = client.post("/chat", json={"message": "first"})
+    sid = r1.cookies["chat_session"]
+    # Second request should reuse the cookie set on the first
+    r2 = client.post("/chat", json={"message": "second"})
+    assert r2.cookies.get("chat_session", sid) == sid
+
+
+def test_chat_missing_api_key_streams_config_error(tmp_path: Path, monkeypatch):
+    schema = tmp_path / "schema.md"
+    schema.write_text("SCHEMA", encoding="utf-8")
+    monkeypatch.setattr(app_module, "_SCHEMA_PATH", schema)
+    monkeypatch.setattr(app_module, "_LOG_PATH", tmp_path / "queries.jsonl")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    app_module.reset_service()
+    with TestClient(app_module.app) as c:
+        with c.stream("POST", "/chat", json={"message": "hi"}) as r:
+            body = b"".join(r.iter_bytes()).decode("utf-8")
+    assert "event: error" in body
+    assert "ANTHROPIC_API_KEY" in body

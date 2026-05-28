@@ -24,7 +24,7 @@ def test_lru_eviction():
     with pytest.raises(ReportNotFound):
         r.get_pdf(ids[0])
     # newest 3 still resolvable
-    assert r._has(ids[1]) and r._has(ids[2]) and r._has(ids[3])
+    assert r.has(ids[1]) and r.has(ids[2]) and r.has(ids[3])
 
 
 def test_clear_drops_everything():

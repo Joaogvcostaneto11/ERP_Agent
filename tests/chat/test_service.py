@@ -14,6 +14,9 @@ from logic.chat.service import ChatService
 from logic.chat.sql_executor import SqlExecutor
 
 
+SESSION = "s_test"
+
+
 # --- fakes ---
 
 class _ContentText:
@@ -90,13 +93,8 @@ def sql_executor() -> SqlExecutor:
     return SqlExecutor(_factory)
 
 
-# --- tests ---
-
-@pytest.mark.asyncio
-async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, pdf_renderer, sql_executor):
-    envelope_json = json.dumps({"blocks": [{"kind": "text", "markdown": "hi"}], "citations": []})
-    client = FakeAnthropicClient([_Response([_ContentText(envelope_json)], stop_reason="end_turn")])
-    svc = ChatService(
+def _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor) -> ChatService:
+    return ChatService(
         anthropic_client=client,
         sql_executor=sql_executor,
         audit=audit,
@@ -104,7 +102,16 @@ async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, pdf_renderer,
         pdf_renderer=pdf_renderer,
         model="claude-sonnet-4-6",
     )
-    events = [e async for e in svc.stream_turn("hello")]
+
+
+# --- tests ---
+
+@pytest.mark.asyncio
+async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, pdf_renderer, sql_executor):
+    envelope_json = json.dumps({"blocks": [{"kind": "text", "markdown": "hi"}], "citations": []})
+    client = FakeAnthropicClient([_Response([_ContentText(envelope_json)], stop_reason="end_turn")])
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    events = [e async for e in svc.stream_turn(SESSION, "hello")]
     types = [e["type"] for e in events]
     assert types[0] == "status"
     assert "block" in types
@@ -118,35 +125,24 @@ async def test_tool_use_round_trip(schema_ctx, audit, pdf_renderer, sql_executor
         _Response([_ContentToolUse("t1", "run_query", "SELECT 42 AS n")], stop_reason="tool_use"),
         _Response([_ContentText(final)], stop_reason="end_turn"),
     ])
-    svc = ChatService(
-        anthropic_client=client, sql_executor=sql_executor,
-        audit=audit, schema_context=schema_ctx, pdf_renderer=pdf_renderer,
-        model="claude-sonnet-4-6",
-    )
-    events = [e async for e in svc.stream_turn("count")]
-    # we should see a 'querying' status, then a value block
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    events = [e async for e in svc.stream_turn(SESSION, "count")]
     statuses = [e for e in events if e["type"] == "status"]
     blocks = [e for e in events if e["type"] == "block"]
     assert any(s["payload"].get("phase") == "querying" for s in statuses)
     assert len(blocks) == 1 and blocks[0]["payload"]["kind"] == "value"
-    # claude was called twice
     assert len(client.calls) == 2
 
 
 @pytest.mark.asyncio
 async def test_query_budget_exceeded(schema_ctx, audit, pdf_renderer, sql_executor):
-    # script 11 tool_use responses → loop should abort after the 10th
     tool_use = lambda i: _Response(
         [_ContentToolUse(f"t{i}", "run_query", f"SELECT {i}")],
         stop_reason="tool_use",
     )
     client = FakeAnthropicClient([tool_use(i) for i in range(11)])
-    svc = ChatService(
-        anthropic_client=client, sql_executor=sql_executor,
-        audit=audit, schema_context=schema_ctx, pdf_renderer=pdf_renderer,
-        model="claude-sonnet-4-6",
-    )
-    events = [e async for e in svc.stream_turn("loop")]
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    events = [e async for e in svc.stream_turn(SESSION, "loop")]
     errors = [e for e in events if e["type"] == "error"]
     assert errors and "budget" in errors[0]["payload"]["message"].lower()
 
@@ -154,12 +150,8 @@ async def test_query_budget_exceeded(schema_ctx, audit, pdf_renderer, sql_execut
 @pytest.mark.asyncio
 async def test_malformed_envelope_emits_error(schema_ctx, audit, pdf_renderer, sql_executor):
     client = FakeAnthropicClient([_Response([_ContentText("not json at all")], stop_reason="end_turn")])
-    svc = ChatService(
-        anthropic_client=client, sql_executor=sql_executor,
-        audit=audit, schema_context=schema_ctx, pdf_renderer=pdf_renderer,
-        model="claude-sonnet-4-6",
-    )
-    events = [e async for e in svc.stream_turn("x")]
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    events = [e async for e in svc.stream_turn(SESSION, "x")]
     assert any(e["type"] == "error" for e in events)
 
 
@@ -170,12 +162,8 @@ async def test_report_block_gets_id_and_pdf_url(schema_ctx, audit, pdf_renderer,
         "citations": [],
     })
     client = FakeAnthropicClient([_Response([_ContentText(env)], stop_reason="end_turn")])
-    svc = ChatService(
-        anthropic_client=client, sql_executor=sql_executor,
-        audit=audit, schema_context=schema_ctx, pdf_renderer=pdf_renderer,
-        model="claude-sonnet-4-6",
-    )
-    events = [e async for e in svc.stream_turn("report me")]
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    events = [e async for e in svc.stream_turn(SESSION, "report me")]
     report_blocks = [e for e in events if e["type"] == "block" and e["payload"]["kind"] == "report"]
     assert len(report_blocks) == 1
     p = report_blocks[0]["payload"]
@@ -185,11 +173,69 @@ async def test_report_block_gets_id_and_pdf_url(schema_ctx, audit, pdf_renderer,
 
 def test_reset_clears_history(schema_ctx, audit, pdf_renderer, sql_executor):
     client = FakeAnthropicClient([])
-    svc = ChatService(
-        anthropic_client=client, sql_executor=sql_executor,
-        audit=audit, schema_context=schema_ctx, pdf_renderer=pdf_renderer,
-        model="claude-sonnet-4-6",
-    )
-    svc.messages.append({"role": "user", "content": "old"})
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    svc._get_or_create_history(SESSION).append({"role": "user", "content": "old"})
+    svc.reset(SESSION)
+    assert svc.history(SESSION) == []
+
+
+def test_reset_without_session_clears_all(schema_ctx, audit, pdf_renderer, sql_executor):
+    client = FakeAnthropicClient([])
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    svc._get_or_create_history("s1").append({"role": "user", "content": "a"})
+    svc._get_or_create_history("s2").append({"role": "user", "content": "b"})
     svc.reset()
-    assert svc.messages == []
+    assert svc.history("s1") == []
+    assert svc.history("s2") == []
+
+
+@pytest.mark.asyncio
+async def test_sessions_are_isolated(schema_ctx, audit, pdf_renderer, sql_executor):
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "x"}], "citations": []})
+    client = FakeAnthropicClient([
+        _Response([_ContentText(final)], stop_reason="end_turn"),
+        _Response([_ContentText(final)], stop_reason="end_turn"),
+    ])
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+    [_ async for _ in svc.stream_turn("s_alice", "hi")]
+    [_ async for _ in svc.stream_turn("s_bob", "hi")]
+    alice = svc.history("s_alice")
+    bob = svc.history("s_bob")
+    assert alice and bob and alice is not bob
+
+
+@pytest.mark.asyncio
+async def test_parallel_tool_calls_execute_concurrently(
+    schema_ctx, audit, pdf_renderer, sql_executor, monkeypatch
+):
+    import time
+    call_starts: list[float] = []
+
+    def slow_run_query(sql: str):
+        call_starts.append(time.monotonic())
+        time.sleep(0.1)
+        from logic.chat.sql_executor import QueryResult
+        return QueryResult(columns=["x"], rows=[[1]], row_count=1, truncated=False, duration_ms=100)
+
+    monkeypatch.setattr(sql_executor, "run_query", slow_run_query)
+
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "done"}], "citations": []})
+    client = FakeAnthropicClient([
+        _Response(
+            [
+                _ContentToolUse("t1", "run_query", "SELECT 1"),
+                _ContentToolUse("t2", "run_query", "SELECT 2"),
+                _ContentToolUse("t3", "run_query", "SELECT 3"),
+            ],
+            stop_reason="tool_use",
+        ),
+        _Response([_ContentText(final)], stop_reason="end_turn"),
+    ])
+    svc = _make_service(client, schema_ctx, audit, pdf_renderer, sql_executor)
+
+    start = time.monotonic()
+    [_ async for _ in svc.stream_turn(SESSION, "do all")]
+    elapsed = time.monotonic() - start
+
+    assert len(call_starts) == 3
+    assert elapsed < 0.25  # sequential would be ~0.3s

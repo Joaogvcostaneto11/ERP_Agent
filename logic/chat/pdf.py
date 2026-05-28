@@ -1,6 +1,8 @@
 from __future__ import annotations
+import html as _html
 import secrets
 from collections import OrderedDict
+from functools import lru_cache
 from typing import Any
 
 
@@ -12,6 +14,7 @@ class WeasyPrintUnavailable(Exception):
     pass
 
 
+@lru_cache(maxsize=1)
 def _weasyprint_available() -> bool:
     try:
         import weasyprint  # noqa: F401
@@ -34,7 +37,7 @@ class PdfRenderer:
             self._store.popitem(last=False)
         return rid
 
-    def _has(self, report_id: str) -> bool:
+    def has(self, report_id: str) -> bool:
         return report_id in self._store
 
     def get_pdf(self, report_id: str) -> bytes:
@@ -49,7 +52,7 @@ class PdfRenderer:
         entry = self._store[report_id]
         wrapped = (
             f"<!doctype html><html><head><meta charset='utf-8'>"
-            f"<title>{entry['title']}</title>"
+            f"<title>{_html.escape(entry['title'])}</title>"
             f"<style>{self._css}</style></head>"
             f"<body>{entry['html']}</body></html>"
         )

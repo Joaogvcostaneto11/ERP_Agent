@@ -6,7 +6,6 @@ export function renderChart(block) {
   const chart = document.createElement("div");
   chart.className = "chart";
   wrap.append(title, chart);
-  // Plotly is loaded as a global from the CDN script tag.
   queueMicrotask(() => {
     window.Plotly.newPlot(chart, block.plotly.data || [], block.plotly.layout || {}, { responsive: true });
   });

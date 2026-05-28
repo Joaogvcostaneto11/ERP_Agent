@@ -6,6 +6,8 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from sqlalchemy import text
+
 
 @dataclass
 class QueryResult:
@@ -27,10 +29,15 @@ QUERY_TIMEOUT_S = 30
 
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _LINE_COMMENT = re.compile(r"--[^\n]*")
-
 _FORBIDDEN = re.compile(
     r"(?i)\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXEC|EXECUTE|INTO)\b"
     r"|\b(xp_|sp_)\w*",
+)
+
+# Long-lived pool so we don't pay creation cost per query and don't block on
+# __exit__ when a worker is still running after a timeout.
+_QUERY_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=8, thread_name_prefix="sql_query"
 )
 
 
@@ -41,7 +48,6 @@ def _normalise(sql: str) -> str:
 
 
 def _strip_string_literals(s: str) -> str:
-    # Removes single/double-quoted strings so semicolons inside them don't count.
     return re.sub(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"", "", s)
 
 
@@ -60,14 +66,11 @@ def validate_sql(sql: str) -> QueryError | None:
     return None
 
 
-from sqlalchemy import text  # noqa: E402
-
-
 def _wrap(sql: str) -> str | None:
-    """Wrap a SELECT for SQL Server TOP-based row capping.
-    Returns None for CTE (WITH) queries — those must be sent as-is because
-    a CTE cannot appear inside a derived table subquery in SQL Server.
-    For unwrapped queries, the row cap is enforced Python-side by trimming.
+    """Return a TOP-capped SELECT, or None for CTE (WITH) queries.
+
+    CTEs cannot appear inside a derived-table subquery in SQL Server, so they
+    are sent as-is and capped Python-side in run_query.
     """
     normalised = _normalise(sql)
     if re.match(r"^\s*WITH\b", normalised, re.IGNORECASE):
@@ -88,8 +91,8 @@ class SqlExecutor:
         if err is not None:
             return err
         wrapped = _wrap(sql)
-        to_execute = wrapped if wrapped is not None else sql.rstrip().rstrip(";")
-        is_unwrapped = wrapped is None
+        is_cte = wrapped is None
+        to_execute = sql.rstrip().rstrip(";") if is_cte else wrapped
         start = time.monotonic()
         try:
             columns, rows = self._execute_with_timeout(to_execute, QUERY_TIMEOUT_S)
@@ -98,30 +101,24 @@ class SqlExecutor:
         except Exception as e:
             return QueryError(code="db_error", message=str(e)[:500])
         duration_ms = int((time.monotonic() - start) * 1000)
-        if is_unwrapped:
+        if is_cte:
             truncated = len(rows) > ROW_CAP
             rows = rows[:ROW_CAP]
-            row_count = len(rows)
         else:
             truncated = len(rows) >= ROW_CAP
-            row_count = len(rows)
         return QueryResult(
             columns=columns,
             rows=rows,
-            row_count=row_count,
+            row_count=len(rows),
             truncated=truncated,
             duration_ms=duration_ms,
         )
 
-    def _execute_with_timeout(self, wrapped: str, timeout: float) -> tuple[list[str], list[list[Any]]]:
+    def _execute_with_timeout(self, sql: str, timeout: float) -> tuple[list[str], list[list[Any]]]:
         def _work() -> tuple[list[str], list[list[Any]]]:
             with self._session_factory() as session:
                 session.execute(text("SET LOCK_TIMEOUT 5000"))
-                result = session.execute(text(wrapped))
-                columns = list(result.keys())
-                rows = [list(r) for r in result.fetchall()]
-                return columns, rows
+                result = session.execute(text(sql))
+                return list(result.keys()), [list(r) for r in result.fetchall()]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(_work)
-            return fut.result(timeout=timeout)
+        return _QUERY_POOL.submit(_work).result(timeout=timeout)

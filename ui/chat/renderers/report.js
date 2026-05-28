@@ -12,7 +12,6 @@ export function renderReport(block) {
   link.target = "_blank";
   link.rel = "noopener";
   link.addEventListener("click", async (e) => {
-    // If the server returns 501 (WeasyPrint unavailable), surface a friendly message.
     e.preventDefault();
     const r = await fetch(block.pdf_url);
     if (r.status === 501) {

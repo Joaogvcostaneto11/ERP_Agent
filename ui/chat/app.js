@@ -4,11 +4,13 @@ import { renderValue } from "./renderers/value.js";
 import { renderTable } from "./renderers/table.js";
 import { renderChart } from "./renderers/chart.js";
 import { renderReport } from "./renderers/report.js";
+import { isAvailable, createRecognizer } from "./voice.js";
 
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 const newChatBtn = document.getElementById("new-chat");
+const micBtn = document.getElementById("mic");
 
 const RENDERERS = {
   text: renderText,
@@ -57,6 +59,27 @@ function appendCitation(parent, c) {
   container.appendChild(item);
 }
 
+function makeHandlers(asstEl) {
+  let lastStatus = null;
+  const clearStatus = () => {
+    if (lastStatus) { lastStatus.remove(); lastStatus = null; }
+  };
+  return {
+    status(data) {
+      clearStatus();
+      lastStatus = addStatus(asstEl, data.phase, data.sql || "");
+    },
+    block(data) {
+      clearStatus();
+      const fn = RENDERERS[data.kind];
+      asstEl.appendChild(fn ? fn(data) : document.createTextNode(`[unsupported block: ${data.kind}]`));
+    },
+    citation(data) { appendCitation(asstEl, data); },
+    error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); },
+    done() { clearStatus(); },
+  };
+}
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -64,25 +87,11 @@ async function send() {
   const userEl = addMessage("user");
   userEl.textContent = text;
   const asstEl = addMessage("assistant");
-  let lastStatus = null;
+  const handlers = makeHandlers(asstEl);
   try {
     for await (const ev of streamSse("/chat", { message: text })) {
-      if (ev.event === "status") {
-        if (lastStatus) lastStatus.remove();
-        lastStatus = addStatus(asstEl, ev.data.phase, ev.data.sql || "");
-      } else if (ev.event === "block") {
-        if (lastStatus) { lastStatus.remove(); lastStatus = null; }
-        const fn = RENDERERS[ev.data.kind];
-        if (fn) asstEl.appendChild(fn(ev.data));
-        else asstEl.appendChild(document.createTextNode(`[unsupported block: ${ev.data.kind}]`));
-      } else if (ev.event === "citation") {
-        appendCitation(asstEl, ev.data);
-      } else if (ev.event === "error") {
-        if (lastStatus) { lastStatus.remove(); lastStatus = null; }
-        addError(asstEl, ev.data.message || "unknown");
-      } else if (ev.event === "done") {
-        if (lastStatus) { lastStatus.remove(); lastStatus = null; }
-      }
+      const handler = handlers[ev.event];
+      if (handler) handler(ev.data);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
   } catch (e) {
@@ -98,10 +107,6 @@ newChatBtn.addEventListener("click", async () => {
   await fetch("/chat/reset", { method: "POST" });
   messagesEl.innerHTML = "";
 });
-
-import { isAvailable, createRecognizer } from "./voice.js";
-
-const micBtn = document.getElementById("mic");
 
 (async function setupVoice() {
   if (!isAvailable()) return;
