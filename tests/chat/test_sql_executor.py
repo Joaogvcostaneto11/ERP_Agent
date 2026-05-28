@@ -107,3 +107,24 @@ def test_run_query_timeout(monkeypatch):
     err = ex.run_query("SELECT 1")
     assert isinstance(err, QueryError)
     assert err.code == "timeout"
+
+
+def test_run_query_with_cte_is_unwrapped():
+    session = FakeSession(rows=[[1]], columns=["x"])
+    ex = SqlExecutor(make_factory(session))
+    result = ex.run_query("WITH cte AS (SELECT 1 AS x) SELECT * FROM cte")
+    assert isinstance(result, QueryResult)
+    # The CTE query was NOT wrapped in a derived table — there is no AS _capped
+    assert not any("AS _capped" in s for s in session.executed)
+    # The original CTE syntax is preserved in what we sent
+    assert any("WITH cte AS" in s for s in session.executed)
+
+
+def test_run_query_with_cte_truncates_python_side():
+    too_many = [[i] for i in range(ROW_CAP + 5)]
+    session = FakeSession(rows=too_many, columns=["i"])
+    ex = SqlExecutor(make_factory(session))
+    result = ex.run_query("WITH cte AS (SELECT i FROM t) SELECT i FROM cte")
+    assert isinstance(result, QueryResult)
+    assert result.row_count == ROW_CAP
+    assert result.truncated is True

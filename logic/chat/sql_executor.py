@@ -63,7 +63,15 @@ def validate_sql(sql: str) -> QueryError | None:
 from sqlalchemy import text  # noqa: E402
 
 
-def _wrap(sql: str) -> str:
+def _wrap(sql: str) -> str | None:
+    """Wrap a SELECT for SQL Server TOP-based row capping.
+    Returns None for CTE (WITH) queries — those must be sent as-is because
+    a CTE cannot appear inside a derived table subquery in SQL Server.
+    For unwrapped queries, the row cap is enforced Python-side by trimming.
+    """
+    normalised = _normalise(sql)
+    if re.match(r"^\s*WITH\b", normalised, re.IGNORECASE):
+        return None
     body = sql.rstrip().rstrip(";")
     return f"SELECT TOP ({ROW_CAP}) * FROM (\n{body}\n) AS _capped"
 
@@ -80,19 +88,28 @@ class SqlExecutor:
         if err is not None:
             return err
         wrapped = _wrap(sql)
+        to_execute = wrapped if wrapped is not None else sql.rstrip().rstrip(";")
+        is_unwrapped = wrapped is None
         start = time.monotonic()
         try:
-            columns, rows = self._execute_with_timeout(wrapped, QUERY_TIMEOUT_S)
+            columns, rows = self._execute_with_timeout(to_execute, QUERY_TIMEOUT_S)
         except concurrent.futures.TimeoutError:
             return QueryError(code="timeout", message=f"query exceeded {QUERY_TIMEOUT_S}s")
         except Exception as e:
             return QueryError(code="db_error", message=str(e)[:500])
         duration_ms = int((time.monotonic() - start) * 1000)
+        if is_unwrapped:
+            truncated = len(rows) > ROW_CAP
+            rows = rows[:ROW_CAP]
+            row_count = len(rows)
+        else:
+            truncated = len(rows) >= ROW_CAP
+            row_count = len(rows)
         return QueryResult(
             columns=columns,
             rows=rows,
-            row_count=len(rows),
-            truncated=len(rows) >= ROW_CAP,
+            row_count=row_count,
+            truncated=truncated,
             duration_ms=duration_ms,
         )
 
