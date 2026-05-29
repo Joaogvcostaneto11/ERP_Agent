@@ -20,3 +20,4 @@ class ErrorCode(str, Enum):
     ENVELOPE_PARSE = "envelope_parse"
     INTERNAL = "internal"
     CONFIG = "config"
+    UNAUTHORIZED = "unauthorized"

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import json
 from contextlib import contextmanager
 from pathlib import Path
@@ -15,6 +16,7 @@ from logic.chat.sql_executor import SqlExecutor
 
 
 SESSION = "s_test"
+CONV = "c_test12345678"
 
 
 # --- fakes ---
@@ -93,13 +95,30 @@ def sql_executor() -> SqlExecutor:
     return SqlExecutor(_factory)
 
 
-def _make_service(client, schema_ctx, audit, report_store, sql_executor) -> ChatService:
+@pytest.fixture
+def history(tmp_path: Path):
+    from logic.chat.history import HistoryStore
+    store = HistoryStore(tmp_path / "history.sqlite")
+    # Pre-create the conversation the tests use, so they can call stream_turn directly.
+    store._conn.execute(
+        "INSERT INTO conversation (id, session_id, title, created_at, updated_at) VALUES (?, ?, '', ?, ?)",
+        (CONV, SESSION, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"),
+    )
+    store._conn.commit()
+    try:
+        yield store
+    finally:
+        store.close()
+
+
+def _make_service(client, schema_ctx, audit, report_store, sql_executor, history) -> ChatService:
     return ChatService(
         anthropic_client=client,
         sql_executor=sql_executor,
         audit=audit,
         schema_context=schema_ctx,
         report_store=report_store,
+        history=history,
         model="claude-sonnet-4-6",
     )
 
@@ -107,11 +126,11 @@ def _make_service(client, schema_ctx, audit, report_store, sql_executor) -> Chat
 # --- tests ---
 
 @pytest.mark.asyncio
-async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, report_store, sql_executor):
+async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, report_store, sql_executor, history):
     envelope_json = json.dumps({"blocks": [{"kind": "text", "markdown": "hi"}], "citations": []})
     client = FakeAnthropicClient([_Response([_ContentText(envelope_json)], stop_reason="end_turn")])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    events = [e async for e in svc.stream_turn(SESSION, "hello")]
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "hello")]
     types = [e["type"] for e in events]
     assert types[0] == "status"
     assert "block" in types
@@ -119,14 +138,14 @@ async def test_immediate_text_reply_no_tool_use(schema_ctx, audit, report_store,
 
 
 @pytest.mark.asyncio
-async def test_tool_use_round_trip(schema_ctx, audit, report_store, sql_executor):
+async def test_tool_use_round_trip(schema_ctx, audit, report_store, sql_executor, history):
     final = json.dumps({"blocks": [{"kind": "value", "label": "n", "value": 42}], "citations": []})
     client = FakeAnthropicClient([
         _Response([_ContentToolUse("t1", "run_query", "SELECT 42 AS n")], stop_reason="tool_use"),
         _Response([_ContentText(final)], stop_reason="end_turn"),
     ])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    events = [e async for e in svc.stream_turn(SESSION, "count")]
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "count")]
     statuses = [e for e in events if e["type"] == "status"]
     blocks = [e for e in events if e["type"] == "block"]
     assert any(s["payload"].get("phase") == "querying" for s in statuses)
@@ -135,35 +154,35 @@ async def test_tool_use_round_trip(schema_ctx, audit, report_store, sql_executor
 
 
 @pytest.mark.asyncio
-async def test_query_budget_exceeded(schema_ctx, audit, report_store, sql_executor):
+async def test_query_budget_exceeded(schema_ctx, audit, report_store, sql_executor, history):
     tool_use = lambda i: _Response(
         [_ContentToolUse(f"t{i}", "run_query", f"SELECT {i}")],
         stop_reason="tool_use",
     )
     client = FakeAnthropicClient([tool_use(i) for i in range(11)])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    events = [e async for e in svc.stream_turn(SESSION, "loop")]
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "loop")]
     errors = [e for e in events if e["type"] == "error"]
     assert errors and "budget" in errors[0]["payload"]["message"].lower()
 
 
 @pytest.mark.asyncio
-async def test_malformed_envelope_emits_error(schema_ctx, audit, report_store, sql_executor):
+async def test_malformed_envelope_emits_error(schema_ctx, audit, report_store, sql_executor, history):
     client = FakeAnthropicClient([_Response([_ContentText("not json at all")], stop_reason="end_turn")])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    events = [e async for e in svc.stream_turn(SESSION, "x")]
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "x")]
     assert any(e["type"] == "error" for e in events)
 
 
 @pytest.mark.asyncio
-async def test_report_block_gets_id_and_view_url(schema_ctx, audit, report_store, sql_executor):
+async def test_report_block_gets_id_and_view_url(schema_ctx, audit, report_store, sql_executor, history):
     env = json.dumps({
         "blocks": [{"kind": "report", "title": "T", "html": "<p>x</p>"}],
         "citations": [],
     })
     client = FakeAnthropicClient([_Response([_ContentText(env)], stop_reason="end_turn")])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    events = [e async for e in svc.stream_turn(SESSION, "report me")]
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "report me")]
     report_blocks = [e for e in events if e["type"] == "block" and e["payload"]["kind"] == "report"]
     assert len(report_blocks) == 1
     p = report_blocks[0]["payload"]
@@ -171,42 +190,9 @@ async def test_report_block_gets_id_and_view_url(schema_ctx, audit, report_store
     assert p["view_url"] == f"/report/{p['id']}/view"
 
 
-def test_reset_clears_history(schema_ctx, audit, report_store, sql_executor):
-    client = FakeAnthropicClient([])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    svc._get_or_create_history(SESSION).append({"role": "user", "content": "old"})
-    svc.reset(SESSION)
-    assert svc.history(SESSION) == []
-
-
-def test_reset_without_session_clears_all(schema_ctx, audit, report_store, sql_executor):
-    client = FakeAnthropicClient([])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    svc._get_or_create_history("s1").append({"role": "user", "content": "a"})
-    svc._get_or_create_history("s2").append({"role": "user", "content": "b"})
-    svc.reset()
-    assert svc.history("s1") == []
-    assert svc.history("s2") == []
-
-
-@pytest.mark.asyncio
-async def test_sessions_are_isolated(schema_ctx, audit, report_store, sql_executor):
-    final = json.dumps({"blocks": [{"kind": "text", "markdown": "x"}], "citations": []})
-    client = FakeAnthropicClient([
-        _Response([_ContentText(final)], stop_reason="end_turn"),
-        _Response([_ContentText(final)], stop_reason="end_turn"),
-    ])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
-    [_ async for _ in svc.stream_turn("s_alice", "hi")]
-    [_ async for _ in svc.stream_turn("s_bob", "hi")]
-    alice = svc.history("s_alice")
-    bob = svc.history("s_bob")
-    assert alice and bob and alice is not bob
-
-
 @pytest.mark.asyncio
 async def test_parallel_tool_calls_execute_concurrently(
-    schema_ctx, audit, report_store, sql_executor, monkeypatch
+    schema_ctx, audit, report_store, sql_executor, history, monkeypatch
 ):
     import time
     call_starts: list[float] = []
@@ -231,11 +217,85 @@ async def test_parallel_tool_calls_execute_concurrently(
         ),
         _Response([_ContentText(final)], stop_reason="end_turn"),
     ])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor)
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
 
     start = time.monotonic()
-    [_ async for _ in svc.stream_turn(SESSION, "do all")]
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "do all")]
     elapsed = time.monotonic() - start
 
     assert len(call_starts) == 3
     assert elapsed < 0.25  # sequential would be ~0.3s
+
+
+@pytest.mark.asyncio
+async def test_continues_conversation_from_persisted_transcript(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    history.append_turn(
+        CONV, SESSION, "first question", [{"kind": "text", "markdown": "first answer"}], [],
+        [{"role": "user", "content": "first question"},
+         {"role": "assistant", "content": '{"blocks":[{"kind":"text","markdown":"first answer"}],"citations":[]}'}],
+    )
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "follow up"}], "citations": []})
+    client = FakeAnthropicClient([_Response([_ContentText(final)], stop_reason="end_turn")])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "second question")]
+    # Claude must have seen the prior turn in messages
+    last_call = client.calls[-1]
+    contents = [m["content"] for m in last_call["messages"]]
+    assert any("first question" in (c if isinstance(c, str) else "") for c in contents)
+
+
+@pytest.mark.asyncio
+async def test_blocks_persisted_after_turn(schema_ctx, audit, report_store, sql_executor, history):
+    final = json.dumps({"blocks": [{"kind": "value", "label": "n", "value": 7}], "citations": []})
+    client = FakeAnthropicClient([_Response([_ContentText(final)], stop_reason="end_turn")])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "give me 7")]
+    detail = history.get_conversation(CONV, SESSION)
+    assert len(detail.turns) == 1
+    assert detail.turns[0].blocks == [{"kind": "value", "label": "n", "value": 7, "unit": None}]
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_conversation_emits_error(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    client = FakeAnthropicClient([])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, "s_someone_else", "hi")]
+    err = [e for e in events if e["type"] == "error"]
+    assert err and err[0]["payload"]["code"] == "unauthorized"
+    assert len(client.calls) == 0  # Claude never called
+
+
+@pytest.mark.asyncio
+async def test_title_generation_fires_after_first_turn(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "hello back"}], "citations": []})
+    title_response = _Response([_ContentText("Friendly greeting exchanged")], stop_reason="end_turn")
+
+    class _Client:
+        def __init__(self):
+            self.calls: list[dict] = []
+            self.messages = SimpleNamespace(create=self._create)
+            self._main = [_Response([_ContentText(final)], stop_reason="end_turn")]
+            self._title = [title_response]
+
+        def _create(self, **kw):
+            self.calls.append(kw)
+            if kw.get("model", "").startswith("claude-haiku"):
+                return self._title.pop(0)
+            return self._main.pop(0)
+
+    client = _Client()
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "hello")]
+    # The background task may not have finished by the time stream_turn returns.
+    # Drain pending tasks to give it a chance.
+    pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    detail = history.get_conversation(CONV, SESSION)
+    assert detail.title == "Friendly greeting exchanged"

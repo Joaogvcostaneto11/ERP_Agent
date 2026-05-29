@@ -1,9 +1,9 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 import re
 import uuid
-from collections import OrderedDict
 from dataclasses import asdict
 from typing import Any, AsyncIterator
 
@@ -12,15 +12,17 @@ from pydantic import ValidationError
 from logic.chat.audit import AuditLog
 from logic.chat.envelope import ClaudeEnvelope, RawReportBlock, ReportBlock
 from logic.chat.events import ErrorCode, EventType, Phase
-from logic.chat.report_store import Report, ReportStore
+from logic.chat.history import HistoryStore
 from logic.chat.prompts import RUN_QUERY_TOOL
+from logic.chat.report_store import Report, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.sql_executor import QueryError, QueryResult, SqlExecutor
 
 
 MAX_QUERIES_PER_TURN = 10
-MAX_SESSIONS = 100
-MAX_HISTORY_MESSAGES = 40
+TITLE_MODEL = "claude-haiku-4-5-20251001"
+
+_log = logging.getLogger(__name__)
 
 
 class ChatService:
@@ -32,6 +34,7 @@ class ChatService:
         audit: AuditLog,
         schema_context: SchemaContext,
         report_store: ReportStore,
+        history: HistoryStore,
         model: str,
     ) -> None:
         self._anthropic = anthropic_client
@@ -39,49 +42,36 @@ class ChatService:
         self._audit = audit
         self._schema = schema_context
         self._reports = report_store
+        self._history = history
         self._model = model
-        self._sessions: OrderedDict[str, list[dict]] = OrderedDict()
-
-    def history(self, session_id: str) -> list[dict]:
-        return self._sessions.get(session_id, [])
-
-    def reset(self, session_id: str | None = None) -> None:
-        if session_id is None:
-            self._sessions.clear()
-        else:
-            self._sessions.pop(session_id, None)
-        self._reports.clear()
 
     def get_report(self, report_id: str) -> Report:
         return self._reports.get(report_id)
 
-    def _get_or_create_history(self, session_id: str) -> list[dict]:
-        if session_id in self._sessions:
-            self._sessions.move_to_end(session_id)
-            return self._sessions[session_id]
-        while len(self._sessions) >= MAX_SESSIONS:
-            self._sessions.popitem(last=False)
-        history: list[dict] = []
-        self._sessions[session_id] = history
-        return history
+    async def stream_turn(
+        self, conversation_id: str, session_id: str, user_message: str
+    ) -> AsyncIterator[dict]:
+        if self._history.get_conversation(conversation_id, session_id) is None:
+            yield _event(EventType.ERROR, {
+                "code": ErrorCode.UNAUTHORIZED.value,
+                "message": "conversation not found",
+            })
+            return
 
-    @staticmethod
-    def _cap_history(history: list[dict]) -> None:
-        if len(history) > MAX_HISTORY_MESSAGES:
-            del history[: len(history) - MAX_HISTORY_MESSAGES]
-
-    async def stream_turn(self, session_id: str, user_message: str) -> AsyncIterator[dict]:
         turn_id = "t_" + uuid.uuid4().hex[:12]
-        history = self._get_or_create_history(session_id)
-        history_snapshot = list(history)
-        history.append({"role": "user", "content": user_message})
+        transcript = self._history.get_transcript(conversation_id, session_id)
+        transcript_before = list(transcript)
+        transcript.append({"role": "user", "content": user_message})
         queries_used = 0
+        emitted_blocks: list[dict] = []
+        emitted_citations: list[dict] = []
+        is_first_turn = len(transcript_before) == 0
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
 
             while True:
-                response = await self._call_claude(history)
+                response = await self._call_claude(transcript)
 
                 tool_uses: list[Any] = []
                 assistant_blocks: list[dict] = []
@@ -100,17 +90,23 @@ class ChatService:
 
                 if not tool_uses:
                     raw = "".join(b["text"] for b in assistant_blocks if b["type"] == "text").strip()
-                    history.append({"role": "assistant", "content": raw})
-                    self._cap_history(history)
-                    async for ev in self._emit_envelope(raw):
+                    transcript.append({"role": "assistant", "content": raw})
+                    async for ev in self._emit_envelope(raw, emitted_blocks, emitted_citations):
                         yield ev
+                    self._history.append_turn(
+                        conversation_id, session_id, user_message,
+                        emitted_blocks, emitted_citations, transcript,
+                    )
+                    if is_first_turn:
+                        asyncio.create_task(self._generate_title(
+                            conversation_id, session_id, user_message, emitted_blocks
+                        ))
                     yield _event(EventType.DONE, {})
                     return
 
-                history.append({"role": "assistant", "content": assistant_blocks})
+                transcript.append({"role": "assistant", "content": assistant_blocks})
 
                 if queries_used + len(tool_uses) > MAX_QUERIES_PER_TURN:
-                    history[:] = history_snapshot
                     yield _event(EventType.ERROR, {
                         "code": ErrorCode.BUDGET_EXCEEDED.value,
                         "message": f"Query budget exceeded ({MAX_QUERIES_PER_TURN} per turn).",
@@ -136,6 +132,7 @@ class ChatService:
                     self._audit.append({
                         "ts": AuditLog.now_iso(),
                         "turn_id": turn_id,
+                        "conversation_id": conversation_id,
                         "session_id": session_id,
                         "user_msg": user_message,
                         "sql": sql,
@@ -144,37 +141,33 @@ class ChatService:
                         "status": "ok" if is_ok else "error",
                         "error_code": None if is_ok else result.code,
                     })
-                    if is_ok:
-                        tool_payload = {
-                            "columns": result.columns,
-                            "rows": result.rows,
-                            "row_count": result.row_count,
-                            "truncated": result.truncated,
-                        }
-                    else:
-                        tool_payload = {"error": asdict(result)}
+                    tool_payload = (
+                        {"columns": result.columns, "rows": result.rows,
+                         "row_count": result.row_count, "truncated": result.truncated}
+                        if is_ok else
+                        {"error": asdict(result)}
+                    )
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tu.id,
                         "content": json.dumps(tool_payload, default=str),
                     })
 
-                history.append({"role": "user", "content": tool_results})
+                transcript.append({"role": "user", "content": tool_results})
         except Exception as e:
-            history[:] = history_snapshot
             yield _event(EventType.ERROR, {
                 "code": ErrorCode.INTERNAL.value,
                 "message": str(e)[:500],
             })
             return
 
-    async def _call_claude(self, history: list[dict]) -> Any:
+    async def _call_claude(self, transcript: list[dict]) -> Any:
         kwargs = dict(
             model=self._model,
             max_tokens=4096,
             system=self._schema.system_blocks(),
             tools=[RUN_QUERY_TOOL],
-            messages=history,
+            messages=transcript,
         )
         stream_factory = getattr(self._anthropic.messages, "stream", None)
         if stream_factory is not None:
@@ -187,7 +180,9 @@ class ChatService:
             return await result
         return result
 
-    async def _emit_envelope(self, raw: str) -> AsyncIterator[dict]:
+    async def _emit_envelope(
+        self, raw: str, emitted_blocks: list[dict], emitted_citations: list[dict]
+    ) -> AsyncIterator[dict]:
         try:
             data = _extract_envelope_object(raw)
             env = ClaudeEnvelope.model_validate(data)
@@ -206,12 +201,64 @@ class ChatService:
                     id=rid, title=block.title, html=block.html,
                     view_url=f"/report/{rid}/view",
                 )
-                yield _event(EventType.BLOCK, emitted.model_dump())
+                payload = emitted.model_dump()
             else:
-                yield _event(EventType.BLOCK, block.model_dump())
+                payload = block.model_dump()
+            emitted_blocks.append(payload)
+            yield _event(EventType.BLOCK, payload)
 
         for c in env.citations:
-            yield _event(EventType.CITATION, c.model_dump())
+            payload = c.model_dump()
+            emitted_citations.append(payload)
+            yield _event(EventType.CITATION, payload)
+
+    async def _generate_title(
+        self, conversation_id: str, session_id: str,
+        user_message: str, blocks: list[dict],
+    ) -> None:
+        preview = _assistant_preview(blocks)
+        prompt = (
+            "Summarise this exchange as a 5-7 word title. No quotes, no trailing punctuation.\n\n"
+            f"USER: {user_message[:500]}\n"
+            f"ASSISTANT: {preview[:500]}"
+        )
+        try:
+            result = self._anthropic.messages.create(
+                model=TITLE_MODEL,
+                max_tokens=30,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            if asyncio.iscoroutine(result):
+                result = await result
+            title = "".join(
+                getattr(c, "text", "") for c in result.content
+                if getattr(c, "type", None) == "text"
+            ).strip()[:80]
+            if title:
+                self._history.update_title(conversation_id, session_id, title)
+        except Exception:
+            _log.exception("title generation failed")
+
+
+def _assistant_preview(blocks: list[dict]) -> str:
+    for b in blocks:
+        if b.get("kind") == "text":
+            return b.get("markdown", "")
+    if not blocks:
+        return ""
+    b = blocks[0]
+    kind = b.get("kind")
+    if kind == "value":
+        return f"Value: {b.get('label', '')} = {b.get('value', '')}"
+    if kind == "table":
+        cols = len(b.get("columns", []))
+        rows = len(b.get("rows", []))
+        return f"Table with {rows} rows and {cols} columns"
+    if kind == "chart":
+        return f"Chart: {b.get('title', '')}"
+    if kind == "report":
+        return f"Report: {b.get('title', '')}"
+    return f"{kind} block"
 
 
 def _event(event_type: EventType, payload: dict) -> dict:
@@ -222,11 +269,7 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL | re.IGNOREC
 
 
 def _extract_envelope_object(raw: str) -> dict:
-    """Locate the envelope JSON object inside prose / markdown fences.
-
-    Tries: (1) the whole string, (2) the first fenced ```json block, (3) the
-    first `{`-rooted object found via raw_decode anywhere in the string.
-    """
+    """Locate the envelope JSON object inside prose / markdown fences."""
     decoder = json.JSONDecoder()
     for candidate in _envelope_candidates(raw):
         try:
