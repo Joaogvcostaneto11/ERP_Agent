@@ -1,6 +1,6 @@
 const PAGE_SIZE = 50;
 const XLSX_CDN_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-const XLSX_SRI_HASH = ""; // filled in Task B2
+const XLSX_SRI_HASH = "sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw";
 
 export function renderTable(block) {
   const wrap = document.createElement("div");
@@ -91,8 +91,37 @@ function csvCell(value) {
 }
 
 async function downloadXlsx(block) {
-  // Wired up in Task B2
-  alert("Excel export is wired up in Task B2.");
+  await ensureXlsxLoaded();
+  const guarded = [block.columns.map(String), ...block.rows.map(row => row.map(xlsxCell))];
+  const ws = window.XLSX.utils.aoa_to_sheet(guarded);
+  const wb = window.XLSX.utils.book_new();
+  const sheetName = (block.caption || "Sheet1").slice(0, 31).replace(/[\[\]\*\/\\\?:]/g, "_") || "Sheet1";
+  window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  window.XLSX.writeFile(wb, filenameFor(block, "xlsx"));
+}
+
+function xlsxCell(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  let s = String(value);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s;
+}
+
+let _xlsxPromise = null;
+function ensureXlsxLoaded() {
+  if (window.XLSX) return Promise.resolve();
+  if (_xlsxPromise) return _xlsxPromise;
+  _xlsxPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = XLSX_CDN_URL;
+    s.integrity = XLSX_SRI_HASH;
+    s.crossOrigin = "anonymous";
+    s.onload = () => resolve();
+    s.onerror = () => { _xlsxPromise = null; reject(new Error("Failed to load SheetJS")); };
+    document.head.appendChild(s);
+  });
+  return _xlsxPromise;
 }
 
 function triggerDownload(blob, name) {
