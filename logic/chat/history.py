@@ -146,24 +146,32 @@ class HistoryStore:
             )
             return cur.rowcount > 0
 
-    def update_title(self, conversation_id: str, session_id: str, title: str) -> None:
+    def update_title(self, conversation_id: str, session_id: str, title: str) -> bool:
         with self._write() as c:
-            c.execute(
+            cur = c.execute(
                 "UPDATE conversation SET title = ? WHERE id = ? AND session_id = ?",
                 (title[:200], conversation_id, session_id),
             )
+            return cur.rowcount > 0
 
     def append_turn(
         self,
         conversation_id: str,
+        session_id: str,
         user_message: str,
         blocks: list[dict],
         citations: list[dict],
         raw_transcript: list[dict],
-    ) -> None:
+    ) -> bool:
         capped = raw_transcript[-TRANSCRIPT_CAP:]
         now = AuditLog.now_iso()
         with self._write() as c:
+            exists = c.execute(
+                "SELECT 1 FROM conversation WHERE id = ? AND session_id = ?",
+                (conversation_id, session_id),
+            ).fetchone()
+            if not exists:
+                return False
             c.execute(
                 "INSERT INTO turn (conversation_id, user_message, blocks_json, citations_json, raw_transcript, ts) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
@@ -177,6 +185,7 @@ class HistoryStore:
                 ),
             )
             c.execute("UPDATE conversation SET updated_at = ? WHERE id = ?", (now, conversation_id))
+            return True
 
     def get_transcript(self, conversation_id: str, session_id: str) -> list[dict]:
         row = self._conn.execute(
