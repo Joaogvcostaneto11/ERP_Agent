@@ -29,7 +29,6 @@ footer { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 14px; }
 th { background: #f1f5f9; }
-.copy-csv { font-size: 12px; margin-top: 6px; }
 .chart { width: 100%; min-height: 320px; }
 .report { padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
 .report .pdf-link { display: inline-block; margin-top: 8px; font-size: 14px; }

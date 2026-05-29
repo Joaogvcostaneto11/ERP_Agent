@@ -16,7 +16,7 @@ from logic.chat.history import HistoryStore
 from logic.chat.prompts import RUN_QUERY_TOOL
 from logic.chat.report_store import Report, ReportStore
 from logic.chat.schema_context import SchemaContext
-from logic.chat.sql_executor import QueryError, QueryResult, SqlExecutor
+from logic.chat.sql_executor import QueryResult, SqlExecutor
 
 
 MAX_QUERIES_PER_TURN = 10

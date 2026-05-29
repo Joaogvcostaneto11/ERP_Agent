@@ -14,6 +14,8 @@ class Report(NamedTuple):
 
 
 class ReportStore:
+    """In-memory LRU. Reports are NOT persisted across server restarts —
+    view_urls emitted from old conversations 404 after a restart."""
     def __init__(self, max_entries: int = 20) -> None:
         self._max = max_entries
         self._store: OrderedDict[str, Report] = OrderedDict()
