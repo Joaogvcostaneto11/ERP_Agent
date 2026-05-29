@@ -30,6 +30,7 @@ def client(tmp_path: Path, monkeypatch) -> Iterator[TestClient]:
     monkeypatch.setenv("CHAT_VOICE_LANG", "en-US")
     monkeypatch.setattr(app_module, "_SCHEMA_PATH", schema)
     monkeypatch.setattr(app_module, "_LOG_PATH", tmp_path / "queries.jsonl")
+    monkeypatch.setattr(app_module, "_HISTORY_PATH", tmp_path / "history.sqlite")
     monkeypatch.setattr(app_module, "_session_factory", _factory)
     monkeypatch.setattr(app_module, "_build_anthropic_client", lambda: SimpleNamespace(
         messages=SimpleNamespace(create=lambda **kw: SimpleNamespace(
@@ -46,12 +47,6 @@ def test_config_returns_voice_lang(client):
     r = client.get("/config")
     assert r.status_code == 200
     assert r.json() == {"voice_lang": "en-US"}
-
-
-def test_chat_reset(client):
-    r = client.post("/chat/reset")
-    assert r.status_code == 200
-    assert r.json() == {"ok": True}
 
 
 def test_report_view_404_for_unknown(client):
@@ -79,7 +74,8 @@ def test_static_index_served(client):
 
 
 def test_chat_sse_streams_envelope(client):
-    with client.stream("POST", "/chat", json={"message": "hi"}) as r:
+    cid = client.post("/conversations").json()["id"]
+    with client.stream("POST", "/chat", json={"conversation_id": cid, "message": "hi"}) as r:
         assert r.status_code == 200
         assert r.headers["content-type"].startswith("text/event-stream")
         body = b"".join(r.iter_bytes()).decode("utf-8")
@@ -89,18 +85,72 @@ def test_chat_sse_streams_envelope(client):
 
 
 def test_chat_sets_session_cookie(client):
-    r = client.post("/chat", json={"message": "hi"})
+    cid = client.post("/conversations").json()["id"]
+    r = client.post("/chat", json={"conversation_id": cid, "message": "hi"})
     assert r.status_code == 200
     assert "chat_session" in r.cookies
     assert r.cookies["chat_session"].startswith("s_")
 
 
 def test_chat_reuses_session_cookie(client):
-    r1 = client.post("/chat", json={"message": "first"})
+    cid = client.post("/conversations").json()["id"]
+    r1 = client.post("/chat", json={"conversation_id": cid, "message": "first"})
     sid = r1.cookies["chat_session"]
-    # Second request should reuse the cookie set on the first
-    r2 = client.post("/chat", json={"message": "second"})
+    r2 = client.post("/chat", json={"conversation_id": cid, "message": "second"})
     assert r2.cookies.get("chat_session", sid) == sid
+
+
+def test_create_conversation_returns_id(client):
+    r = client.post("/conversations")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"].startswith("c_")
+    assert "chat_session" in r.cookies
+
+
+def test_list_conversations_session_scoped(client):
+    a = client.post("/conversations").json()["id"]
+    rows = client.get("/conversations").json()["conversations"]
+    assert any(r["id"] == a for r in rows)
+
+
+def test_get_conversation_owner(client):
+    a = client.post("/conversations").json()["id"]
+    r = client.get(f"/conversations/{a}")
+    assert r.status_code == 200
+    assert r.json()["id"] == a
+
+
+def test_get_conversation_cross_session_404(client):
+    a = client.post("/conversations").json()["id"]
+    fresh = TestClient(app_module.app)
+    r = fresh.get(f"/conversations/{a}")
+    assert r.status_code == 404
+
+
+def test_delete_conversation_owner(client):
+    a = client.post("/conversations").json()["id"]
+    r = client.delete(f"/conversations/{a}")
+    assert r.status_code == 204
+    assert client.get(f"/conversations/{a}").status_code == 404
+
+
+def test_delete_conversation_cross_session_404(client):
+    a = client.post("/conversations").json()["id"]
+    fresh = TestClient(app_module.app)
+    assert fresh.delete(f"/conversations/{a}").status_code == 404
+
+
+def test_chat_unauthorized_conversation_id(client):
+    with client.stream("POST", "/chat", json={"conversation_id": "c_doesnotexist", "message": "hi"}) as r:
+        body = b"".join(r.iter_bytes()).decode("utf-8")
+    assert "event: error" in body
+    assert "unauthorized" in body
+
+
+def test_chat_missing_conversation_id_returns_400(client):
+    r = client.post("/chat", json={"message": "hi"})
+    assert r.status_code == 400
 
 
 def test_chat_missing_api_key_streams_config_error(tmp_path: Path, monkeypatch):
@@ -108,10 +158,11 @@ def test_chat_missing_api_key_streams_config_error(tmp_path: Path, monkeypatch):
     schema.write_text("SCHEMA", encoding="utf-8")
     monkeypatch.setattr(app_module, "_SCHEMA_PATH", schema)
     monkeypatch.setattr(app_module, "_LOG_PATH", tmp_path / "queries.jsonl")
+    monkeypatch.setattr(app_module, "_HISTORY_PATH", tmp_path / "history.sqlite")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     app_module.reset_service()
     with TestClient(app_module.app) as c:
-        with c.stream("POST", "/chat", json={"message": "hi"}) as r:
+        with c.stream("POST", "/chat", json={"conversation_id": "c_anything", "message": "hi"}) as r:
             body = b"".join(r.iter_bytes()).decode("utf-8")
     assert "event: error" in body
     assert "ANTHROPIC_API_KEY" in body
