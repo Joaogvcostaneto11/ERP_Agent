@@ -34,7 +34,7 @@ class ChartBlock(BaseModel):
 
 
 class RawReportBlock(BaseModel):
-    """Report shape produced by Claude. The server enriches it with id+pdf_url before emitting."""
+    """Report shape produced by Claude. The server enriches it with id+view_url before emitting."""
     model_config = ConfigDict(extra="forbid")
     kind: Literal["report"] = "report"
     title: str
@@ -42,13 +42,13 @@ class RawReportBlock(BaseModel):
 
 
 class ReportBlock(BaseModel):
-    """Report shape sent to the browser — id and pdf_url filled in by the server."""
+    """Report shape sent to the browser — id and view_url filled in by the server."""
     model_config = ConfigDict(extra="forbid")
     kind: Literal["report"] = "report"
     id: str
     title: str
     html: str
-    pdf_url: str
+    view_url: str
 
 
 ClaudeBlock = Annotated[

@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from logic.chat.audit import AuditLog
 from logic.chat.envelope import ClaudeEnvelope, RawReportBlock, ReportBlock
 from logic.chat.events import ErrorCode, EventType, Phase
-from logic.chat.pdf import PdfRenderer
+from logic.chat.report_store import Report, ReportStore
 from logic.chat.prompts import RUN_QUERY_TOOL
 from logic.chat.schema_context import SchemaContext
 from logic.chat.sql_executor import QueryError, QueryResult, SqlExecutor
@@ -31,14 +31,14 @@ class ChatService:
         sql_executor: SqlExecutor,
         audit: AuditLog,
         schema_context: SchemaContext,
-        pdf_renderer: PdfRenderer,
+        report_store: ReportStore,
         model: str,
     ) -> None:
         self._anthropic = anthropic_client
         self._sql = sql_executor
         self._audit = audit
         self._schema = schema_context
-        self._pdf = pdf_renderer
+        self._reports = report_store
         self._model = model
         self._sessions: OrderedDict[str, list[dict]] = OrderedDict()
 
@@ -50,10 +50,10 @@ class ChatService:
             self._sessions.clear()
         else:
             self._sessions.pop(session_id, None)
-        self._pdf.clear()
+        self._reports.clear()
 
-    def get_report_pdf(self, report_id: str) -> bytes:
-        return self._pdf.get_pdf(report_id)
+    def get_report(self, report_id: str) -> Report:
+        return self._reports.get(report_id)
 
     def _get_or_create_history(self, session_id: str) -> list[dict]:
         if session_id in self._sessions:
@@ -201,10 +201,10 @@ class ChatService:
 
         for block in env.blocks:
             if isinstance(block, RawReportBlock):
-                rid = self._pdf.register(block.html, block.title)
+                rid = self._reports.register(block.html, block.title)
                 emitted = ReportBlock(
                     id=rid, title=block.title, html=block.html,
-                    pdf_url=f"/report/{rid}/pdf",
+                    view_url=f"/report/{rid}/view",
                 )
                 yield _event(EventType.BLOCK, emitted.model_dump())
             else:

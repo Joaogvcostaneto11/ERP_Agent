@@ -37,16 +37,16 @@ def test_chart_block():
     assert b.title == "t"
 
 
-def test_raw_report_block_has_no_id_or_pdf_url():
+def test_raw_report_block_has_no_id_or_view_url():
     b = RawReportBlock(title="T", html="<p>x</p>")
     dumped = b.model_dump()
     assert "id" not in dumped
-    assert "pdf_url" not in dumped
+    assert "view_url" not in dumped
 
 
-def test_report_block_requires_id_and_pdf_url():
+def test_report_block_requires_id_and_view_url():
     with pytest.raises(ValidationError):
-        ReportBlock(title="T", html="<p>x</p>")  # missing id + pdf_url
+        ReportBlock(title="T", html="<p>x</p>")  # missing id + view_url
 
 
 def test_envelope_parses_mixed_blocks_from_json():
