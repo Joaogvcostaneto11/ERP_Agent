@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html as _html
 import json as _json
 import os
 import secrets
@@ -11,7 +12,6 @@ from fastapi.staticfiles import StaticFiles
 from db.connection import get_session as _session_factory
 from logic.chat.audit import AuditLog
 from logic.chat.events import ErrorCode, EventType
-import html as _html
 from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService

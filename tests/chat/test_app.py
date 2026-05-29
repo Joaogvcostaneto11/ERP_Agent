@@ -59,7 +59,7 @@ def test_report_view_404_for_unknown(client):
     assert r.status_code == 404
 
 
-def test_report_view_returns_print_styled_html(client, monkeypatch):
+def test_report_view_returns_print_styled_html(client):
     # Register a report via the service directly so we have a known id
     svc = app_module.get_service()
     rid = svc._reports.register("<p>Hello</p>", "My Report")
