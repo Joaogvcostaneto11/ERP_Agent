@@ -44,6 +44,7 @@ class ChatService:
         self._reports = report_store
         self._history = history
         self._model = model
+        self._bg_tasks: set[asyncio.Task] = set()
 
     def get_report(self, report_id: str) -> Report:
         return self._reports.get(report_id)
@@ -60,12 +61,11 @@ class ChatService:
 
         turn_id = "t_" + uuid.uuid4().hex[:12]
         transcript = self._history.get_transcript(conversation_id, session_id)
-        transcript_before = list(transcript)
+        is_first_turn = not transcript
         transcript.append({"role": "user", "content": user_message})
         queries_used = 0
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
-        is_first_turn = len(transcript_before) == 0
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
@@ -98,9 +98,11 @@ class ChatService:
                         emitted_blocks, emitted_citations, transcript,
                     )
                     if is_first_turn:
-                        asyncio.create_task(self._generate_title(
+                        t = asyncio.create_task(self._generate_title(
                             conversation_id, session_id, user_message, emitted_blocks
                         ))
+                        self._bg_tasks.add(t)
+                        t.add_done_callback(self._bg_tasks.discard)
                     yield _event(EventType.DONE, {})
                     return
 
