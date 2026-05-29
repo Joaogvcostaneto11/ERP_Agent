@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from db.connection import get_session as _session_factory
 from logic.chat.audit import AuditLog
 from logic.chat.events import ErrorCode, EventType
-from logic.chat.pdf import PdfRenderer, ReportNotFound, WeasyPrintUnavailable
+import html as _html
+from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService
 from logic.chat.sql_executor import SqlExecutor
@@ -21,7 +22,6 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCHEMA_PATH: Path = _REPO_ROOT / "docs" / "db_schema.md"
 _LOG_PATH: Path = _REPO_ROOT / "logs" / "queries.jsonl"
 _UI_DIR: Path = _REPO_ROOT / "ui" / "chat"
-_REPORT_CSS_PATH: Path = _UI_DIR / "report.css"
 _SESSION_COOKIE = "chat_session"
 
 
@@ -39,16 +39,12 @@ _service: ChatService | None = None
 def get_service() -> ChatService:
     global _service
     if _service is None:
-        try:
-            css = _REPORT_CSS_PATH.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            css = ""
         _service = ChatService(
             anthropic_client=_build_anthropic_client(),
             sql_executor=SqlExecutor(_session_factory),
             audit=AuditLog(_LOG_PATH),
             schema_context=SchemaContext(_SCHEMA_PATH),
-            pdf_renderer=PdfRenderer(css=css),
+            report_store=ReportStore(),
             model="claude-sonnet-4-6",
         )
     return _service
@@ -86,15 +82,34 @@ def post_chat_reset(request: Request, response: Response) -> dict:
     return {"ok": True}
 
 
-@app.get("/report/{report_id}/pdf")
-def get_report_pdf(report_id: str) -> Response:
+_PRINT_VIEW_TEMPLATE = """<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>{title}</title>
+<link rel="stylesheet" href="/report.css">
+<style>
+  body {{ font-family: system-ui, sans-serif; padding: 24px; max-width: 900px; margin: 0 auto; }}
+  .print-hint {{ background: #eef; border: 1px solid #99c; padding: 10px 14px; border-radius: 6px; margin-bottom: 24px; font-size: 14px; }}
+  @media print {{ .print-hint {{ display: none; }} body {{ padding: 0; max-width: none; }} }}
+</style>
+</head><body>
+<div class="print-hint">Press <kbd>Ctrl</kbd>+<kbd>P</kbd> (or <kbd>Cmd</kbd>+<kbd>P</kbd>) to save this report as a PDF.</div>
+{body}
+</body></html>
+"""
+
+
+@app.get("/report/{report_id}/view")
+def get_report_view(report_id: str) -> Response:
     try:
-        pdf = get_service().get_report_pdf(report_id)
+        report = get_service().get_report(report_id)
     except ReportNotFound:
         raise HTTPException(status_code=404, detail="report not found")
-    except WeasyPrintUnavailable as e:
-        return Response(content=str(e), status_code=501, media_type="text/plain")
-    return Response(content=pdf, media_type="application/pdf")
+    html = _PRINT_VIEW_TEMPLATE.format(
+        title=_html.escape(report.title),
+        body=report.html,
+    )
+    return Response(content=html, media_type="text/html")
 
 
 def _format_sse(event: dict) -> bytes:

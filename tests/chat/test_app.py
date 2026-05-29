@@ -54,9 +54,22 @@ def test_chat_reset(client):
     assert r.json() == {"ok": True}
 
 
-def test_report_pdf_404_for_unknown(client):
-    r = client.get("/report/r_nope/pdf")
+def test_report_view_404_for_unknown(client):
+    r = client.get("/report/r_nope/view")
     assert r.status_code == 404
+
+
+def test_report_view_returns_print_styled_html(client, monkeypatch):
+    # Register a report via the service directly so we have a known id
+    svc = app_module.get_service()
+    rid = svc._reports.register("<p>Hello</p>", "My Report")
+    r = client.get(f"/report/{rid}/view")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    body = r.text
+    assert "My Report" in body
+    assert "<p>Hello</p>" in body
+    assert "report.css" in body  # print-styled link tag
 
 
 def test_static_index_served(client):
