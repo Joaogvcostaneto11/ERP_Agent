@@ -5,11 +5,11 @@ import { renderTable } from "./renderers/table.js";
 import { renderChart } from "./renderers/chart.js";
 import { renderReport } from "./renderers/report.js";
 import { isAvailable, createRecognizer } from "./voice.js";
+import { initSidebar, setActiveConversation, newConversation } from "./sidebar.js";
 
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
-const newChatBtn = document.getElementById("new-chat");
 const micBtn = document.getElementById("mic");
 
 const RENDERERS = {
@@ -19,6 +19,9 @@ const RENDERERS = {
   chart: renderChart,
   report: renderReport,
 };
+
+const LAST_CONV_KEY = "lastConversationId";
+let currentConversationId = null;
 
 function addMessage(role) {
   const el = document.createElement("div");
@@ -59,21 +62,19 @@ function appendCitation(parent, c) {
   container.appendChild(item);
 }
 
+function renderBlock(parent, blockData) {
+  const fn = RENDERERS[blockData.kind];
+  parent.appendChild(fn ? fn(blockData) : document.createTextNode(`[unsupported block: ${blockData.kind}]`));
+}
+
 function makeHandlers(asstEl) {
   let lastStatus = null;
   const clearStatus = () => {
     if (lastStatus) { lastStatus.remove(); lastStatus = null; }
   };
   return {
-    status(data) {
-      clearStatus();
-      lastStatus = addStatus(asstEl, data.phase, data.sql || "");
-    },
-    block(data) {
-      clearStatus();
-      const fn = RENDERERS[data.kind];
-      asstEl.appendChild(fn ? fn(data) : document.createTextNode(`[unsupported block: ${data.kind}]`));
-    },
+    status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); },
+    block(data) { clearStatus(); renderBlock(asstEl, data); },
     citation(data) { appendCitation(asstEl, data); },
     error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); },
     done() { clearStatus(); },
@@ -83,13 +84,17 @@ function makeHandlers(asstEl) {
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
+  if (!currentConversationId) await ensureConversation();
   inputEl.value = "";
   const userEl = addMessage("user");
   userEl.textContent = text;
   const asstEl = addMessage("assistant");
   const handlers = makeHandlers(asstEl);
   try {
-    for await (const ev of streamSse("/chat", { message: text })) {
+    for await (const ev of streamSse("/chat", {
+      conversation_id: currentConversationId,
+      message: text,
+    })) {
       const handler = handlers[ev.event];
       if (handler) handler(ev.data);
       messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -99,14 +104,64 @@ async function send() {
   }
 }
 
+async function ensureConversation() {
+  if (currentConversationId) return;
+  const r = await fetch("/conversations", { method: "POST" });
+  const { id } = await r.json();
+  setCurrentConversation(id, { isNew: true });
+}
+
+function setCurrentConversation(id, { isNew }) {
+  currentConversationId = id;
+  localStorage.setItem(LAST_CONV_KEY, id);
+  setActiveConversation(id);
+  if (isNew) messagesEl.innerHTML = "";
+}
+
+async function loadConversation(id) {
+  setCurrentConversation(id, { isNew: false });
+  messagesEl.innerHTML = "";
+  const r = await fetch(`/conversations/${id}`);
+  if (!r.ok) {
+    addError(addMessage("assistant"), "Could not load conversation.");
+    return;
+  }
+  const detail = await r.json();
+  for (const turn of detail.turns) {
+    const u = addMessage("user");
+    u.textContent = turn.user_message;
+    const a = addMessage("assistant");
+    for (const block of turn.blocks) renderBlock(a, block);
+    for (const c of turn.citations) appendCitation(a, c);
+  }
+}
+
 sendBtn.addEventListener("click", send);
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
-newChatBtn.addEventListener("click", async () => {
-  await fetch("/chat/reset", { method: "POST" });
-  messagesEl.innerHTML = "";
+
+initSidebar({
+  onConversationSelected(id, { isNew }) {
+    if (isNew) {
+      setCurrentConversation(id, { isNew: true });
+    } else {
+      loadConversation(id);
+    }
+  },
 });
+
+(async function bootstrap() {
+  const lastId = localStorage.getItem(LAST_CONV_KEY);
+  if (lastId) {
+    const r = await fetch(`/conversations/${lastId}`);
+    if (r.ok) {
+      await loadConversation(lastId);
+      return;
+    }
+  }
+  await newConversation();
+})();
 
 (async function setupVoice() {
   if (!isAvailable()) return;
@@ -124,12 +179,6 @@ newChatBtn.addEventListener("click", async () => {
     const t = ev.results[0][0].transcript;
     inputEl.value = (inputEl.value ? inputEl.value + " " : "") + t;
   });
-  rec.addEventListener("end", () => {
-    listening = false;
-    micBtn.textContent = "🎙️";
-  });
-  rec.addEventListener("error", () => {
-    listening = false;
-    micBtn.textContent = "🎙️";
-  });
+  rec.addEventListener("end", () => { listening = false; micBtn.textContent = "🎙️"; });
+  rec.addEventListener("error", () => { listening = false; micBtn.textContent = "🎙️"; });
 })();
