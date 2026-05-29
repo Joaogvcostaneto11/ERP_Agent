@@ -106,9 +106,7 @@ async function send() {
 
 async function ensureConversation() {
   if (currentConversationId) return;
-  const r = await fetch("/conversations", { method: "POST" });
-  const { id } = await r.json();
-  setCurrentConversation(id, { isNew: true });
+  await newConversation();
 }
 
 function setCurrentConversation(id, { isNew }) {

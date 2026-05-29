@@ -80,6 +80,7 @@ function render(conversations) {
       currentConvId = c.id;
       if (onSelect) onSelect(c.id, { isNew: false });
       paintActive();
+      document.getElementById("sidebar").classList.remove("open");
     });
 
     li.append(title, when, del);
