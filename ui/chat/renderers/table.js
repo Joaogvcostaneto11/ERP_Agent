@@ -62,7 +62,10 @@ export function renderTable(block) {
     if (t.classList.contains("page-prev") && page > 0) { page--; draw(); }
     else if (t.classList.contains("page-next") && page < totalPages - 1) { page++; draw(); }
     else if (t.classList.contains("dl-csv")) { downloadCsv(block); }
-    else if (t.classList.contains("dl-xlsx")) { await downloadXlsx(block); }
+    else if (t.classList.contains("dl-xlsx")) {
+      try { await downloadXlsx(block); }
+      catch (err) { alert("Excel export failed: " + (err && err.message ? err.message : err)); }
+    }
   });
 
   draw();
