@@ -6,22 +6,11 @@ export function renderReport(block) {
   const body = document.createElement("div");
   body.innerHTML = window.DOMPurify.sanitize(block.html || "");
   const link = document.createElement("a");
-  link.href = block.pdf_url;
+  link.href = block.view_url;
   link.className = "pdf-link";
-  link.textContent = "Download PDF";
+  link.textContent = "Open report (print to PDF)";
   link.target = "_blank";
   link.rel = "noopener";
-  link.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const r = await fetch(block.pdf_url);
-    if (r.status === 501) {
-      alert("PDF rendering is unavailable on this server. Use your browser's Print > Save as PDF.");
-      return;
-    }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
-  });
   wrap.append(title, body, link);
   return wrap;
 }
