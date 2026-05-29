@@ -64,6 +64,8 @@ def get_service() -> ChatService:
 def reset_service() -> None:
     global _service, _history
     _service = None
+    if _history is not None:
+        _history.close()
     _history = None
 
 
