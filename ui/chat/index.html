@@ -10,16 +10,24 @@
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
 </head>
 <body>
-  <header>
-    <h1>ERP Chat</h1>
-    <button id="new-chat">New chat</button>
-  </header>
-  <main id="messages" aria-live="polite"></main>
-  <footer>
-    <button id="mic" title="Hold to speak" hidden>🎙️</button>
-    <textarea id="input" rows="1" placeholder="Ask a question…"></textarea>
-    <button id="send">Send</button>
-  </footer>
-  <script type="module" src="app.js"></script>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <strong>ERP Chat</strong>
+        <button id="new-chat" type="button" title="Start a new conversation">+ New</button>
+      </div>
+      <ul id="conversation-list" class="conversation-list"></ul>
+    </aside>
+    <main id="chat-pane">
+      <div id="messages" class="messages"></div>
+      <div class="input-row">
+        <textarea id="input" rows="1" placeholder="Ask me anything…"></textarea>
+        <button id="mic" type="button" hidden title="Voice input">🎙️</button>
+        <button id="send" type="button">Send</button>
+      </div>
+    </main>
+    <button id="sidebar-toggle" type="button" aria-label="Toggle sidebar">☰</button>
+  </div>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>
