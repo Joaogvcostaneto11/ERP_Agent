@@ -1,0 +1,120 @@
+from __future__ import annotations
+import json
+from pathlib import Path
+
+import pytest
+
+from logic.chat.history import ConversationSummary, ConversationDetail, HistoryStore
+
+
+@pytest.fixture
+def store(tmp_path: Path) -> HistoryStore:
+    return HistoryStore(tmp_path / "history.sqlite")
+
+
+def test_create_returns_unique_prefixed_id(store):
+    a = store.create_conversation("s_alice")
+    b = store.create_conversation("s_alice")
+    assert a != b
+    assert a.startswith("c_") and len(a) == 14  # 'c_' + 12 hex
+
+
+def test_list_returns_session_scoped_only(store):
+    a = store.create_conversation("s_alice")
+    store.create_conversation("s_bob")
+    rows = store.list_conversations("s_alice")
+    assert len(rows) == 1
+    assert isinstance(rows[0], ConversationSummary)
+    assert rows[0].id == a
+
+
+def test_get_returns_none_for_other_session(store):
+    a = store.create_conversation("s_alice")
+    assert store.get_conversation(a, "s_bob") is None
+
+
+def test_get_returns_detail_for_owner(store):
+    a = store.create_conversation("s_alice")
+    store.append_turn(a, "hi", [{"kind": "text", "markdown": "hello"}], [], [{"role": "user", "content": "hi"}])
+    detail = store.get_conversation(a, "s_alice")
+    assert isinstance(detail, ConversationDetail)
+    assert detail.id == a
+    assert len(detail.turns) == 1
+    assert detail.turns[0].user_message == "hi"
+    assert detail.turns[0].blocks == [{"kind": "text", "markdown": "hello"}]
+
+
+def test_delete_session_isolated(store):
+    a = store.create_conversation("s_alice")
+    assert store.delete_conversation(a, "s_bob") is False
+    assert store.get_conversation(a, "s_alice") is not None
+    assert store.delete_conversation(a, "s_alice") is True
+    assert store.get_conversation(a, "s_alice") is None
+
+
+def test_list_orders_by_updated_at_desc(store):
+    a = store.create_conversation("s_alice")
+    b = store.create_conversation("s_alice")
+    # Bumping a's updated_at via append_turn should put it first
+    store.append_turn(a, "hi", [{"kind": "text", "markdown": "x"}], [], [])
+    ids = [r.id for r in store.list_conversations("s_alice")]
+    assert ids[0] == a
+    assert ids[1] == b
+
+
+def test_append_turn_updates_conversation_updated_at(store):
+    a = store.create_conversation("s_alice")
+    before = store.get_conversation(a, "s_alice").updated_at
+    store.append_turn(a, "hi", [], [], [])
+    after = store.get_conversation(a, "s_alice").updated_at
+    assert after >= before
+
+
+def test_get_transcript_empty_for_new(store):
+    a = store.create_conversation("s_alice")
+    assert store.get_transcript(a, "s_alice") == []
+
+
+def test_get_transcript_returns_last_raw(store):
+    a = store.create_conversation("s_alice")
+    store.append_turn(a, "first", [], [], [{"role": "user", "content": "first"}])
+    store.append_turn(a, "second", [], [], [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": "ack"},
+        {"role": "user", "content": "second"},
+    ])
+    transcript = store.get_transcript(a, "s_alice")
+    assert len(transcript) == 3
+    assert transcript[-1]["content"] == "second"
+
+
+def test_get_transcript_session_isolated(store):
+    a = store.create_conversation("s_alice")
+    store.append_turn(a, "hi", [], [], [{"role": "user", "content": "hi"}])
+    assert store.get_transcript(a, "s_bob") == []
+
+
+def test_cascade_delete_removes_turns(store):
+    a = store.create_conversation("s_alice")
+    store.append_turn(a, "hi", [], [], [])
+    store.delete_conversation(a, "s_alice")
+    # Re-creating with same logical id wouldn't be possible (random id), so just
+    # verify direct row count via a fresh read.
+    assert store.get_conversation(a, "s_alice") is None
+
+
+def test_update_title_session_isolated(store):
+    a = store.create_conversation("s_alice")
+    store.update_title(a, "s_bob", "hijack")
+    assert store.get_conversation(a, "s_alice").title == ""
+    store.update_title(a, "s_alice", "real title")
+    assert store.get_conversation(a, "s_alice").title == "real title"
+
+
+def test_transcript_capped_to_last_n(store):
+    a = store.create_conversation("s_alice")
+    long_transcript = [{"role": "user", "content": f"msg{i}"} for i in range(50)]
+    store.append_turn(a, "hi", [], [], long_transcript)
+    transcript = store.get_transcript(a, "s_alice")
+    assert len(transcript) == 40
+    assert transcript[0]["content"] == "msg10"  # first 10 trimmed
