@@ -154,19 +154,6 @@ async def test_tool_use_round_trip(schema_ctx, audit, report_store, sql_executor
 
 
 @pytest.mark.asyncio
-async def test_query_budget_exceeded(schema_ctx, audit, report_store, sql_executor, history):
-    tool_use = lambda i: _Response(
-        [_ContentToolUse(f"t{i}", "run_query", f"SELECT {i}")],
-        stop_reason="tool_use",
-    )
-    client = FakeAnthropicClient([tool_use(i) for i in range(11)])
-    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
-    events = [e async for e in svc.stream_turn(CONV, SESSION, "loop")]
-    errors = [e for e in events if e["type"] == "error"]
-    assert errors and "budget" in errors[0]["payload"]["message"].lower()
-
-
-@pytest.mark.asyncio
 async def test_malformed_envelope_emits_error(schema_ctx, audit, report_store, sql_executor, history):
     client = FakeAnthropicClient([_Response([_ContentText("not json at all")], stop_reason="end_turn")])
     svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)

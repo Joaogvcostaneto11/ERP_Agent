@@ -19,7 +19,6 @@ from logic.chat.schema_context import SchemaContext
 from logic.chat.sql_executor import QueryResult, SqlExecutor
 
 
-MAX_QUERIES_PER_TURN = 10
 TITLE_MODEL = "claude-haiku-4-5-20251001"
 
 _log = logging.getLogger(__name__)
@@ -63,7 +62,6 @@ class ChatService:
         transcript = self._history.get_transcript(conversation_id, session_id)
         is_first_turn = not transcript
         transcript.append({"role": "user", "content": user_message})
-        queries_used = 0
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
 
@@ -107,14 +105,6 @@ class ChatService:
                     return
 
                 transcript.append({"role": "assistant", "content": assistant_blocks})
-
-                if queries_used + len(tool_uses) > MAX_QUERIES_PER_TURN:
-                    yield _event(EventType.ERROR, {
-                        "code": ErrorCode.BUDGET_EXCEEDED.value,
-                        "message": f"Query budget exceeded ({MAX_QUERIES_PER_TURN} per turn).",
-                    })
-                    return
-                queries_used += len(tool_uses)
 
                 for tu in tool_uses:
                     yield _event(EventType.STATUS, {

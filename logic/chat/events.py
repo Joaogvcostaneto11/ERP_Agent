@@ -16,7 +16,6 @@ class Phase(str, Enum):
 
 
 class ErrorCode(str, Enum):
-    BUDGET_EXCEEDED = "budget_exceeded"
     ENVELOPE_PARSE = "envelope_parse"
     INTERNAL = "internal"
     CONFIG = "config"
