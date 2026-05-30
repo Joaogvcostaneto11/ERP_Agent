@@ -73,7 +73,7 @@ class ChatService:
             while True:
                 response = await self._call_claude(transcript)
 
-                usage_step = _usage_step(response)
+                usage_step = _usage_step(response, self._model)
                 if usage_step is not None:
                     emitted_steps.append(usage_step)
                     yield _event(EventType.STEP, usage_step)
@@ -296,9 +296,10 @@ def _event(event_type: EventType, payload: dict) -> dict:
     return {"type": event_type.value, "payload": payload}
 
 
-def _usage_step(response: Any) -> dict | None:
-    """Extract token usage from an Anthropic response into a usage step.
-    Returns None if the response has no usage attribute (e.g. test fakes).
+def _usage_step(response: Any, model: str) -> dict | None:
+    """Extract token usage from an Anthropic response into a usage step,
+    including an estimated USD cost for the given model. Returns None if the
+    response has no usage attribute (e.g. test fakes).
     """
     usage = getattr(response, "usage", None)
     if usage is None:
@@ -306,13 +307,45 @@ def _usage_step(response: Any) -> dict | None:
     def _i(name: str) -> int:
         v = getattr(usage, name, 0)
         return int(v) if v is not None else 0
-    return {
+    step = {
         "type": "usage",
         "input_tokens": _i("input_tokens"),
         "output_tokens": _i("output_tokens"),
         "cache_read_input_tokens": _i("cache_read_input_tokens"),
         "cache_creation_input_tokens": _i("cache_creation_input_tokens"),
     }
+    cost = _estimate_cost_usd(model, step)
+    if cost is not None:
+        step["cost_usd"] = cost
+    return step
+
+
+# Anthropic API list price in USD per 1M tokens, as of 2026-05.
+# Cache writes are 1.25x base input; cache reads are 0.10x base input.
+# Update when pricing changes; persisted historical costs keep the original
+# at-the-time value because the cost is embedded in steps_json.
+_PRICING_USD_PER_MTOK = {
+    "claude-opus-4-8":           {"in": 15.00, "out": 75.00, "cache_read": 1.50, "cache_write": 18.75},
+    "claude-opus-4-7":           {"in": 15.00, "out": 75.00, "cache_read": 1.50, "cache_write": 18.75},
+    "claude-sonnet-4-6":         {"in":  3.00, "out": 15.00, "cache_read": 0.30, "cache_write":  3.75},
+    "claude-haiku-4-5-20251001": {"in":  1.00, "out":  5.00, "cache_read": 0.10, "cache_write":  1.25},
+}
+
+
+def _estimate_cost_usd(model: str, usage: dict) -> float | None:
+    p = _PRICING_USD_PER_MTOK.get(model)
+    if p is None:
+        return None
+    return round(
+        (
+            usage["input_tokens"] * p["in"]
+            + usage["output_tokens"] * p["out"]
+            + usage["cache_read_input_tokens"] * p["cache_read"]
+            + usage["cache_creation_input_tokens"] * p["cache_write"]
+        )
+        / 1_000_000,
+        6,
+    )
 
 
 def _compress_past_turns_for_claude(transcript: list[dict]) -> list[dict]:

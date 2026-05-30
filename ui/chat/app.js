@@ -115,7 +115,14 @@ function formatUsage(step) {
   ];
   if (step.cache_read_input_tokens) parts.push(`cache hit ${fmt(step.cache_read_input_tokens)}`);
   if (step.cache_creation_input_tokens) parts.push(`cache write ${fmt(step.cache_creation_input_tokens)}`);
+  if (step.cost_usd != null) parts.push(formatCost(step.cost_usd));
   return parts.join(" · ");
+}
+
+function formatCost(usd) {
+  if (usd >= 0.01) return `$${usd.toFixed(4)}`;
+  // Sub-cent: show in fractional cents for readability
+  return `${(usd * 100).toFixed(4)}¢`;
 }
 
 function renderStep(step) {

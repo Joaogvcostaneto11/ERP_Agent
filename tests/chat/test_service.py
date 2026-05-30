@@ -403,10 +403,36 @@ async def test_usage_step_emitted_per_claude_call(
     assert usages[0]["output_tokens"] == 67
     assert usages[0]["cache_read_input_tokens"] == 10000
     assert usages[1]["input_tokens"] == 12500
+    # Each usage step carries an estimated USD cost (model claude-sonnet-4-6).
+    # Round 1 = 12345*3 + 67*15 + 10000*0.3 + 0*3.75 = 41040 → $0.04104
+    assert usages[0]["cost_usd"] == pytest.approx(0.04104, abs=1e-6)
     # Persisted with the turn's other steps
     detail = history.get_conversation(CONV, SESSION)
     persisted_usages = [s for s in detail.turns[0].steps if s["type"] == "usage"]
     assert len(persisted_usages) == 2
+    assert "cost_usd" in persisted_usages[0]
+
+
+@pytest.mark.asyncio
+async def test_usage_step_skips_cost_for_unknown_model(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """Unknown model id → usage step still emitted, but without a cost."""
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "ok"}], "citations": []})
+    client = FakeAnthropicClient([
+        _Response([_ContentText(final)], stop_reason="end_turn",
+                  usage=_Usage(input_tokens=10, output_tokens=20)),
+    ])
+    svc = ChatService(
+        anthropic_client=client, sql_executor=sql_executor, audit=audit,
+        schema_context=schema_ctx, report_store=report_store, history=history,
+        model="some-unreleased-future-model",
+    )
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "hi")]
+    usages = [e["payload"] for e in events
+              if e["type"] == "step" and e["payload"]["type"] == "usage"]
+    assert len(usages) == 1
+    assert "cost_usd" not in usages[0]
 
 
 def test_compress_no_user_string_returns_as_is():
