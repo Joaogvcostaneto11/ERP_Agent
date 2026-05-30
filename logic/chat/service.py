@@ -73,6 +73,11 @@ class ChatService:
             while True:
                 response = await self._call_claude(transcript)
 
+                usage_step = _usage_step(response)
+                if usage_step is not None:
+                    emitted_steps.append(usage_step)
+                    yield _event(EventType.STEP, usage_step)
+
                 tool_uses: list[Any] = []
                 assistant_blocks: list[dict] = []
                 for c in response.content:
@@ -289,6 +294,25 @@ def _assistant_preview(blocks: list[dict]) -> str:
 
 def _event(event_type: EventType, payload: dict) -> dict:
     return {"type": event_type.value, "payload": payload}
+
+
+def _usage_step(response: Any) -> dict | None:
+    """Extract token usage from an Anthropic response into a usage step.
+    Returns None if the response has no usage attribute (e.g. test fakes).
+    """
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    def _i(name: str) -> int:
+        v = getattr(usage, name, 0)
+        return int(v) if v is not None else 0
+    return {
+        "type": "usage",
+        "input_tokens": _i("input_tokens"),
+        "output_tokens": _i("output_tokens"),
+        "cache_read_input_tokens": _i("cache_read_input_tokens"),
+        "cache_creation_input_tokens": _i("cache_creation_input_tokens"),
+    }
 
 
 def _compress_past_turns_for_claude(transcript: list[dict]) -> list[dict]:

@@ -107,6 +107,17 @@ function appendStep(parent, step) {
   stepsEl.appendChild(renderStep(step));
 }
 
+function formatUsage(step) {
+  const fmt = (n) => Number(n || 0).toLocaleString();
+  const parts = [
+    `input ${fmt(step.input_tokens)}`,
+    `output ${fmt(step.output_tokens)}`,
+  ];
+  if (step.cache_read_input_tokens) parts.push(`cache hit ${fmt(step.cache_read_input_tokens)}`);
+  if (step.cache_creation_input_tokens) parts.push(`cache write ${fmt(step.cache_creation_input_tokens)}`);
+  return parts.join(" · ");
+}
+
 function renderStep(step) {
   const el = document.createElement("div");
   el.className = `step step-${step.type}`;
@@ -114,6 +125,13 @@ function renderStep(step) {
     const body = document.createElement("div");
     body.className = "step-text";
     body.textContent = step.text;
+    el.appendChild(body);
+    return el;
+  }
+  if (step.type === "usage") {
+    const body = document.createElement("div");
+    body.className = "step-text";
+    body.textContent = formatUsage(step);
     el.appendChild(body);
     return el;
   }

@@ -39,10 +39,22 @@ class _ContentToolUse:
         self.input = {"sql": sql}
 
 
+class _Usage:
+    def __init__(self, input_tokens: int, output_tokens: int,
+                 cache_read_input_tokens: int = 0,
+                 cache_creation_input_tokens: int = 0) -> None:
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.cache_read_input_tokens = cache_read_input_tokens
+        self.cache_creation_input_tokens = cache_creation_input_tokens
+
+
 class _Response:
-    def __init__(self, content: list, stop_reason: str) -> None:
+    def __init__(self, content: list, stop_reason: str, usage: _Usage | None = None) -> None:
         self.content = content
         self.stop_reason = stop_reason
+        if usage is not None:
+            self.usage = usage
 
 
 class FakeAnthropicClient:
@@ -360,6 +372,41 @@ def test_compress_past_turn_without_final_string_keeps_just_user():
     current = [_u("q2")]
     result = _compress_past_turns_for_claude(bad_past + current)
     assert result == [_u("q1"), _u("q2")]
+
+
+@pytest.mark.asyncio
+async def test_usage_step_emitted_per_claude_call(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """Each Claude call surfaces a `usage` step with the response's token counts.
+    A two-round turn (tool_use then final) produces two usage steps."""
+    tool_round = _Response(
+        [_ContentToolUse("t1", "run_query", "SELECT 42 AS n")],
+        stop_reason="tool_use",
+        usage=_Usage(input_tokens=12345, output_tokens=67,
+                     cache_read_input_tokens=10000, cache_creation_input_tokens=0),
+    )
+    final = json.dumps({"blocks": [{"kind": "value", "label": "n", "value": 42}], "citations": []})
+    final_round = _Response(
+        [_ContentText(final)],
+        stop_reason="end_turn",
+        usage=_Usage(input_tokens=12500, output_tokens=200,
+                     cache_read_input_tokens=10000),
+    )
+    client = FakeAnthropicClient([tool_round, final_round])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "count")]
+    usages = [e["payload"] for e in events
+              if e["type"] == "step" and e["payload"]["type"] == "usage"]
+    assert len(usages) == 2
+    assert usages[0]["input_tokens"] == 12345
+    assert usages[0]["output_tokens"] == 67
+    assert usages[0]["cache_read_input_tokens"] == 10000
+    assert usages[1]["input_tokens"] == 12500
+    # Persisted with the turn's other steps
+    detail = history.get_conversation(CONV, SESSION)
+    persisted_usages = [s for s in detail.turns[0].steps if s["type"] == "usage"]
+    assert len(persisted_usages) == 2
 
 
 def test_compress_no_user_string_returns_as_is():

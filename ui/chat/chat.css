@@ -52,6 +52,15 @@ th { background: #f1f5f9; }
 }
 .step-reasoning { border-left-color: #94a3b8; }
 .step-query { border-left-color: var(--accent); }
+.step-usage {
+  border-left-color: #cbd5e1;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.step-usage .step-text { font-size: 11px; color: var(--muted); }
 .step .step-text {
   color: var(--fg);
   white-space: pre-wrap;
