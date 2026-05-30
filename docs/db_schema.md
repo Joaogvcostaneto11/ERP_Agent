@@ -437,1021 +437,931 @@ Total: **228 tables**, 12 views
 
 ### Group: SYS (33 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYS00 | 90 | 11 | Chave |
-| SYS01 | 196 | 12 | Chave |
-| SYS01_Catalogo | 18 | 12 | Chave |
-| SYS02 | 1409 | 24 | — |
-| SYS03 | 8 | 36 | Chave |
-| SYS05 | 0 | 4 | Chave |
-| SYS07 | 734 | 36 | — |
-| SYS08 | 138 | 3 | Chave |
-| SYS09 | 0 | 10 | Chave, Tipo, Estado |
-| SYS10 | 5 | 8 | Chave, Estado |
-| SYS11 | 14 | 11 | Chave, Origem, Destino |
-| SYS12 | 5 | 7 | Chave, Destino |
-| SYS13 | 15 | 6 | Chave, Posto |
-| SYS14 | 1 | 7 | Chave |
-| SYS15 | 0 | 7 | Chave |
-| SYS16 | 0 | 4 | Chave |
-| SYS17 | 0 | 5 | Chave, Origem, Destino |
-| SYS20 | 0 | 4 | Tipo, Estado |
-| SYS21 | 0 | 6 | Tipo, Origem, Destino |
-| SYS22 | 0 | 7 | Tipo, Destino |
-| SYS23 | 1 | 7 | Chave, Tipo, Posto |
-| SYS24 | 0 | 15 | Chave |
-| SYS60 | 5 | 24 | Chave |
-| SYS61 | 24 | 8 | Chave |
-| SYS62 | 0 | 4 | Chave |
-| SYS63 | 13 | 6 | Chave |
-| SYS64 | 3 | 3 | Chave |
-| SYS65 | 0 | 14 | Chave |
-| SYS70 | 0 | 21 | Chave |
-| SYS81 | 0 | 5 | Chave |
-| SYS96 | 0 | 6 | Chave |
-| SYS98 | 211 | 5 | OP, Chave |
-| SYS99 | 1510 | 58 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SYS00 | 90 | 11 |
+| SYS01 | 196 | 12 |
+| SYS01_Catalogo | 18 | 12 |
+| SYS02 | 1409 | 24 |
+| SYS03 | 8 | 36 |
+| SYS07 | 734 | 36 |
+| SYS08 | 138 | 3 |
+| SYS10 | 5 | 8 |
+| SYS11 | 14 | 11 |
+| SYS12 | 5 | 7 |
+| SYS13 | 15 | 6 |
+| SYS14 | 1 | 7 |
+| SYS23 | 1 | 7 |
+| SYS60 | 5 | 24 |
+| SYS61 | 24 | 8 |
+| SYS63 | 13 | 6 |
+| SYS64 | 3 | 3 |
+| SYS98 | 211 | 5 |
+| SYS99 | 1510 | 58 |
 
 ### Group: CRM (19 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CRM_99 | 43 | 17 | Chave |
-| CRM_Anexos | 2277 | 12 | — |
-| CRM_Assinaturas | 0 | 9 | Chave |
-| CRM_Atividades | 160 | 26 | Chave |
-| CRM_AtividadesEstados | 321 | 7 | — |
-| CRM_Comunicacoes | 18 | 11 | — |
-| CRM_Emails | 3438 | 16 | Chave |
-| CRM_Enderecos | 3536 | 10 | — |
-| CRM_Equipamentos | 0 | 11 | Chave |
-| CRM_Estados | 16 | 10 | Chave |
-| CRM_GruposProcessos | 3 | 8 | — |
-| CRM_Inbox | 7 | 23 | — |
-| CRM_ProcessosAtividades | 70 | 4 | Chave |
-| CRM_RelGruposProcessos | 0 | 6 | — |
-| CRM_TipoAtividadesProcessos | 36 | 19 | Chave |
-| CRM_Transicoes | 90 | 3 | Chave |
-| CRM_Utilizadores | 7 | 13 | Chave |
-| CRM_UtilizadoresEquipas | 0 | 8 | Chave |
-| CRM_UtilizadoresInbox | 13 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CRM_99 | 43 | 17 |
+| CRM_Anexos | 2277 | 12 |
+| CRM_Atividades | 160 | 26 |
+| CRM_AtividadesEstados | 321 | 7 |
+| CRM_Comunicacoes | 18 | 11 |
+| CRM_Emails | 3438 | 16 |
+| CRM_Enderecos | 3536 | 10 |
+| CRM_Estados | 16 | 10 |
+| CRM_GruposProcessos | 3 | 8 |
+| CRM_Inbox | 7 | 23 |
+| CRM_ProcessosAtividades | 70 | 4 |
+| CRM_TipoAtividadesProcessos | 36 | 19 |
+| CRM_Transicoes | 90 | 3 |
+| CRM_Utilizadores | 7 | 13 |
+| CRM_UtilizadoresInbox | 13 | 7 |
 
 ### Group: IO (7 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| IO_Inbox | 0 | 12 | ID |
-| IO_InboxArquivo | 0 | 11 | ID |
-| IO_InboxData | 0 | 2 | ID |
-| IO_MsgData | 0 | 2 | ID |
-| IO_Outbox | 0 | 7 | ID |
-| IO_SentItems | 0 | 6 | ID |
-| IO_Users | 0 | 5 | UserName, Contexto |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ATR (5 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ATR_Atributos | 795 | 12 | Chave |
-| ATR_ContextosTiposAtributos | 30 | 11 | Chave |
-| ATR_Listas | 4 | 6 | Chave |
-| ATR_RelContextosAtributos | 40 | 11 | Chave |
-| ATR_TiposDados | 16 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ATR_Atributos | 795 | 12 |
+| ATR_ContextosTiposAtributos | 30 | 11 |
+| ATR_Listas | 4 | 6 |
+| ATR_RelContextosAtributos | 40 | 11 |
+| ATR_TiposDados | 16 | 12 |
 
 ### Group: Pos (4 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pos03 | 0 | 15 | Chave |
-| Pos51 | 0 | 4 | — |
-| Pos52 | 0 | 6 | — |
-| Pos70 | 0 | 46 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Doc (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Doc001 | 21286 | 80 | Chave |
-| Doc001_Delete | 603 | 80 | — |
-| Doc005 | 3 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Doc001 | 21286 | 80 |
+| Doc001_Delete | 603 | 80 |
+| Doc005 | 3 | 3 |
 
 ### Group: LinDoc (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinDoc001 | 63769 | 84 | Chave |
-| LinDoc002 | 0 | 33 | Chave |
-| LinDoc003 | 0 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| LinDoc001 | 63769 | 84 |
 
 ### Group: LinPlan (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinPlan001 | 0 | 24 | Chave |
-| LinPlan002 | 0 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Lindoc (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Lindoc001_Delete | 1939 | 84 | — |
-| Lindoc005 | 16 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Lindoc001_Delete | 1939 | 84 |
+| Lindoc005 | 16 | 4 |
 
 ### Group: Plan (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Plan001 | 0 | 18 | Chave |
-| Plan002 | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AVencimento (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AVencimento | 3 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AVencimento | 3 | 17 |
 
 ### Group: Acessos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Acessos | 3 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Acessos | 3 | 9 |
 
 ### Group: Anexos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Anexos | 12 | 20 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Anexos | 12 | 20 |
 
 ### Group: AnexosCat (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosCat | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AnexosGrpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosGrpDoc | 5 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosGrpDoc | 5 | 9 |
 
 ### Group: AnexosGrpDocTp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosGrpDocTp | 15 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosGrpDocTp | 15 | 4 |
 
 ### Group: AnexosIndexantes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosIndexantes | 0 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AnexosPalavrasChave (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosPalavrasChave | 11 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosPalavrasChave | 11 | 4 |
 
 ### Group: AnexosTiposDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosTiposDoc | 57 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosTiposDoc | 57 | 10 |
 
 ### Group: AnexosTiposDocIndexantes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosTiposDocIndexantes | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtArm (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtArm | 3026 | 29 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtArm | 3026 | 29 |
 
 ### Group: ArtComp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtComp | 0 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtDim | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtEmp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtEmp | 1958 | 51 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtEmp | 1958 | 51 |
 
 ### Group: ArtEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtEnt | 0 | 3 | chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtLng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtLng | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtMerc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtMerc | 6 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMerc | 6 | 25 |
 
 ### Group: ArtProp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtProp | 0 | 26 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtPsion (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtPsion | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtRef (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtRef | 0 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtSubst (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtSubst | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtUnid (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtUnid | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtUnidWeb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtUnidWeb | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Artigos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Artigos | 2720 | 126 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Artigos | 2720 | 126 |
 
 ### Group: Avaliacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Avaliacoes | 39 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Avaliacoes | 39 | 16 |
 
 ### Group: Bancos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Bancos | 25 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Bancos | 25 | 15 |
 
 ### Group: CCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCO | 34906 | 38 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCO | 34906 | 38 |
 
 ### Group: CCOLIQ (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCOLIQ | 56566 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCOLIQ | 56566 | 9 |
 
 ### Group: CTB (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CTB | 23765 | 14 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| CTB | 23765 | 14 |
 
 ### Group: Carteiras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Carteiras | 10 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Carteiras | 10 | 13 |
 
 ### Group: Cartoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Cartoes | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Chats (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Chats | 37 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Chats | 37 | 14 |
 
 ### Group: Classificacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Classificacoes | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Classificadores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Classificadores | 0 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Comissoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Comissoes | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ComissoesPeriodos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ComissoesPeriodos | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: CondPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CondPag | 15 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CondPag | 15 | 16 |
 
 ### Group: Consumos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Consumos | 0 | 40 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ContCred (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ContCred | 4 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ContCred | 4 | 15 |
 
 ### Group: Contactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Contactos | 30 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Contactos | 30 | 9 |
 
 ### Group: DocCart (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| DocCart | 25 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| DocCart | 25 | 4 |
 
 ### Group: Entidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Entidades | 1955 | 119 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Entidades | 1955 | 119 |
 
 ### Group: EntidadesRelacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesRelacoes | 1898 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesRelacoes | 1898 | 8 |
 
 ### Group: Eventos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Eventos | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Expedicoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Expedicoes | 21 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Expedicoes | 21 | 11 |
 
 ### Group: FO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| FO | 9630 | 69 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| FO | 9630 | 69 |
 
 ### Group: Fields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Fields | 370 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Fields | 370 | 11 |
 
 ### Group: GrTam (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrTam | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: GrpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDoc | 21 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDoc | 21 | 12 |
 
 ### Group: GrpDocTp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDocTp | 67 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDocTp | 67 | 4 |
 
 ### Group: Hardware (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Hardware | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Hardware | 2 | 8 |
 
 ### Group: Horarios (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Horarios | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ImageRead (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ImageRead | 6 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| ImageRead | 6 | 4 |
 
 ### Group: Impressoras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Impressoras | 5 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Impressoras | 5 | 12 |
 
 ### Group: LangFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LangFields | 597 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| LangFields | 597 | 11 |
 
 ### Group: Language (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Language | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Language | 2 | 8 |
 
 ### Group: Licencas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Licencas | 32 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Licencas | 32 | 18 |
 
 ### Group: LinDOc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinDOc001_GrFamilia | 57820 | 2 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| LinDOc001_GrFamilia | 57820 | 2 |
 
 ### Group: Linguas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Linguas | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Lotes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Lotes | 1 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Lotes | 1 | 15 |
 
 ### Group: ModoPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ModoPag | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ModoPag | 1 | 13 |
 
 ### Group: ModosEntrega (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ModosEntrega | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Moeda (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Moeda | 3 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Moeda | 3 | 18 |
 
 ### Group: MultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| MultiDim | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Numeradores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Numeradores | 47 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Numeradores | 47 | 12 |
 
 ### Group: Operacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Operacoes | 0 | 27 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PckTransactions (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PckTransactions | 0 | 5 | Id, Chave, Tabela |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Pessoal (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pessoal | 0 | 21 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Planos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Planos | 0 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PortalBanners (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalBanners | 136 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalBanners | 136 | 10 |
 
 ### Group: PortalContacts (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalContacts | 2 | 22 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalContacts | 2 | 22 |
 
 ### Group: PortalDestak (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDestak | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PortalDetails (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDetails | 74 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalDetails | 74 | 14 |
 
 ### Group: PortalDetailsGeral (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDetailsGeral | 8 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalDetailsGeral | 8 | 13 |
 
 ### Group: PortalFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalFields | 8 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalFields | 8 | 11 |
 
 ### Group: PortalLangFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalLangFields | 24 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalLangFields | 24 | 11 |
 
 ### Group: PortalLanguage (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalLanguage | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalLanguage | 2 | 8 |
 
 ### Group: PortalMenu (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalMenu | 6 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalMenu | 6 | 10 |
 
 ### Group: PortalMenuEng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalMenuEng | 5 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalMenuEng | 5 | 10 |
 
 ### Group: PortalNews (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalNews | 19 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalNews | 19 | 11 |
 
 ### Group: PortalPartners (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalPartners | 4 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalPartners | 4 | 11 |
 
 ### Group: PortalProdDetails (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalProdDetails | 32 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalProdDetails | 32 | 19 |
 
 ### Group: PortalProdFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalProdFields | 32 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalProdFields | 32 | 12 |
 
 ### Group: PortalSubMenu (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubMenu | 11 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubMenu | 11 | 10 |
 
 ### Group: PortalSubMenuEng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubMenuEng | 11 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubMenuEng | 11 | 11 |
 
 ### Group: PortalSubSubjects (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubSubjects | 3 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubSubjects | 3 | 11 |
 
 ### Group: PortalTestimony (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalTestimony | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PosOperacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PosOperacoes | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Postos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Postos | 13 | 47 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Postos | 13 | 47 |
 
 ### Group: Priority (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Priority | 3 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Priority | 3 | 10 |
 
 ### Group: PsionCab (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PsionCab | 0 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PsionLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PsionLin | 0 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: RegTpIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegTpIVA | 19 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegTpIVA | 19 | 6 |
 
 ### Group: RegimesIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegimesIVA | 13 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegimesIVA | 13 | 17 |
 
 ### Group: RequestTypes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RequestTypes | 5 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RequestTypes | 5 | 9 |
 
 ### Group: Requests (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Requests | 22 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Requests | 22 | 25 |
 
 ### Group: Rotas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Rotas | 0 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SNCFiles (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SNCFiles | 12 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SNCFiles | 12 | 5 |
 
 ### Group: SYSLOCK (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOCK | 0 | 37 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SYSLOG (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOG | 6260 | 10 | ChaveReg |
+| Table | Rows | Cols |
+|---|---|---|
+| SYSLOG | 6260 | 10 |
 
 ### Group: SYSProfiles (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSProfiles | 0 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SYSProfilesPerm (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSProfilesPerm | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Seccoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Seccoes | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Sessoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Sessoes | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Severity (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Severity | 3 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Severity | 3 | 10 |
 
 ### Group: Software (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Software | 16 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Software | 16 | 8 |
 
 ### Group: Status (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Status | 6 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Status | 6 | 8 |
 
 ### Group: TabClassif (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TabClassif | 0 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Taras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Taras | 0 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Tasks (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Tasks | 13 | 20 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Tasks | 13 | 20 |
 
 ### Group: Telefone (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Telefone | 105 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Telefone | 105 | 5 |
 
 ### Group: Tempos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Tempos2 | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposComissao (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposComissao | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposContas | 6 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposContas | 6 | 13 |
 
 ### Group: TiposDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDoc | 35 | 64 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDoc | 35 | 64 |
 
 ### Group: TiposDocAT (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocAT | 24 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocAT | 24 | 9 |
 
 ### Group: TiposDocCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCCO | 37 | 45 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCCO | 37 | 45 |
 
 ### Group: TiposDocCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCtb | 9 | 22 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCtb | 9 | 22 |
 
 ### Group: TiposDocLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLin | 110 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLin | 110 | 4 |
 
 ### Group: TiposDocLinCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLinCtb | 10 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLinCtb | 10 | 16 |
 
 ### Group: TiposDocPst (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocPst | 214 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocPst | 214 | 11 |
 
 ### Group: TiposEmbalagem (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposEmbalagem | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposInt | 16 | 28 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposInt | 16 | 28 |
 
 ### Group: TiposIntL (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIntL | 24 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIntL | 24 | 13 |
 
 ### Group: TiposIva (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIva | 4 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIva | 4 | 14 |
 
 ### Group: TiposLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLin | 46 | 64 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLin | 46 | 64 |
 
 ### Group: TiposLinSTC (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLinSTC | 43 | 34 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLinSTC | 43 | 34 |
 
 ### Group: TiposSerieNum (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieNum | 124 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieNum | 124 | 7 |
 
 ### Group: TiposSerieTpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieTpDoc | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpCCO | 0 | 16 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpConf (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpConf | 0 | 17 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpEtiq (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpEtiq | 2504 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TmpEtiq | 2504 | 9 |
 
 ### Group: TmpInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpInt | 8 | 77 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TmpInt | 8 | 77 |
 
 ### Group: TmpIntAn (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpIntAn | 0 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpMultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpMultiDim | 0 | 11 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpObras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpObras | 0 | 13 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpContactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContactos | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpContactos | 1 | 13 |
 
 ### Group: TpContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContas | 0 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpDocATSerie (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocATSerie | 8 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpDocATSerie | 8 | 4 |
 
 ### Group: TpDocML (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocML | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpEnt | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Unidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Unidades | 2 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Unidades | 2 | 17 |
 
 ### Group: Vendedores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Vendedores | 11 | 24 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Vendedores | 11 | 24 |
 
 ### Group: Zonas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Zonas | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Zonas | 1 | 13 |
 
 ### Group: image (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| image | 13 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| image | 13 | 4 |
 
 ### Group: sys (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| sys99n | 8 | 58 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| sys99n | 8 | 58 |
 
 ### Group: tmporder (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| tmporder | 0 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: tmpsession (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| tmpsession | 11 | 8 | chave |
+| Table | Rows | Cols |
+|---|---|---|
+| tmpsession | 11 | 8 |
 
 ## DOClinic — Full Table Inventory
 
@@ -1459,958 +1369,893 @@ Total: **195 tables**, 49 views
 
 ### Group: SYS (25 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYS00 | 159 | 11 | Chave |
-| SYS01 | 403 | 10 | — |
-| SYS02 | 3414 | 25 | — |
-| SYS03 | 15 | 25 | Chave |
-| SYS04 | 0 | 2 | — |
-| SYS05 | 2 | 4 | Chave |
-| SYS07 | 1565 | 38 | — |
-| SYS08 | 210 | 3 | — |
-| SYS09 | 0 | 10 | — |
-| SYS10 | 0 | 7 | — |
-| SYS11 | 0 | 11 | — |
-| SYS12 | 0 | 7 | — |
-| SYS13 | 0 | 7 | Chave |
-| SYS40 | 0 | 5 | — |
-| SYS60 | 11 | 22 | Chave |
-| SYS61 | 1 | 9 | Chave |
-| SYS62 | 1 | 4 | Chave |
-| SYS63 | 4 | 6 | Chave |
-| SYS64 | 0 | 3 | Chave |
-| SYS70 | 2 | 21 | Chave |
-| SYS81 | 2 | 4 | — |
-| SYS96 | 0 | 6 | Chave |
-| SYS97 | 0 | 5 | — |
-| SYS98 | 475 | 16 | — |
-| SYS99 | 3891 | 60 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SYS00 | 159 | 11 |
+| SYS01 | 403 | 10 |
+| SYS02 | 3414 | 25 |
+| SYS03 | 15 | 25 |
+| SYS05 | 2 | 4 |
+| SYS07 | 1565 | 38 |
+| SYS08 | 210 | 3 |
+| SYS60 | 11 | 22 |
+| SYS61 | 1 | 9 |
+| SYS62 | 1 | 4 |
+| SYS63 | 4 | 6 |
+| SYS70 | 2 | 21 |
+| SYS81 | 2 | 4 |
+| SYS98 | 475 | 16 |
+| SYS99 | 3891 | 60 |
 
 ### Group: CRM (5 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CRM11 | 4 | 9 | Chave |
-| CRM12 | 12 | 9 | Chave |
-| CRM13 | 24 | 4 | Chave |
-| CRM14 | 10 | 4 | Chave |
-| CRM_Inbox | 1 | 20 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| CRM11 | 4 | 9 |
+| CRM12 | 12 | 9 |
+| CRM13 | 24 | 4 |
+| CRM14 | 10 | 4 |
+| CRM_Inbox | 1 | 20 |
 
 ### Group: LinDoc (4 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinDoc001 | 6739 | 67 | Chave |
-| LinDoc001_Delete | 0 | 65 | Chave |
-| LinDoc002 | 0 | 28 | Chave |
-| LinDoc002_Delete | 0 | 28 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| LinDoc001 | 6739 | 67 |
 
 ### Group: A (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| A | 101 | 38 | — |
-| A_DadosCredenciaisEspeciais | 0 | 15 | Chave |
-| A_DadosCredenciaisEspeciais_Linhas | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| A | 101 | 38 |
 
 ### Group: Doc (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Doc001 | 5487 | 88 | Chave |
-| Doc00120260106 | 1163 | 88 | — |
-| Doc001_Delete | 0 | 85 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Doc001 | 5487 | 88 |
+| Doc00120260106 | 1163 | 88 |
 
 ### Group: ESP (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ESP_EstadoEnvios | 0 | 7 | Chave |
-| ESP_LOG | 0 | 7 | Chave |
-| ESP_RegistoDeMensagensESP | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SNS (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SNS_Devolucoes | 0 | 14 | — |
-| SNS_LP | 6892 | 4 | — |
-| SNS_ListaErros | 23 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SNS_LP | 6892 | 4 |
+| SNS_ListaErros | 23 | 5 |
 
 ### Group: SYSER (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSER01 | 25 | 19 | Chave |
-| SYSER02 | 56 | 6 | Chave |
-| SYSER03 | 6 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| SYSER01 | 25 | 19 |
+| SYSER02 | 56 | 6 |
+| SYSER03 | 6 | 3 |
 
 ### Group: Reservas (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Reservas | 9542 | 167 | Chave |
-| Reservas_delete | 0 | 169 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Reservas | 9542 | 167 |
 
 ### Group: WebLoginEntidades (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WebLoginEntidades | 26 | 16 | Chave |
-| WebLoginEntidades_TMP | 35 | 3 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| WebLoginEntidades | 26 | 16 |
+| WebLoginEntidades_TMP | 35 | 3 |
 
 ### Group: Anexos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Anexos | 0 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtArm (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtArm | 6 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtArm | 6 | 25 |
 
 ### Group: ArtComp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtComp | 1 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtComp | 1 | 6 |
 
 ### Group: ArtDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtDim | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtLng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtLng | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtMedico (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtMedico | 37 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMedico | 37 | 7 |
 
 ### Group: ArtMerc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtMerc | 338 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMerc | 338 | 19 |
 
 ### Group: ArtMercHon (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtMercHon | 242 | 19 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMercHon | 242 | 19 |
 
 ### Group: Artigos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Artigos | 191 | 101 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Artigos | 191 | 101 |
 
 ### Group: B (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| B | 204 | 1 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| B | 204 | 1 |
 
 ### Group: Bancos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Bancos | 12 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Bancos | 12 | 15 |
 
 ### Group: CCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCO | 5167 | 41 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCO | 5167 | 41 |
 
 ### Group: CCOLIQ (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCOLIQ | 5166 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCOLIQ | 5166 | 9 |
 
 ### Group: CTB (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CTB | 0 | 14 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Carimbos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Carimbos | 17 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Carimbos | 17 | 9 |
 
 ### Group: CartEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CartEnt | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Carteiras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Carteiras | 10 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Carteiras | 10 | 13 |
 
 ### Group: Comissoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Comissoes | 0 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ComissoesTpEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ComissoesTpEnt | 0 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: CondPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CondPag | 6 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CondPag | 6 | 16 |
 
 ### Group: ConfigResults (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ConfigResults | 5 | 31 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ConfigResults | 5 | 31 |
 
 ### Group: Consumos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Consumos | 0 | 40 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ContCred (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ContCred | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Contactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Contactos | 542 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Contactos | 542 | 8 |
 
 ### Group: Cred (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Cred | 6584 | 2 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Cred | 6584 | 2 |
 
 ### Group: CredenciaisSNS (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CredenciaisSNS | 113560 | 12 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| CredenciaisSNS | 113560 | 12 |
 
 ### Group: Declaracoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Declaracoes | 9118 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Declaracoes | 9118 | 5 |
 
 ### Group: Devolucoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Devolucoes | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Diagnosticos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Diagnosticos | 1200 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Diagnosticos | 1200 | 14 |
 
 ### Group: DiagnosticosSnomed (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| DiagnosticosSnomed | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Dias (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Dias | 799 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Dias | 799 | 7 |
 
 ### Group: DocCPart (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| DocCPart | 5 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| DocCPart | 5 | 4 |
 
 ### Group: DocCart (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| DocCart | 34 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| DocCart | 34 | 4 |
 
 ### Group: ERPalavrasVox (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ERPalavrasVox | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ERPalavrasVox | 2 | 8 |
 
 ### Group: EmpresaConvencoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EmpresaConvencoes | 59 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| EmpresaConvencoes | 59 | 7 |
 
 ### Group: EmpresaSeries (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EmpresaSeries | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: EmpresasMeiosLiquidacao (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EmpresasMeiosLiquidacao | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Entidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Entidades | 28452 | 149 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Entidades | 28452 | 149 |
 
 ### Group: EntidadesBkp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesBkp | 12401 | 149 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesBkp | 12401 | 149 |
 
 ### Group: EntidadesLP (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesLP | 11800 | 142 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesLP | 11800 | 142 |
 
 ### Group: EntidadesSeries (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesSeries | 23 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesSeries | 23 | 4 |
 
 ### Group: EntidadesTPA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesTPA | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Especialidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Especialidades | 29 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Especialidades | 29 | 12 |
 
 ### Group: Estados (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Estados | 103 | 23 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Estados | 103 | 23 |
 
 ### Group: Expedicoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Expedicoes | 2 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Expedicoes | 2 | 11 |
 
 ### Group: FO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| FO | 1 | 118 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| FO | 1 | 118 |
 
 ### Group: Familias (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Familias | 0 | 10 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: GrTam (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrTam | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: GrpArtigos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpArtigos | 47 | 25 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpArtigos | 47 | 25 |
 
 ### Group: GrpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDoc | 13 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDoc | 13 | 11 |
 
 ### Group: GrpDocTp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDocTp | 48 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDocTp | 48 | 3 |
 
 ### Group: GrpRec (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpRec | 122 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpRec | 122 | 4 |
 
 ### Group: ImpressoesEnvios (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ImpressoesEnvios | 0 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Impressoras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Impressoras | 14 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Impressoras | 14 | 12 |
 
 ### Group: KK (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| KK | 11 | 25 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| KK | 11 | 25 |
 
 ### Group: Linguas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Linguas | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ListaLP (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ListaLP_SNS | 6916 | 3 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| ListaLP_SNS | 6916 | 3 |
 
 ### Group: Locais (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Locais | 3 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Locais | 3 | 12 |
 
 ### Group: LocaisPrescricaoComissoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LocaisPrescricaoComissoes | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Lotes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Lotes | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Lotes | 1 | 13 |
 
 ### Group: ModoPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ModoPag | 2 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ModoPag | 2 | 13 |
 
 ### Group: Moeda (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Moeda | 2 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Moeda | 2 | 18 |
 
 ### Group: MovCCOCart (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| MovCCOCart | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: MultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| MultiDim | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: NHParticulares (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| NHParticulares | 525 | 1 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| NHParticulares | 525 | 1 |
 
 ### Group: Numeradores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Numeradores | 53 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Numeradores | 53 | 12 |
 
 ### Group: Operacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Operacoes | 33 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Operacoes | 33 | 15 |
 
 ### Group: OrigensEntidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| OrigensEntidades | 8 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| OrigensEntidades | 8 | 4 |
 
 ### Group: PagamentosTPA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PagamentosTPA | 1 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PagamentosTPA | 1 | 12 |
 
 ### Group: Paineis (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Paineis | 25 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Paineis | 25 | 8 |
 
 ### Group: PaineisTpPedidosExtras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PaineisTpPedidosExtras | 141 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PaineisTpPedidosExtras | 141 | 3 |
 
 ### Group: PedidosRecolha (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PedidosRecolha | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Pessoal (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pessoal | 1 | 21 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Pessoal | 1 | 21 |
 
 ### Group: Pos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pos03 | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Postos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Postos | 48 | 50 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Postos | 48 | 50 |
 
 ### Group: Prescritores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Prescritores | 8937 | 27 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Prescritores | 8937 | 27 |
 
 ### Group: PrescritoresLocais (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PrescritoresLocais | 19391 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PrescritoresLocais | 19391 | 5 |
 
 ### Group: RefSIBSHist (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RefSIBSHist | 44 | 2 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| RefSIBSHist | 44 | 2 |
 
 ### Group: RegTpIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegTpIVA | 16 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegTpIVA | 16 | 5 |
 
 ### Group: RegimesIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegimesIVA | 4 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegimesIVA | 4 | 16 |
 
 ### Group: Regras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Regras | 704 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Regras | 704 | 25 |
 
 ### Group: ReservasCredenciais (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasCredenciais | 0 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ReservasEnvios (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasEnvios | 9071 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasEnvios | 9071 | 16 |
 
 ### Group: ReservasEstados (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasEstados | 71755 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasEstados | 71755 | 8 |
 
 ### Group: ReservasHist (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasHist | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ReservasPedidos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasPedidos | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ReservasServicos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ReservasServicos | 9575 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasServicos | 9575 | 13 |
 
 ### Group: Rotas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Rotas | 1 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Rotas | 1 | 17 |
 
 ### Group: SYSDefaults (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSDefaults | 9 | 11 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SYSDefaults | 9 | 11 |
 
 ### Group: SYSLOCK (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOCK | 0 | 37 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SYSLOG (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOG | 32988 | 10 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SYSLOG | 32988 | 10 |
 
 ### Group: Seccoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Seccoes | 15 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Seccoes | 15 | 12 |
 
 ### Group: Sessoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Sessoes | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SmsQueue (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SmsQueue | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TMP (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TMP_ListaLP_SNS | 0 | 12 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TextoModificador (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TextoModificador | 63 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TextoModificador | 63 | 8 |
 
 ### Group: TimeService (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TimeService_LogX | 0 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TipoTerc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TipoTerc | 289 | 2 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TipoTerc | 289 | 2 |
 
 ### Group: TiposContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposContas | 4 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposContas | 4 | 13 |
 
 ### Group: TiposDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDoc | 28 | 57 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDoc | 28 | 57 |
 
 ### Group: TiposDocAT (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocAT | 21 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocAT | 21 | 9 |
 
 ### Group: TiposDocCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCCO | 42 | 44 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCCO | 42 | 44 |
 
 ### Group: TiposDocCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCtb | 18 | 23 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCtb | 18 | 23 |
 
 ### Group: TiposDocLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLin | 64 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLin | 64 | 4 |
 
 ### Group: TiposDocLinCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLinCtb | 14 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLinCtb | 14 | 16 |
 
 ### Group: TiposDocPst (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocPst | 240 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocPst | 240 | 11 |
 
 ### Group: TiposInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposInt | 12 | 27 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposInt | 12 | 27 |
 
 ### Group: TiposIntL (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIntL | 78 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIntL | 78 | 13 |
 
 ### Group: TiposIva (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIva | 5 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIva | 5 | 14 |
 
 ### Group: TiposLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLin | 36 | 60 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLin | 36 | 60 |
 
 ### Group: TiposLinSTC (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLinSTC | 11 | 34 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLinSTC | 11 | 34 |
 
 ### Group: TiposSerieNum (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieNum | 126 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieNum | 126 | 5 |
 
 ### Group: TiposSerieTpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieTpDoc | 3 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieTpDoc | 3 | 4 |
 
 ### Group: Titulos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Titulos | 21 | 15 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Titulos | 21 | 15 |
 
 ### Group: Tmp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Tmp | 12 | 25 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Tmp | 12 | 25 |
 
 ### Group: TmpAgenda (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpAgenda | 0 | 6 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpCCO | 0 | 16 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpCTB (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpCTB | 0 | 1 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpConf (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpConf | 0 | 16 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpEncFact (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpEncFact | 0 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpEtiq (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpEtiq | 0 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpInt | 0 | 71 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpIntAn (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpIntAn | 0 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpMultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpMultiDim | 0 | 11 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpReservas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpReservas | 0 | 3 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpArtigos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpArtigos | 4 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpArtigos | 4 | 15 |
 
 ### Group: TpContactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContactos | 6 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpContactos | 6 | 13 |
 
 ### Group: TpContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContas | 5 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpContas | 5 | 6 |
 
 ### Group: TpDocATSerie (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocATSerie | 14 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpDocATSerie | 14 | 4 |
 
 ### Group: TpDocML (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocML | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpEnt | 3 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpEnt | 3 | 13 |
 
 ### Group: Unidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Unidades | 5 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Unidades | 5 | 17 |
 
 ### Group: Vendedores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Vendedores | 1 | 23 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Vendedores | 1 | 23 |
 
 ### Group: WebLidos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WebLidos | 69779 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| WebLidos | 69779 | 8 |
 
 ### Group: WebLogin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WebLogin | 13 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| WebLogin | 13 | 18 |
 
 ### Group: WebMensagens (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WebMensagens | 12 | 23 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| WebMensagens | 12 | 23 |
 
 ### Group: WebTipoMensagens (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WebTipoMensagens | 3 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| WebTipoMensagens | 3 | 4 |
 
 ### Group: WorkMail (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WorkMail | 8 | 15 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| WorkMail | 8 | 15 |
 
 ### Group: WorkMailAnexos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| WorkMailAnexos | 7 | 6 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| WorkMailAnexos | 7 | 6 |
 
 ### Group: Zonas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Zonas | 27 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Zonas | 27 | 15 |
 
 ### Group: Other (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| _A_ESP_ResultadoEnvioSync | 0 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: sysdiagrams (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| sysdiagrams | 0 | 5 | diagram_id |
+| Table | Rows | Cols |
+|---|---|---|
 
 ## ForumSI — Full Table Inventory
 
@@ -2418,1074 +2263,979 @@ Total: **241 tables**, 12 views
 
 ### Group: SYS (34 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYS00 | 90 | 11 | Chave |
-| SYS00Nova | 73 | 11 | — |
-| SYS01 | 196 | 12 | Chave |
-| SYS01_Catalogo | 18 | 12 | Chave |
-| SYS02 | 1409 | 24 | — |
-| SYS03 | 8 | 36 | Chave |
-| SYS05 | 0 | 4 | Chave |
-| SYS07 | 734 | 36 | — |
-| SYS08 | 138 | 3 | Chave |
-| SYS09 | 0 | 10 | Chave, Tipo, Estado |
-| SYS10 | 5 | 8 | Chave, Estado |
-| SYS11 | 14 | 11 | Chave, Origem, Destino |
-| SYS12 | 5 | 7 | Chave, Destino |
-| SYS13 | 15 | 6 | Chave, Posto |
-| SYS14 | 1 | 7 | Chave |
-| SYS15 | 0 | 7 | Chave |
-| SYS16 | 0 | 4 | Chave |
-| SYS17 | 0 | 5 | Chave, Origem, Destino |
-| SYS20 | 0 | 4 | Tipo, Estado |
-| SYS21 | 0 | 6 | Tipo, Origem, Destino |
-| SYS22 | 0 | 7 | Tipo, Destino |
-| SYS23 | 1 | 7 | Chave, Tipo, Posto |
-| SYS24 | 0 | 15 | Chave |
-| SYS60 | 5 | 24 | Chave |
-| SYS61 | 24 | 8 | Chave |
-| SYS62 | 0 | 4 | Chave |
-| SYS63 | 13 | 6 | Chave |
-| SYS64 | 3 | 3 | Chave |
-| SYS65 | 0 | 14 | Chave |
-| SYS70 | 0 | 21 | Chave |
-| SYS81 | 0 | 5 | Chave |
-| SYS96 | 0 | 6 | Chave |
-| SYS98 | 211 | 5 | OP, Chave |
-| SYS99 | 1510 | 58 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SYS00 | 90 | 11 |
+| SYS00Nova | 73 | 11 |
+| SYS01 | 196 | 12 |
+| SYS01_Catalogo | 18 | 12 |
+| SYS02 | 1409 | 24 |
+| SYS03 | 8 | 36 |
+| SYS07 | 734 | 36 |
+| SYS08 | 138 | 3 |
+| SYS10 | 5 | 8 |
+| SYS11 | 14 | 11 |
+| SYS12 | 5 | 7 |
+| SYS13 | 15 | 6 |
+| SYS14 | 1 | 7 |
+| SYS23 | 1 | 7 |
+| SYS60 | 5 | 24 |
+| SYS61 | 24 | 8 |
+| SYS63 | 13 | 6 |
+| SYS64 | 3 | 3 |
+| SYS98 | 211 | 5 |
+| SYS99 | 1510 | 58 |
 
 ### Group: CRM (19 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CRM_99 | 43 | 17 | Chave |
-| CRM_Anexos | 2277 | 12 | — |
-| CRM_Assinaturas | 0 | 9 | Chave |
-| CRM_Atividades | 160 | 26 | Chave |
-| CRM_AtividadesEstados | 321 | 7 | — |
-| CRM_Comunicacoes | 18 | 11 | — |
-| CRM_Emails | 3438 | 16 | Chave |
-| CRM_Enderecos | 3536 | 10 | — |
-| CRM_Equipamentos | 0 | 11 | Chave |
-| CRM_Estados | 16 | 10 | Chave |
-| CRM_GruposProcessos | 3 | 8 | — |
-| CRM_Inbox | 7 | 23 | — |
-| CRM_ProcessosAtividades | 70 | 4 | Chave |
-| CRM_RelGruposProcessos | 0 | 6 | — |
-| CRM_TipoAtividadesProcessos | 36 | 19 | Chave |
-| CRM_Transicoes | 90 | 3 | Chave |
-| CRM_Utilizadores | 7 | 13 | Chave |
-| CRM_UtilizadoresEquipas | 0 | 8 | Chave |
-| CRM_UtilizadoresInbox | 13 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CRM_99 | 43 | 17 |
+| CRM_Anexos | 2277 | 12 |
+| CRM_Atividades | 160 | 26 |
+| CRM_AtividadesEstados | 321 | 7 |
+| CRM_Comunicacoes | 18 | 11 |
+| CRM_Emails | 3438 | 16 |
+| CRM_Enderecos | 3536 | 10 |
+| CRM_Estados | 16 | 10 |
+| CRM_GruposProcessos | 3 | 8 |
+| CRM_Inbox | 7 | 23 |
+| CRM_ProcessosAtividades | 70 | 4 |
+| CRM_TipoAtividadesProcessos | 36 | 19 |
+| CRM_Transicoes | 90 | 3 |
+| CRM_Utilizadores | 7 | 13 |
+| CRM_UtilizadoresInbox | 13 | 7 |
 
 ### Group: IO (7 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| IO_Inbox | 0 | 12 | ID |
-| IO_InboxArquivo | 0 | 11 | ID |
-| IO_InboxData | 0 | 2 | ID |
-| IO_MsgData | 0 | 2 | ID |
-| IO_Outbox | 0 | 7 | ID |
-| IO_SentItems | 0 | 6 | ID |
-| IO_Users | 0 | 5 | UserName, Contexto |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ATR (5 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ATR_Atributos | 795 | 12 | Chave |
-| ATR_ContextosTiposAtributos | 30 | 11 | Chave |
-| ATR_Listas | 4 | 6 | Chave |
-| ATR_RelContextosAtributos | 40 | 11 | Chave |
-| ATR_TiposDados | 16 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ATR_Atributos | 795 | 12 |
+| ATR_ContextosTiposAtributos | 30 | 11 |
+| ATR_Listas | 4 | 6 |
+| ATR_RelContextosAtributos | 40 | 11 |
+| ATR_TiposDados | 16 | 12 |
 
 ### Group: Clientes (4 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Clientes2011 | 102 | 1 | — |
-| Clientes2012 | 84 | 1 | — |
-| Clientes2013 | 73 | 1 | — |
-| Clientes2014 | 68 | 1 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Clientes2011 | 102 | 1 |
+| Clientes2012 | 84 | 1 |
+| Clientes2013 | 73 | 1 |
+| Clientes2014 | 68 | 1 |
 
 ### Group: Pos (4 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pos03 | 0 | 15 | Chave |
-| Pos51 | 0 | 4 | — |
-| Pos52 | 0 | 6 | — |
-| Pos70 | 0 | 46 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Doc (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Doc001 | 21286 | 80 | Chave |
-| Doc001_Delete | 603 | 80 | — |
-| Doc005 | 3 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Doc001 | 21286 | 80 |
+| Doc001_Delete | 603 | 80 |
+| Doc005 | 3 | 3 |
 
 ### Group: LinDoc (3 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinDoc001 | 63769 | 84 | Chave |
-| LinDoc002 | 0 | 33 | Chave |
-| LinDoc003 | 0 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| LinDoc001 | 63769 | 84 |
 
 ### Group: Chicken (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Chicken01 | 0 | 14 | Chave |
-| Chicken02 | 0 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: LinPlan (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinPlan001 | 0 | 24 | Chave |
-| LinPlan002 | 0 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Lindoc (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Lindoc001_Delete | 1939 | 84 | — |
-| Lindoc005 | 16 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Lindoc001_Delete | 1939 | 84 |
+| Lindoc005 | 16 | 4 |
 
 ### Group: Plan (2 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Plan001 | 0 | 18 | Chave |
-| Plan002 | 0 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AVencimento (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AVencimento | 3 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AVencimento | 3 | 17 |
 
 ### Group: Acessos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Acessos | 3 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Acessos | 3 | 9 |
 
 ### Group: Anexos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Anexos | 12 | 20 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Anexos | 12 | 20 |
 
 ### Group: AnexosCat (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosCat | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AnexosGrpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosGrpDoc | 5 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosGrpDoc | 5 | 9 |
 
 ### Group: AnexosGrpDocTp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosGrpDocTp | 15 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosGrpDocTp | 15 | 4 |
 
 ### Group: AnexosIndexantes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosIndexantes | 0 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: AnexosPalavrasChave (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosPalavrasChave | 11 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosPalavrasChave | 11 | 4 |
 
 ### Group: AnexosTiposDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosTiposDoc | 57 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| AnexosTiposDoc | 57 | 10 |
 
 ### Group: AnexosTiposDocIndexantes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| AnexosTiposDocIndexantes | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtArm (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtArm | 3026 | 29 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtArm | 3026 | 29 |
 
 ### Group: ArtComp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtComp | 0 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtDim | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtEmp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtEmp | 1958 | 51 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtEmp | 1958 | 51 |
 
 ### Group: ArtEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtEnt | 0 | 3 | chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtLng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtLng | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtMerc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtMerc | 6 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMerc | 6 | 25 |
 
 ### Group: ArtProp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtProp | 0 | 26 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtPsion (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtPsion | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtRef (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtRef | 0 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtSubst (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtSubst | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtUnid (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtUnid | 0 | 5 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ArtUnidWeb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ArtUnidWeb | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Artigos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Artigos | 2720 | 126 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Artigos | 2720 | 126 |
 
 ### Group: Avaliacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Avaliacoes | 39 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Avaliacoes | 39 | 16 |
 
 ### Group: Bancos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Bancos | 25 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Bancos | 25 | 15 |
 
 ### Group: CCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCO | 34906 | 38 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCO | 34906 | 38 |
 
 ### Group: CCOLIQ (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CCOLIQ | 56566 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CCOLIQ | 56566 | 9 |
 
 ### Group: CTB (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CTB | 23765 | 14 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| CTB | 23765 | 14 |
 
 ### Group: Carteiras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Carteiras | 10 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Carteiras | 10 | 13 |
 
 ### Group: Cartoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Cartoes | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Chats (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Chats | 37 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Chats | 37 | 14 |
 
 ### Group: Classificacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Classificacoes | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Classificadores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Classificadores | 0 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Comissoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Comissoes | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ComissoesPeriodos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ComissoesPeriodos | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: CondPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| CondPag | 15 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| CondPag | 15 | 16 |
 
 ### Group: Consumos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Consumos | 0 | 40 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ContCred (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ContCred | 4 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ContCred | 4 | 15 |
 
 ### Group: Contactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Contactos | 30 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Contactos | 30 | 9 |
 
 ### Group: DocCart (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| DocCart | 25 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| DocCart | 25 | 4 |
 
 ### Group: Entidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Entidades | 1955 | 119 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Entidades | 1955 | 119 |
 
 ### Group: EntidadesRelacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| EntidadesRelacoes | 1898 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesRelacoes | 1898 | 8 |
 
 ### Group: Eventos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Eventos | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Expedicoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Expedicoes | 21 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Expedicoes | 21 | 11 |
 
 ### Group: FO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| FO | 9630 | 69 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| FO | 9630 | 69 |
 
 ### Group: FOF (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| FOF | 2 | 65 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| FOF | 2 | 65 |
 
 ### Group: Fields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Fields | 370 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Fields | 370 | 11 |
 
 ### Group: GrTam (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrTam | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: GrpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDoc | 21 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDoc | 21 | 12 |
 
 ### Group: GrpDocTp (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| GrpDocTp | 67 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDocTp | 67 | 4 |
 
 ### Group: Hardware (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Hardware | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Hardware | 2 | 8 |
 
 ### Group: Horarios (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Horarios | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ImageRead (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ImageRead | 6 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| ImageRead | 6 | 4 |
 
 ### Group: Impressoras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Impressoras | 5 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Impressoras | 5 | 12 |
 
 ### Group: LangFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LangFields | 597 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| LangFields | 597 | 11 |
 
 ### Group: Language (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Language | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Language | 2 | 8 |
 
 ### Group: Licencas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Licencas | 32 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Licencas | 32 | 18 |
 
 ### Group: LinDOc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| LinDOc001_GrFamilia | 57820 | 2 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| LinDOc001_GrFamilia | 57820 | 2 |
 
 ### Group: Linguas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Linguas | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Lotes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Lotes | 1 | 15 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Lotes | 1 | 15 |
 
 ### Group: Meses (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Meses | 0 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: ModoPag (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ModoPag | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| ModoPag | 1 | 13 |
 
 ### Group: ModosEntrega (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| ModosEntrega | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Moeda (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Moeda | 3 | 18 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Moeda | 3 | 18 |
 
 ### Group: MultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| MultiDim | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Numeradores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Numeradores | 47 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Numeradores | 47 | 12 |
 
 ### Group: Operacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Operacoes | 0 | 27 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PckTransactions (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PckTransactions | 0 | 5 | Id, Chave, Tabela |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Pessoal (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Pessoal | 0 | 21 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Planos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Planos | 0 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PortalBanners (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalBanners | 136 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalBanners | 136 | 10 |
 
 ### Group: PortalContacts (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalContacts | 2 | 22 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalContacts | 2 | 22 |
 
 ### Group: PortalDestak (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDestak | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PortalDetails (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDetails | 74 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalDetails | 74 | 14 |
 
 ### Group: PortalDetailsGeral (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalDetailsGeral | 8 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalDetailsGeral | 8 | 13 |
 
 ### Group: PortalFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalFields | 8 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalFields | 8 | 11 |
 
 ### Group: PortalLangFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalLangFields | 24 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalLangFields | 24 | 11 |
 
 ### Group: PortalLanguage (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalLanguage | 2 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalLanguage | 2 | 8 |
 
 ### Group: PortalMenu (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalMenu | 6 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalMenu | 6 | 10 |
 
 ### Group: PortalMenuEng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalMenuEng | 5 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalMenuEng | 5 | 10 |
 
 ### Group: PortalNews (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalNews | 19 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalNews | 19 | 11 |
 
 ### Group: PortalPartners (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalPartners | 4 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalPartners | 4 | 11 |
 
 ### Group: PortalProdDetails (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalProdDetails | 32 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalProdDetails | 32 | 19 |
 
 ### Group: PortalProdFields (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalProdFields | 32 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalProdFields | 32 | 12 |
 
 ### Group: PortalSubMenu (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubMenu | 11 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubMenu | 11 | 10 |
 
 ### Group: PortalSubMenuEng (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubMenuEng | 11 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubMenuEng | 11 | 11 |
 
 ### Group: PortalSubSubjects (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalSubSubjects | 3 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| PortalSubSubjects | 3 | 11 |
 
 ### Group: PortalTestimony (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PortalTestimony | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PosOperacoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PosOperacoes | 0 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Postos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Postos | 13 | 47 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Postos | 13 | 47 |
 
 ### Group: Priority (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Priority | 3 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Priority | 3 | 10 |
 
 ### Group: PsionCab (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PsionCab | 0 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: PsionLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| PsionLin | 0 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: RegTpIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegTpIVA | 19 | 6 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegTpIVA | 19 | 6 |
 
 ### Group: RegimesIVA (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RegimesIVA | 13 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RegimesIVA | 13 | 17 |
 
 ### Group: RequestTypes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| RequestTypes | 5 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| RequestTypes | 5 | 9 |
 
 ### Group: Requests (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Requests | 22 | 25 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Requests | 22 | 25 |
 
 ### Group: Rotas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Rotas | 0 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SNCFiles (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SNCFiles | 12 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| SNCFiles | 12 | 5 |
 
 ### Group: SYSLOCK (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOCK | 0 | 37 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SYSLOG (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSLOG | 6260 | 10 | ChaveReg |
+| Table | Rows | Cols |
+|---|---|---|
+| SYSLOG | 6260 | 10 |
 
 ### Group: SYSProfiles (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSProfiles | 0 | 19 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: SYSProfilesPerm (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| SYSProfilesPerm | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Seccoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Seccoes | 0 | 12 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Sessoes (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Sessoes | 0 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Severity (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Severity | 3 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Severity | 3 | 10 |
 
 ### Group: Software (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Software | 16 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Software | 16 | 8 |
 
 ### Group: Status (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Status | 6 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Status | 6 | 8 |
 
 ### Group: TabClassif (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TabClassif | 0 | 8 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Taras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Taras | 0 | 10 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Tasks (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Tasks | 13 | 20 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Tasks | 13 | 20 |
 
 ### Group: Telefone (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Telefone | 105 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| Telefone | 105 | 5 |
 
 ### Group: TempX (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TempX | 94 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TempX | 94 | 9 |
 
 ### Group: Tempos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Tempos2 | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposComissao (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposComissao | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposContas | 6 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposContas | 6 | 13 |
 
 ### Group: TiposDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDoc | 35 | 64 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDoc | 35 | 64 |
 
 ### Group: TiposDocAT (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocAT | 24 | 9 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocAT | 24 | 9 |
 
 ### Group: TiposDocCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCCO | 37 | 45 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCCO | 37 | 45 |
 
 ### Group: TiposDocCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocCtb | 9 | 22 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCtb | 9 | 22 |
 
 ### Group: TiposDocLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLin | 110 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLin | 110 | 4 |
 
 ### Group: TiposDocLinCtb (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocLinCtb | 10 | 16 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLinCtb | 10 | 16 |
 
 ### Group: TiposDocPst (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposDocPst | 214 | 11 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocPst | 214 | 11 |
 
 ### Group: TiposEmbalagem (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposEmbalagem | 0 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TiposInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposInt | 16 | 28 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposInt | 16 | 28 |
 
 ### Group: TiposIntL (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIntL | 24 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIntL | 24 | 13 |
 
 ### Group: TiposIva (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposIva | 4 | 14 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIva | 4 | 14 |
 
 ### Group: TiposLin (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLin | 46 | 64 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLin | 46 | 64 |
 
 ### Group: TiposLinSTC (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposLinSTC | 43 | 34 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLinSTC | 43 | 34 |
 
 ### Group: TiposSerieNum (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieNum | 124 | 7 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieNum | 124 | 7 |
 
 ### Group: TiposSerieTpDoc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TiposSerieTpDoc | 0 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpCCO (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpCCO | 0 | 16 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpConf (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpConf | 0 | 17 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpEtiq (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpEtiq | 2504 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TmpEtiq | 2504 | 9 |
 
 ### Group: TmpInt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpInt | 8 | 77 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| TmpInt | 8 | 77 |
 
 ### Group: TmpIntAn (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpIntAn | 0 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpMultiDim (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpMultiDim | 0 | 11 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpObras (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpObras | 0 | 13 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpStc (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpStc | 0 | 5 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TmpX (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TmpX | 0 | 9 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpContactos (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContactos | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpContactos | 1 | 13 |
 
 ### Group: TpContas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpContas | 0 | 7 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpDocATSerie (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocATSerie | 8 | 4 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| TpDocATSerie | 8 | 4 |
 
 ### Group: TpDocML (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpDocML | 0 | 3 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: TpEnt (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| TpEnt | 0 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: Unidades (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Unidades | 2 | 17 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Unidades | 2 | 17 |
 
 ### Group: Vendedores (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Vendedores | 11 | 24 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Vendedores | 11 | 24 |
 
 ### Group: Zonas (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| Zonas | 1 | 13 | Chave |
+| Table | Rows | Cols |
+|---|---|---|
+| Zonas | 1 | 13 |
 
 ### Group: Other (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| _a | 275 | 1 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| _a | 275 | 1 |
 
 ### Group: image (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| image | 13 | 4 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| image | 13 | 4 |
 
 ### Group: sys (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| sys99n | 8 | 58 | — |
+| Table | Rows | Cols |
+|---|---|---|
+| sys99n | 8 | 58 |
 
 ### Group: tmporder (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| tmporder | 0 | 8 | — |
+| Table | Rows | Cols |
+|---|---|---|
 
 ### Group: tmpsession (1 tables)
 
-| Table | Rows | Cols | PK |
-|---|---|---|---|
-| tmpsession | 11 | 8 | chave |
+| Table | Rows | Cols |
+|---|---|---|
+| tmpsession | 11 | 8 |
 
 ## SYS Tables — Configuration & Lookup
 
