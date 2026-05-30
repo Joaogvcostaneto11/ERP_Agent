@@ -11,7 +11,11 @@ import pytest
 from logic.chat.audit import AuditLog
 from logic.chat.report_store import ReportStore
 from logic.chat.schema_context import SchemaContext
-from logic.chat.service import ChatService, _compress_past_turns_for_claude
+from logic.chat.service import (
+    ChatService,
+    _compress_past_turns_for_claude,
+    _strip_heavy_blocks_from_envelope,
+)
 from logic.chat.sql_executor import SqlExecutor
 
 
@@ -363,3 +367,81 @@ def test_compress_no_user_string_returns_as_is():
     (the caller's sanitizer will repair this case separately)."""
     weird = [_a("stray"), _u_toolresult()]
     assert _compress_past_turns_for_claude(weird) == weird
+
+
+# --- _strip_heavy_blocks_from_envelope unit tests ---
+
+def test_strip_replaces_table_with_summary():
+    env = json.dumps({
+        "blocks": [{"kind": "table", "columns": ["a", "b"],
+                    "rows": [[1, 2], [3, 4], [5, 6]], "caption": "test"}],
+        "citations": [],
+    })
+    out = json.loads(_strip_heavy_blocks_from_envelope(env))
+    assert len(out["blocks"]) == 1
+    block = out["blocks"][0]
+    assert block["kind"] == "text"
+    assert "3 rows" in block["markdown"] and "2 cols" in block["markdown"]
+    assert "a, b" in block["markdown"]
+
+
+def test_strip_replaces_chart_with_summary():
+    env = json.dumps({
+        "blocks": [{"kind": "chart", "title": "Revenue",
+                    "plotly": {"data": [{"y": list(range(1000))}], "layout": {}}}],
+        "citations": [],
+    })
+    out = json.loads(_strip_heavy_blocks_from_envelope(env))
+    assert out["blocks"][0]["kind"] == "text"
+    assert "Revenue" in out["blocks"][0]["markdown"]
+
+
+def test_strip_replaces_report_with_summary():
+    env = json.dumps({
+        "blocks": [{"kind": "report", "id": "r_x", "title": "Q4",
+                    "html": "<p>" + "x" * 5000 + "</p>", "view_url": "/report/r_x/view"}],
+        "citations": [],
+    })
+    out = json.loads(_strip_heavy_blocks_from_envelope(env))
+    assert out["blocks"][0]["kind"] == "text"
+    assert "Q4" in out["blocks"][0]["markdown"]
+    # Original HTML should be gone
+    assert "x" * 100 not in _strip_heavy_blocks_from_envelope(env)
+
+
+def test_strip_preserves_text_and_value_blocks():
+    env = json.dumps({
+        "blocks": [
+            {"kind": "text", "markdown": "hello"},
+            {"kind": "value", "label": "n", "value": 42, "unit": None},
+        ],
+        "citations": [{"summary": "src", "sql_log_id": None}],
+    })
+    out = json.loads(_strip_heavy_blocks_from_envelope(env))
+    assert out["blocks"][0] == {"kind": "text", "markdown": "hello"}
+    assert out["blocks"][1] == {"kind": "value", "label": "n", "value": 42, "unit": None}
+    assert out["citations"] == [{"summary": "src", "sql_log_id": None}]
+
+
+def test_strip_passes_non_envelope_through():
+    assert _strip_heavy_blocks_from_envelope("just plain text") == "just plain text"
+    assert _strip_heavy_blocks_from_envelope("{not valid json") == "{not valid json"
+
+
+def test_compress_strips_heavy_blocks_from_past_envelope():
+    """End-to-end: a past turn whose final answer was a big table comes out
+    of compression as a small text summary."""
+    past_env = json.dumps({
+        "blocks": [{"kind": "table", "columns": ["x", "y"],
+                    "rows": [[i, i*2] for i in range(500)]}],
+        "citations": [],
+    })
+    past = [_u("q1"), _a_tooluse("S"), _u_toolresult(), _a(past_env)]
+    current = [_u("q2")]
+    result = _compress_past_turns_for_claude(past + current)
+    # Past assistant's content should now be a small summary, not the 500 rows
+    past_answer = result[1]["content"]
+    assert "500 rows" in past_answer
+    # Original 500 rows are gone — file should be much smaller than the input
+    assert len(past_answer) < 500
+    assert len(past_answer) < len(past_env)

@@ -314,7 +314,9 @@ def _compress_past_turns_for_claude(transcript: list[dict]) -> list[dict]:
 def _compress_past(past: list[dict]) -> list[dict]:
     """For each past turn (delimited by user-string messages), keep only the
     user question and the final assistant-string answer. Drops the tool_use
-    / tool_result chain between them.
+    / tool_result chain between them. The retained assistant answer also has
+    its table/chart/report blocks replaced with one-line summaries to keep
+    row data out of input tokens.
     """
     out: list[dict] = []
     i = 0
@@ -333,13 +335,59 @@ def _compress_past(past: list[dict]) -> list[dict]:
                     final_assistant = mj
                 j += 1
             if final_assistant is not None:
-                out.append(final_assistant)
+                stripped = dict(final_assistant)
+                stripped["content"] = _strip_heavy_blocks_from_envelope(final_assistant["content"])
+                out.append(stripped)
             i = j
         else:
             # Stray message at the head — keep so Anthropic doesn't reject
             out.append(m)
             i += 1
     return out
+
+
+_HEAVY_BLOCK_KINDS = {"table", "chart", "report"}
+
+
+def _strip_heavy_blocks_from_envelope(content: str) -> str:
+    """If ``content`` parses as a Claude envelope, replace its table / chart /
+    report blocks with one-line text summaries (preserving column names for
+    tables, titles for charts and reports) and re-serialise. Other blocks
+    (text, value) and citations are kept verbatim. Non-envelope strings are
+    returned unchanged.
+    """
+    try:
+        env = json.loads(content)
+    except (json.JSONDecodeError, ValueError):
+        return content
+    if not (isinstance(env, dict) and isinstance(env.get("blocks"), list)):
+        return content
+    new_blocks: list[dict] = []
+    for b in env["blocks"]:
+        if not (isinstance(b, dict) and b.get("kind") in _HEAVY_BLOCK_KINDS):
+            new_blocks.append(b)
+            continue
+        new_blocks.append({"kind": "text", "markdown": _summarise_heavy_block(b)})
+    env["blocks"] = new_blocks
+    return json.dumps(env, default=str)
+
+
+def _summarise_heavy_block(block: dict) -> str:
+    kind = block.get("kind")
+    if kind == "table":
+        cols = block.get("columns") or []
+        rows = block.get("rows") or []
+        caption = block.get("caption")
+        col_list = ", ".join(str(c) for c in cols) if cols else "(no columns)"
+        suffix = f" — caption: {caption!r}" if caption else ""
+        return f"[earlier table omitted: {len(rows)} rows × {len(cols)} cols. Columns: {col_list}{suffix}]"
+    if kind == "chart":
+        title = block.get("title") or "untitled"
+        return f"[earlier chart omitted: {title!r}]"
+    if kind == "report":
+        title = block.get("title") or "untitled"
+        return f"[earlier report omitted: {title!r}]"
+    return f"[earlier {kind} block omitted]"
 
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
