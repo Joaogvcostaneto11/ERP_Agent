@@ -193,7 +193,7 @@ class ChatService:
             max_tokens=4096,
             system=self._schema.system_blocks(),
             tools=[RUN_QUERY_TOOL],
-            messages=transcript,
+            messages=_compress_past_turns_for_claude(transcript),
         )
         stream_factory = getattr(self._anthropic.messages, "stream", None)
         if stream_factory is not None:
@@ -289,6 +289,57 @@ def _assistant_preview(blocks: list[dict]) -> str:
 
 def _event(event_type: EventType, payload: dict) -> dict:
     return {"type": event_type.value, "payload": payload}
+
+
+def _compress_past_turns_for_claude(transcript: list[dict]) -> list[dict]:
+    """Drop intermediate tool_use/tool_result pairs from past turns to save
+    input tokens. The most recent turn (from the last user-string message
+    onward) is preserved verbatim so the in-flight reasoning chain stays
+    intact for Claude. Each past turn collapses to [user question, final
+    assistant answer]; everything between is dropped.
+    """
+    if not transcript:
+        return transcript
+    last_user_idx = None
+    for i in range(len(transcript) - 1, -1, -1):
+        m = transcript[i]
+        if m.get("role") == "user" and isinstance(m.get("content"), str):
+            last_user_idx = i
+            break
+    if last_user_idx is None:
+        return list(transcript)
+    return _compress_past(transcript[:last_user_idx]) + list(transcript[last_user_idx:])
+
+
+def _compress_past(past: list[dict]) -> list[dict]:
+    """For each past turn (delimited by user-string messages), keep only the
+    user question and the final assistant-string answer. Drops the tool_use
+    / tool_result chain between them.
+    """
+    out: list[dict] = []
+    i = 0
+    n = len(past)
+    while i < n:
+        m = past[i]
+        if m.get("role") == "user" and isinstance(m.get("content"), str):
+            out.append(m)
+            final_assistant: dict | None = None
+            j = i + 1
+            while j < n:
+                mj = past[j]
+                if mj.get("role") == "user" and isinstance(mj.get("content"), str):
+                    break
+                if mj.get("role") == "assistant" and isinstance(mj.get("content"), str):
+                    final_assistant = mj
+                j += 1
+            if final_assistant is not None:
+                out.append(final_assistant)
+            i = j
+        else:
+            # Stray message at the head — keep so Anthropic doesn't reject
+            out.append(m)
+            i += 1
+    return out
 
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)

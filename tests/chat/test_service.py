@@ -11,7 +11,7 @@ import pytest
 from logic.chat.audit import AuditLog
 from logic.chat.report_store import ReportStore
 from logic.chat.schema_context import SchemaContext
-from logic.chat.service import ChatService
+from logic.chat.service import ChatService, _compress_past_turns_for_claude
 from logic.chat.sql_executor import SqlExecutor
 
 
@@ -298,3 +298,68 @@ async def test_title_generation_fires_after_first_turn(
         await asyncio.gather(*pending, return_exceptions=True)
     detail = history.get_conversation(CONV, SESSION)
     assert detail.title == "Friendly greeting exchanged"
+
+
+# --- _compress_past_turns_for_claude unit tests ---
+
+def _u(text: str) -> dict:
+    return {"role": "user", "content": text}
+
+
+def _a(text: str) -> dict:
+    return {"role": "assistant", "content": text}
+
+
+def _a_tooluse(sql: str, tid: str = "t1") -> dict:
+    return {"role": "assistant", "content": [
+        {"type": "text", "text": "thinking..."},
+        {"type": "tool_use", "id": tid, "name": "run_query", "input": {"sql": sql}},
+    ]}
+
+
+def _u_toolresult(tid: str = "t1", payload: str = "{}") -> dict:
+    return {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": tid, "content": payload},
+    ]}
+
+
+def test_compress_empty_transcript():
+    assert _compress_past_turns_for_claude([]) == []
+
+
+def test_compress_single_turn_unchanged():
+    """The current turn (only turn) is preserved verbatim."""
+    transcript = [_u("hi"), _a_tooluse("SELECT 1"), _u_toolresult(), _a("answer")]
+    assert _compress_past_turns_for_claude(transcript) == transcript
+
+
+def test_compress_drops_intermediate_messages_from_past_turn():
+    """A past turn collapses to [user question, final assistant string]."""
+    past = [_u("first?"), _a_tooluse("SELECT 1"), _u_toolresult(), _a("first answer")]
+    current = [_u("second?"), _a_tooluse("SELECT 2"), _u_toolresult()]
+    result = _compress_past_turns_for_claude(past + current)
+    assert result == [_u("first?"), _a("first answer")] + current
+
+
+def test_compress_handles_multiple_past_turns():
+    t1 = [_u("q1"), _a_tooluse("S1"), _u_toolresult(), _a("a1")]
+    t2 = [_u("q2"), _a_tooluse("S2"), _u_toolresult(), _a("a2")]
+    t3 = [_u("q3"), _a_tooluse("S3"), _u_toolresult()]  # current, no final yet
+    result = _compress_past_turns_for_claude(t1 + t2 + t3)
+    assert result == [_u("q1"), _a("a1"), _u("q2"), _a("a2")] + t3
+
+
+def test_compress_past_turn_without_final_string_keeps_just_user():
+    """A past turn that for any reason has no final assistant-string keeps
+    only the user question (the rest is dropped)."""
+    bad_past = [_u("q1"), _a_tooluse("S1"), _u_toolresult()]
+    current = [_u("q2")]
+    result = _compress_past_turns_for_claude(bad_past + current)
+    assert result == [_u("q1"), _u("q2")]
+
+
+def test_compress_no_user_string_returns_as_is():
+    """Defensive: if there is no turn boundary at all, return unchanged
+    (the caller's sanitizer will repair this case separately)."""
+    weird = [_a("stray"), _u_toolresult()]
+    assert _compress_past_turns_for_claude(weird) == weird
