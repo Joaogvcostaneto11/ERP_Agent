@@ -194,6 +194,17 @@ function renderBlock(parent, blockData) {
   parent.appendChild(fn ? fn(blockData) : document.createTextNode(`[unsupported block: ${blockData.kind}]`));
 }
 
+// Live insertion: usage `step` events arrive before `block` events, so the
+// Sources container gets appended early. Keep it pinned to the bottom by
+// inserting new blocks before it.
+function insertBlockBeforeSources(parent, blockData) {
+  const fn = RENDERERS[blockData.kind];
+  const node = fn ? fn(blockData) : document.createTextNode(`[unsupported block: ${blockData.kind}]`);
+  const sources = parent.querySelector(":scope > .citations");
+  if (sources) parent.insertBefore(node, sources);
+  else parent.appendChild(node);
+}
+
 function makeHandlers(asstEl, convId) {
   let lastStatus = null;
   const clearStatus = () => {
@@ -206,7 +217,7 @@ function makeHandlers(asstEl, convId) {
   };
   return {
     status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); scrollIfActive(); },
-    block(data) { clearStatus(); renderBlock(asstEl, data); scrollIfActive(); },
+    block(data) { clearStatus(); insertBlockBeforeSources(asstEl, data); scrollIfActive(); },
     citation(data) { appendCitation(asstEl, data); scrollIfActive(); },
     step(data) { appendStep(asstEl, data); },
     error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); scrollIfActive(); },
