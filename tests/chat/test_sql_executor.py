@@ -130,6 +130,30 @@ def test_run_query_with_cte_truncates_python_side():
     assert result.truncated is True
 
 
+def test_run_query_with_order_by_is_unwrapped():
+    """ORDER BY can't appear inside our derived-table wrapper, so the query
+    must be sent as-is and capped Python-side."""
+    session = FakeSession(rows=[[1, "a"], [2, "b"]], columns=["Chave", "Nome"])
+    ex = SqlExecutor(make_factory(session))
+    result = ex.run_query("SELECT Chave, Nome FROM DOClinic.dbo.TiposDoc ORDER BY Chave")
+    assert isinstance(result, QueryResult)
+    # No AS _capped wrapper, no SELECT TOP (1000) prefix
+    assert not any("AS _capped" in s for s in session.executed)
+    assert not any("SELECT TOP (1000)" in s for s in session.executed)
+    # The original ORDER BY is preserved verbatim
+    assert any("ORDER BY Chave" in s for s in session.executed)
+
+
+def test_run_query_with_order_by_truncates_python_side():
+    too_many = [[i] for i in range(ROW_CAP + 5)]
+    session = FakeSession(rows=too_many, columns=["i"])
+    ex = SqlExecutor(make_factory(session))
+    result = ex.run_query("SELECT i FROM t ORDER BY i")
+    assert isinstance(result, QueryResult)
+    assert result.row_count == ROW_CAP
+    assert result.truncated is True
+
+
 class SmartSession:
     """A FakeSession that distinguishes the failing user query from the
     follow-up INFORMATION_SCHEMA.COLUMNS lookup."""

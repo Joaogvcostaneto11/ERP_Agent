@@ -78,13 +78,19 @@ def validate_sql(sql: str) -> QueryError | None:
 
 
 def _wrap(sql: str) -> str | None:
-    """Return a TOP-capped SELECT, or None for CTE (WITH) queries.
+    """Return a TOP-capped SELECT, or None when the query must be sent as-is.
 
-    CTEs cannot appear inside a derived-table subquery in SQL Server, so they
-    are sent as-is and capped Python-side in run_query.
+    SQL Server forbids two constructs inside a derived-table subquery (which is
+    what our wrapper creates):
+      * CTE (WITH) queries — they can't appear inside a subquery.
+      * ORDER BY without a matching TOP/OFFSET/FOR XML — invalid in subqueries.
+    In both cases we send the user's SQL unwrapped and enforce the row cap
+    Python-side in ``run_query``.
     """
     normalised = _normalise(sql)
     if re.match(r"^\s*WITH\b", normalised, re.IGNORECASE):
+        return None
+    if re.search(r"\bORDER\s+BY\b", normalised, re.IGNORECASE):
         return None
     body = sql.rstrip().rstrip(";")
     return f"SELECT TOP ({ROW_CAP}) * FROM (\n{body}\n) AS _capped"
@@ -102,8 +108,8 @@ class SqlExecutor:
         if err is not None:
             return err
         wrapped = _wrap(sql)
-        is_cte = wrapped is None
-        to_execute = sql.rstrip().rstrip(";") if is_cte else wrapped
+        is_unwrapped = wrapped is None
+        to_execute = sql.rstrip().rstrip(";") if is_unwrapped else wrapped
         start = time.monotonic()
         try:
             columns, rows = self._execute_with_timeout(to_execute, QUERY_TIMEOUT_S)
@@ -113,7 +119,7 @@ class SqlExecutor:
             message = self._enrich_db_error(sql, str(e))
             return QueryError(code="db_error", message=message[:ERROR_MESSAGE_MAX])
         duration_ms = int((time.monotonic() - start) * 1000)
-        if is_cte:
+        if is_unwrapped:
             truncated = len(rows) > ROW_CAP
             rows = rows[:ROW_CAP]
         else:
