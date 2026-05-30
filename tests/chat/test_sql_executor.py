@@ -128,3 +128,96 @@ def test_run_query_with_cte_truncates_python_side():
     assert isinstance(result, QueryResult)
     assert result.row_count == ROW_CAP
     assert result.truncated is True
+
+
+class SmartSession:
+    """A FakeSession that distinguishes the failing user query from the
+    follow-up INFORMATION_SCHEMA.COLUMNS lookup."""
+    def __init__(self, fail_message: str, columns_returned: list[str]) -> None:
+        self._fail = fail_message
+        self._columns = columns_returned
+        self.executed: list[str] = []
+
+    def execute(self, stmt, params=None) -> FakeResult:
+        sql = str(stmt) if not isinstance(stmt, str) else stmt
+        self.executed.append(sql)
+        if "SET LOCK_TIMEOUT" in sql:
+            return FakeResult([], [])
+        if "INFORMATION_SCHEMA.COLUMNS" in sql:
+            return FakeResult(["COLUMN_NAME"], [[c] for c in self._columns])
+        raise RuntimeError(self._fail)
+
+
+def test_invalid_column_error_is_enriched_with_actual_columns():
+    session = SmartSession(
+        fail_message="(pyodbc.ProgrammingError) ('42S22', \"[42S22] [Microsoft][ODBC Driver 18 for SQL Server]"
+                     "[SQL Server]Invalid column name 'Descricao'. (207)\")",
+        columns_returned=["Chave", "Codigo", "Nome"],
+    )
+    ex = SqlExecutor(make_factory(session))
+    err = ex.run_query("SELECT TOP 5 Descricao FROM DOClinic.dbo.TiposDoc")
+    assert isinstance(err, QueryError)
+    assert err.code == "db_error"
+    assert "Invalid column name" in err.message
+    assert "Actual columns" in err.message
+    assert "DOClinic.dbo.TiposDoc" in err.message
+    assert "Chave" in err.message and "Nome" in err.message
+
+
+def test_invalid_object_error_is_enriched():
+    session = SmartSession(
+        fail_message="Invalid object name 'DOClinic.dbo.WrongName'.",
+        columns_returned=["x", "y"],
+    )
+    ex = SqlExecutor(make_factory(session))
+    err = ex.run_query("SELECT * FROM DOClinic.dbo.WrongName")
+    assert isinstance(err, QueryError)
+    assert "Actual columns" in err.message
+
+
+def test_non_schema_errors_are_not_enriched():
+    """Connection failures or syntax errors shouldn't trigger a column lookup."""
+    session = FakeSession(rows=[], raise_exc=RuntimeError("connection lost"))
+    ex = SqlExecutor(make_factory(session))
+    err = ex.run_query("SELECT 1 FROM t")
+    assert isinstance(err, QueryError)
+    assert "Actual columns" not in err.message
+
+
+def test_enrichment_quietly_skips_when_lookup_fails():
+    """A failed lookup must not mask the original error."""
+    class FailingLookupSession:
+        def __init__(self):
+            self.executed = []
+            self._first_call = True
+
+        def execute(self, stmt, params=None):
+            self.executed.append(str(stmt))
+            if "SET LOCK_TIMEOUT" in str(stmt):
+                return FakeResult([], [])
+            if self._first_call:
+                self._first_call = False
+                raise RuntimeError("Invalid column name 'X'.")
+            raise RuntimeError("schema lookup failed too")
+
+    ex = SqlExecutor(make_factory(FailingLookupSession()))
+    err = ex.run_query("SELECT X FROM dbo.T")
+    assert isinstance(err, QueryError)
+    assert "Invalid column name" in err.message
+    # No "Actual columns" header because lookup failed
+    assert "Actual columns" not in err.message
+
+
+def test_enrichment_rejects_unsafe_database_identifier():
+    """Reject malformed db identifiers to avoid SQL-injection via FROM clause."""
+    session = SmartSession(
+        fail_message="Invalid column name 'X'.",
+        columns_returned=["a", "b"],
+    )
+    ex = SqlExecutor(make_factory(session))
+    # Backticked database name (unsafe identifier) should skip enrichment
+    err = ex.run_query("SELECT X FROM `bad name`.dbo.T")
+    assert isinstance(err, QueryError)
+    # The regex doesn't match the unsafe form anyway, so the table ref isn't
+    # extracted — no enrichment.
+    assert "Actual columns" not in err.message

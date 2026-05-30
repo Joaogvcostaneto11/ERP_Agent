@@ -26,6 +26,10 @@ class QueryError:
 
 ROW_CAP = 1000
 QUERY_TIMEOUT_S = 30
+ENRICH_TIMEOUT_S = 5
+ENRICH_MAX_TABLES = 3
+ENRICH_MAX_COLUMNS = 200
+ERROR_MESSAGE_MAX = 1500  # raised from 500 to make room for column hints
 
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _LINE_COMMENT = re.compile(r"--[^\n]*")
@@ -33,6 +37,13 @@ _FORBIDDEN = re.compile(
     r"(?i)\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXEC|EXECUTE|INTO)\b"
     r"|\b(xp_|sp_)\w*",
 )
+
+# Captures the table reference after FROM/JOIN, supporting up to a 3-part name
+# (database.schema.table). Square-bracket-quoted identifiers are not handled.
+_TABLE_REF_RE = re.compile(
+    r"(?i)\b(?:FROM|JOIN)\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*){0,2})"
+)
+_SAFE_IDENT_RE = re.compile(r"^[A-Za-z_]\w*$")
 
 # Long-lived pool so we don't pay creation cost per query and don't block on
 # __exit__ when a worker is still running after a timeout.
@@ -99,7 +110,8 @@ class SqlExecutor:
         except concurrent.futures.TimeoutError:
             return QueryError(code="timeout", message=f"query exceeded {QUERY_TIMEOUT_S}s")
         except Exception as e:
-            return QueryError(code="db_error", message=str(e)[:500])
+            message = self._enrich_db_error(sql, str(e))
+            return QueryError(code="db_error", message=message[:ERROR_MESSAGE_MAX])
         duration_ms = int((time.monotonic() - start) * 1000)
         if is_cte:
             truncated = len(rows) > ROW_CAP
@@ -122,3 +134,63 @@ class SqlExecutor:
                 return list(result.keys()), [list(r) for r in result.fetchall()]
 
         return _QUERY_POOL.submit(_work).result(timeout=timeout)
+
+    def _enrich_db_error(self, sql: str, message: str) -> str:
+        """When the DB rejects a column or object name, look up the real schema
+        of the referenced tables and append it to the error message so the
+        agent can self-correct on the next attempt without guessing.
+        """
+        if "Invalid column name" not in message and "Invalid object name" not in message:
+            return message
+        refs: list[str] = []
+        seen: set[str] = set()
+        for ref in _TABLE_REF_RE.findall(sql):
+            key = ref.lower()
+            if key not in seen:
+                seen.add(key)
+                refs.append(ref)
+        hints: list[str] = []
+        for ref in refs[:ENRICH_MAX_TABLES]:
+            cols = self._lookup_columns(ref)
+            if cols:
+                hints.append(f"  {ref}: {', '.join(cols)}")
+        if not hints:
+            return message
+        return (
+            message
+            + "\n\nActual columns in the referenced tables (use these on retry):\n"
+            + "\n".join(hints)
+        )
+
+    def _lookup_columns(self, table_ref: str) -> list[str]:
+        """Run an INFORMATION_SCHEMA.COLUMNS query for ``table_ref`` (an up to
+        3-part name). Returns [] on any failure — enrichment is best-effort.
+        """
+        parts = table_ref.split(".")
+        if len(parts) == 1:
+            db, schema, table = None, "dbo", parts[0]
+        elif len(parts) == 2:
+            db, schema, table = None, parts[0], parts[1]
+        elif len(parts) == 3:
+            db, schema, table = parts[0], parts[1], parts[2]
+        else:
+            return []
+        if db is not None and not _SAFE_IDENT_RE.match(db):
+            return []
+        qualified = (
+            f"{db}.INFORMATION_SCHEMA.COLUMNS" if db else "INFORMATION_SCHEMA.COLUMNS"
+        )
+        query = (
+            f"SELECT TOP ({ENRICH_MAX_COLUMNS}) COLUMN_NAME FROM {qualified} "
+            "WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :tbl ORDER BY ORDINAL_POSITION"
+        )
+
+        def _work() -> list[str]:
+            with self._session_factory() as session:
+                result = session.execute(text(query), {"schema": schema, "tbl": table})
+                return [r[0] for r in result.fetchall()]
+
+        try:
+            return _QUERY_POOL.submit(_work).result(timeout=ENRICH_TIMEOUT_S)
+        except Exception:
+            return []

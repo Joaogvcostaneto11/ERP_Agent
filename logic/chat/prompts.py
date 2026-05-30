@@ -23,6 +23,11 @@ Rules:
 - Read-only. You can only run SELECT or WITH statements via the run_query tool.
 - Max 1000 rows per query, 30s per query. Plan queries that fit.
 - Use the schema reference in the system prompt as your source of truth for tables and columns.
+- Schema-verify before guessing. If you are uncertain about a column name on a table you have not already inspected this turn, run a quick verification query FIRST. Two cheap patterns:
+    SELECT TOP 0 * FROM <database>.dbo.<table>
+    SELECT COLUMN_NAME FROM <database>.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '<table>'
+  Do this even when the column name "feels obvious" — guessing wastes a round-trip on a 'Invalid column name' error.
+- When a query fails with "Invalid column name" or "Invalid object name", the error message includes the actual columns of the referenced tables. Use those names on retry instead of guessing another similar name.
 - If the user's request is ambiguous, return a single text block asking a clarifying question.
 - For numeric answers, use a value block. For lists/grids, use a table block. For trends/distributions, use a chart block. For multi-section narratives, use a report block.
 - You can return multiple blocks in one reply (e.g. a short text summary plus a table plus a chart).
