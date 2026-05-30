@@ -125,6 +125,51 @@ def test_transcript_capped_to_last_n(store):
     assert transcript[0]["content"] == "msg10"  # first 10 trimmed
 
 
+def test_transcript_cap_never_strands_tool_result(store):
+    """The cap must start at a user-string boundary so Claude doesn't 400
+    on a leading orphan tool_result."""
+    a = store.create_conversation("s_alice")
+    # 12 fully-formed turns (4 messages each = 48 total)
+    transcript = []
+    for i in range(12):
+        transcript.append({"role": "user", "content": f"q{i}"})
+        transcript.append({"role": "assistant", "content": [
+            {"type": "tool_use", "id": f"t{i}", "name": "run_query", "input": {"sql": "SELECT 1"}},
+        ]})
+        transcript.append({"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": f"t{i}", "content": "{}"},
+        ]})
+        transcript.append({"role": "assistant", "content": f"answer{i}"})
+    store.append_turn(a, "s_alice", "ignored", [], [], [], transcript)
+    persisted = store.get_transcript(a, "s_alice")
+    assert len(persisted) <= 40
+    # The persisted transcript must START with a user-string message,
+    # never a list-content (tool_result) message.
+    first = persisted[0]
+    assert first["role"] == "user"
+    assert isinstance(first["content"], str)
+
+
+def test_get_transcript_sanitizes_legacy_corrupted_data(store):
+    """An older DB row whose raw_transcript starts with a leading tool_result
+    must be repaired on read."""
+    a = store.create_conversation("s_alice")
+    # Inject a corrupted transcript directly via SQL (simulating data from
+    # before the cap fix)
+    corrupted = [
+        {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": "orphan", "content": "{}"},
+        ]},
+        {"role": "assistant", "content": "stray"},
+        {"role": "user", "content": "valid question"},
+        {"role": "assistant", "content": "valid answer"},
+    ]
+    store.append_turn(a, "s_alice", "hi", [], [], [], corrupted)
+    persisted = store.get_transcript(a, "s_alice")
+    assert persisted[0] == {"role": "user", "content": "valid question"}
+    assert len(persisted) == 2
+
+
 def test_update_title_truncated_at_200(store):
     a = store.create_conversation("s_alice")
     long_title = "x" * 250

@@ -14,6 +14,45 @@ from logic.chat.audit import AuditLog
 TRANSCRIPT_CAP = 40
 
 
+def _cap_to_turn_boundary(transcript: list[dict], max_messages: int) -> list[dict]:
+    """Cap the transcript so it starts at a valid Anthropic turn boundary.
+
+    A turn boundary is a user message whose content is a plain string (the
+    original user query), not a list of tool_result blocks. Slicing the
+    transcript naively at a fixed message count can strand a tool_result at
+    the front, which the Anthropic API rejects with a 400.
+
+    Returns the longest suffix that starts at a boundary and contains at most
+    ``max_messages`` messages. If the most recent turn alone is larger than
+    ``max_messages``, it is returned in full (better an oversized valid
+    transcript than a too-short invalid one).
+    """
+    if len(transcript) <= max_messages:
+        return list(transcript)
+    boundaries = [
+        i for i, m in enumerate(transcript)
+        if m.get("role") == "user" and isinstance(m.get("content"), str)
+    ]
+    if not boundaries:
+        return list(transcript[-max_messages:])
+    for i in boundaries:
+        if len(transcript) - i <= max_messages:
+            return list(transcript[i:])
+    return list(transcript[boundaries[-1]:])
+
+
+def _sanitize_transcript(transcript: list[dict]) -> list[dict]:
+    """Drop leading messages until the transcript starts at a turn boundary.
+
+    Heals transcripts persisted before the cap fix that may start with an
+    orphaned tool_result.
+    """
+    for i, m in enumerate(transcript):
+        if m.get("role") == "user" and isinstance(m.get("content"), str):
+            return transcript[i:]
+    return []
+
+
 @dataclass(frozen=True)
 class ConversationSummary:
     id: str
@@ -174,7 +213,7 @@ class HistoryStore:
         steps: list[dict],
         raw_transcript: list[dict],
     ) -> bool:
-        capped = raw_transcript[-TRANSCRIPT_CAP:]
+        capped = _cap_to_turn_boundary(raw_transcript, TRANSCRIPT_CAP)
         now = AuditLog.now_iso()
         with self._write() as c:
             exists = c.execute(
@@ -209,7 +248,7 @@ class HistoryStore:
         ).fetchone()
         if row is None:
             return []
-        return json.loads(row["raw_transcript"])
+        return _sanitize_transcript(json.loads(row["raw_transcript"]))
 
     def close(self) -> None:
         with self._lock:
