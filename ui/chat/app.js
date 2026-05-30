@@ -21,13 +21,38 @@ const RENDERERS = {
 };
 
 const LAST_CONV_KEY = "lastConversationId";
+
+// Per-conversation detached DOM containers. Switching conversations swaps
+// which container is mounted in #messages, so in-flight streams keep
+// mutating their own (detached) container and become visible again the
+// moment the user comes back.
+const conversationViews = new Map();
 let currentConversationId = null;
 
-function addMessage(role) {
+function getView(convId) {
+  let v = conversationViews.get(convId);
+  if (!v) {
+    const viewEl = document.createElement("div");
+    viewEl.className = "conversation-view";
+    v = { viewEl, loaded: false };
+    conversationViews.set(convId, v);
+  }
+  return v;
+}
+
+function mountView(convId) {
+  messagesEl.replaceChildren(getView(convId).viewEl);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function isCurrentlyViewing(convId) {
+  return currentConversationId === convId;
+}
+
+function appendMsg(view, role) {
   const el = document.createElement("div");
   el.className = `msg ${role}`;
-  messagesEl.appendChild(el);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  view.viewEl.appendChild(el);
   return el;
 }
 
@@ -67,17 +92,22 @@ function renderBlock(parent, blockData) {
   parent.appendChild(fn ? fn(blockData) : document.createTextNode(`[unsupported block: ${blockData.kind}]`));
 }
 
-function makeHandlers(asstEl) {
+function makeHandlers(asstEl, convId) {
   let lastStatus = null;
   const clearStatus = () => {
     if (lastStatus) { lastStatus.remove(); lastStatus = null; }
   };
+  const scrollIfActive = () => {
+    if (isCurrentlyViewing(convId)) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+  };
   return {
-    status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); },
-    block(data) { clearStatus(); renderBlock(asstEl, data); },
-    citation(data) { appendCitation(asstEl, data); },
-    error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); },
-    done() { clearStatus(); },
+    status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); scrollIfActive(); },
+    block(data) { clearStatus(); renderBlock(asstEl, data); scrollIfActive(); },
+    citation(data) { appendCitation(asstEl, data); scrollIfActive(); },
+    error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); scrollIfActive(); },
+    done() { clearStatus(); scrollIfActive(); },
   };
 }
 
@@ -86,18 +116,28 @@ async function send() {
   if (!text) return;
   if (!currentConversationId) await ensureConversation();
   inputEl.value = "";
-  const userEl = addMessage("user");
+
+  // Capture conversation id at send time so background streams don't get
+  // misrouted if the user switches away mid-flight.
+  const convIdAtSend = currentConversationId;
+  const view = getView(convIdAtSend);
+  view.loaded = true;
+
+  const userEl = appendMsg(view, "user");
   userEl.textContent = text;
-  const asstEl = addMessage("assistant");
-  const handlers = makeHandlers(asstEl);
+  const asstEl = appendMsg(view, "assistant");
+  if (isCurrentlyViewing(convIdAtSend)) {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  const handlers = makeHandlers(asstEl, convIdAtSend);
   try {
     for await (const ev of streamSse("/chat", {
-      conversation_id: currentConversationId,
+      conversation_id: convIdAtSend,
       message: text,
     })) {
       const handler = handlers[ev.event];
       if (handler) handler(ev.data);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
   } catch (e) {
     addError(asstEl, e.message);
@@ -113,24 +153,47 @@ function setCurrentConversation(id, { isNew }) {
   currentConversationId = id;
   localStorage.setItem(LAST_CONV_KEY, id);
   setActiveConversation(id);
-  if (isNew) messagesEl.innerHTML = "";
+  if (isNew) {
+    const v = getView(id);
+    v.loaded = true;
+    v.viewEl.replaceChildren();
+  }
+  mountView(id);
 }
 
 async function loadConversation(id) {
+  // Switch the view immediately so the user sees the change.
   setCurrentConversation(id, { isNew: false });
-  messagesEl.innerHTML = "";
-  const r = await fetch(`/conversations/${id}`);
-  if (!r.ok) {
-    addError(addMessage("assistant"), "Could not load conversation.");
-    return;
-  }
-  const detail = await r.json();
-  for (const turn of detail.turns) {
-    const u = addMessage("user");
-    u.textContent = turn.user_message;
-    const a = addMessage("assistant");
-    for (const block of turn.blocks) renderBlock(a, block);
-    for (const c of turn.citations) appendCitation(a, c);
+
+  const v = getView(id);
+  if (v.loaded) return; // already populated (and any in-flight stream is appending to it)
+
+  try {
+    const r = await fetch(`/conversations/${id}`);
+    if (!r.ok) {
+      if (isCurrentlyViewing(id)) {
+        addError(appendMsg(v, "assistant"), "Could not load conversation.");
+      }
+      v.loaded = true;
+      return;
+    }
+    const detail = await r.json();
+    v.viewEl.replaceChildren();
+    for (const turn of detail.turns) {
+      const u = appendMsg(v, "user");
+      u.textContent = turn.user_message;
+      const a = appendMsg(v, "assistant");
+      for (const block of turn.blocks) renderBlock(a, block);
+      for (const c of turn.citations) appendCitation(a, c);
+    }
+    v.loaded = true;
+    if (isCurrentlyViewing(id)) {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+  } catch (e) {
+    if (isCurrentlyViewing(id)) {
+      addError(appendMsg(v, "assistant"), e.message);
+    }
   }
 }
 
