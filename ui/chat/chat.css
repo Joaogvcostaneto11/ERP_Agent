@@ -34,6 +34,58 @@ th { background: #f1f5f9; }
 .citations summary { cursor: pointer; user-select: none; }
 .citations .citation { padding: 4px 0 0 12px; }
 
+.citations .steps {
+  margin-top: 8px;
+  padding: 6px 0 0 12px;
+  border-top: 1px dashed var(--border);
+}
+.citations .steps > summary {
+  color: var(--fg);
+  font-weight: 500;
+}
+.step {
+  margin: 8px 0 12px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-left: 3px solid var(--border);
+  border-radius: 0 4px 4px 0;
+}
+.step-reasoning { border-left-color: #94a3b8; }
+.step-query { border-left-color: var(--accent); }
+.step .step-text {
+  color: var(--fg);
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.step .step-sql {
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.step .step-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.step .step-meta.error { color: #b91c1c; }
+.step .step-preview {
+  margin-top: 4px;
+  font-size: 11px;
+  background: #fff;
+}
+.step .step-preview th,
+.step .step-preview td {
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
 #app {
   display: grid;
   grid-template-columns: 280px 1fr;

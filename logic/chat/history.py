@@ -26,6 +26,7 @@ class Turn:
     user_message: str
     blocks: list[dict]
     citations: list[dict]
+    steps: list[dict]
     ts: str
 
 
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS turn (
   user_message    TEXT NOT NULL,
   blocks_json     TEXT NOT NULL,
   citations_json  TEXT NOT NULL,
+  steps_json      TEXT NOT NULL DEFAULT '[]',
   raw_transcript  TEXT NOT NULL,
   ts              TEXT NOT NULL
 );
@@ -77,7 +79,14 @@ class HistoryStore:
         self._conn.execute("PRAGMA journal_mode = WAL")
         with self._lock:
             self._conn.executescript(_SCHEMA)
+            self._migrate_add_steps_column()
             self._conn.commit()
+
+    def _migrate_add_steps_column(self) -> None:
+        """Add the steps_json column to existing databases that predate it."""
+        cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(turn)").fetchall()}
+        if "steps_json" not in cols:
+            self._conn.execute("ALTER TABLE turn ADD COLUMN steps_json TEXT NOT NULL DEFAULT '[]'")
 
     @contextmanager
     def _write(self) -> Iterator[sqlite3.Connection]:
@@ -117,7 +126,7 @@ class HistoryStore:
         if row is None:
             return None
         turn_rows = self._conn.execute(
-            "SELECT user_message, blocks_json, citations_json, ts FROM turn "
+            "SELECT user_message, blocks_json, citations_json, steps_json, ts FROM turn "
             "WHERE conversation_id = ? ORDER BY id ASC",
             (conversation_id,),
         ).fetchall()
@@ -126,6 +135,7 @@ class HistoryStore:
                 user_message=t["user_message"],
                 blocks=json.loads(t["blocks_json"]),
                 citations=json.loads(t["citations_json"]),
+                steps=json.loads(t["steps_json"]) if t["steps_json"] else [],
                 ts=t["ts"],
             )
             for t in turn_rows
@@ -161,6 +171,7 @@ class HistoryStore:
         user_message: str,
         blocks: list[dict],
         citations: list[dict],
+        steps: list[dict],
         raw_transcript: list[dict],
     ) -> bool:
         capped = raw_transcript[-TRANSCRIPT_CAP:]
@@ -173,13 +184,14 @@ class HistoryStore:
             if not exists:
                 return False
             c.execute(
-                "INSERT INTO turn (conversation_id, user_message, blocks_json, citations_json, raw_transcript, ts) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO turn (conversation_id, user_message, blocks_json, citations_json, steps_json, raw_transcript, ts) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     conversation_id,
                     user_message,
                     json.dumps(blocks, default=str),
                     json.dumps(citations, default=str),
+                    json.dumps(steps, default=str),
                     json.dumps(capped, default=str),
                     now,
                 ),

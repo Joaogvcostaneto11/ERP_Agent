@@ -119,7 +119,7 @@ def get_conversation(conversation_id: str, request: Request, response: Response)
         "updated_at": detail.updated_at,
         "turns": [
             {"user_message": t.user_message, "blocks": t.blocks,
-             "citations": t.citations, "ts": t.ts}
+             "citations": t.citations, "steps": t.steps, "ts": t.ts}
             for t in detail.turns
         ],
     }

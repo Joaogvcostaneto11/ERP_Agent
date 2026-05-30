@@ -71,7 +71,7 @@ function addError(parent, msg) {
   parent.appendChild(e);
 }
 
-function appendCitation(parent, c) {
+function getSourcesContainer(parent) {
   let container = parent.querySelector(".citations");
   if (!container) {
     container = document.createElement("details");
@@ -81,10 +81,89 @@ function appendCitation(parent, c) {
     container.appendChild(sum);
     parent.appendChild(container);
   }
+  return container;
+}
+
+function appendCitation(parent, c) {
+  const container = getSourcesContainer(parent);
   const item = document.createElement("div");
   item.className = "citation";
   item.textContent = `• ${c.summary}`;
-  container.appendChild(item);
+  // Keep citations above the Details sub-section
+  const details = container.querySelector(":scope > .steps");
+  if (details) container.insertBefore(item, details);
+  else container.appendChild(item);
+}
+
+function appendStep(parent, step) {
+  const sources = getSourcesContainer(parent);
+  let stepsEl = sources.querySelector(":scope > .steps");
+  if (!stepsEl) {
+    stepsEl = document.createElement("details");
+    stepsEl.className = "steps";
+    const sum = document.createElement("summary");
+    sum.textContent = "Details";
+    stepsEl.appendChild(sum);
+    sources.appendChild(stepsEl);
+  }
+  stepsEl.appendChild(renderStep(step));
+}
+
+function renderStep(step) {
+  const el = document.createElement("div");
+  el.className = `step step-${step.type}`;
+  if (step.type === "reasoning") {
+    const body = document.createElement("div");
+    body.className = "step-text";
+    body.textContent = step.text;
+    el.appendChild(body);
+    return el;
+  }
+  // query step
+  const sql = document.createElement("pre");
+  sql.className = "step-sql";
+  sql.textContent = step.sql;
+  el.appendChild(sql);
+
+  const meta = document.createElement("div");
+  meta.className = "step-meta";
+  if (step.error_code) {
+    meta.textContent = `${step.error_code}: ${step.error_message || ""}`;
+    meta.classList.add("error");
+  } else {
+    const parts = [`${step.row_count} row${step.row_count === 1 ? "" : "s"}`];
+    if (step.duration_ms != null) parts.push(`${step.duration_ms} ms`);
+    if (step.truncated) parts.push("truncated");
+    meta.textContent = parts.join(" · ");
+  }
+  el.appendChild(meta);
+
+  if (step.columns && step.rows_preview && step.rows_preview.length) {
+    const preview = document.createElement("table");
+    preview.className = "step-preview";
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    for (const c of step.columns) {
+      const th = document.createElement("th");
+      th.textContent = String(c);
+      headRow.appendChild(th);
+    }
+    thead.appendChild(headRow);
+    preview.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const row of step.rows_preview) {
+      const tr = document.createElement("tr");
+      for (const cell of row) {
+        const td = document.createElement("td");
+        td.textContent = String(cell ?? "");
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    preview.appendChild(tbody);
+    el.appendChild(preview);
+  }
+  return el;
 }
 
 function renderBlock(parent, blockData) {
@@ -106,6 +185,7 @@ function makeHandlers(asstEl, convId) {
     status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); scrollIfActive(); },
     block(data) { clearStatus(); renderBlock(asstEl, data); scrollIfActive(); },
     citation(data) { appendCitation(asstEl, data); scrollIfActive(); },
+    step(data) { appendStep(asstEl, data); },
     error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); scrollIfActive(); },
     done() { clearStatus(); scrollIfActive(); },
   };
@@ -185,6 +265,7 @@ async function loadConversation(id) {
       const a = appendMsg(v, "assistant");
       for (const block of turn.blocks) renderBlock(a, block);
       for (const c of turn.citations) appendCitation(a, c);
+      for (const step of (turn.steps || [])) appendStep(a, step);
     }
     v.loaded = true;
     if (isCurrentlyViewing(id)) {

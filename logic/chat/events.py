@@ -6,6 +6,7 @@ class EventType(str, Enum):
     STATUS = "status"
     BLOCK = "block"
     CITATION = "citation"
+    STEP = "step"
     ERROR = "error"
     DONE = "done"
 

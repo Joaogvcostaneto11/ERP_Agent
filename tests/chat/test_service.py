@@ -148,9 +148,21 @@ async def test_tool_use_round_trip(schema_ctx, audit, report_store, sql_executor
     events = [e async for e in svc.stream_turn(CONV, SESSION, "count")]
     statuses = [e for e in events if e["type"] == "status"]
     blocks = [e for e in events if e["type"] == "block"]
+    steps = [e for e in events if e["type"] == "step"]
     assert any(s["payload"].get("phase") == "querying" for s in statuses)
     assert len(blocks) == 1 and blocks[0]["payload"]["kind"] == "value"
     assert len(client.calls) == 2
+    # One query step was emitted with SQL + result metadata + row sample
+    query_steps = [s for s in steps if s["payload"]["type"] == "query"]
+    assert len(query_steps) == 1
+    qs = query_steps[0]["payload"]
+    assert qs["sql"] == "SELECT 42 AS n"
+    assert qs["columns"] == ["n"]
+    assert qs["rows_preview"] == [[42]]
+    assert qs["error_code"] is None
+    # Steps are persisted with the turn
+    detail = history.get_conversation(CONV, SESSION)
+    assert detail.turns[0].steps == [s["payload"] for s in steps]
 
 
 @pytest.mark.asyncio
@@ -219,7 +231,7 @@ async def test_continues_conversation_from_persisted_transcript(
     schema_ctx, audit, report_store, sql_executor, history
 ):
     history.append_turn(
-        CONV, SESSION, "first question", [{"kind": "text", "markdown": "first answer"}], [],
+        CONV, SESSION, "first question", [{"kind": "text", "markdown": "first answer"}], [], [],
         [{"role": "user", "content": "first question"},
          {"role": "assistant", "content": '{"blocks":[{"kind":"text","markdown":"first answer"}],"citations":[]}'}],
     )

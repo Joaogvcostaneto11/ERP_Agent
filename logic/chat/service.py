@@ -20,6 +20,7 @@ from logic.chat.sql_executor import QueryResult, SqlExecutor
 
 
 TITLE_MODEL = "claude-haiku-4-5-20251001"
+STEP_ROWS_PREVIEW = 5  # rows captured per query for the Details view
 
 _log = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class ChatService:
         transcript.append({"role": "user", "content": user_message})
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
+        emitted_steps: list[dict] = []
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
@@ -93,7 +95,7 @@ class ChatService:
                         yield ev
                     self._history.append_turn(
                         conversation_id, session_id, user_message,
-                        emitted_blocks, emitted_citations, transcript,
+                        emitted_blocks, emitted_citations, emitted_steps, transcript,
                     )
                     if is_first_turn:
                         t = asyncio.create_task(self._generate_title(
@@ -103,6 +105,13 @@ class ChatService:
                         t.add_done_callback(self._bg_tasks.discard)
                     yield _event(EventType.DONE, {})
                     return
+
+                # Intermediate reasoning text (Claude's prose before a tool round)
+                reasoning = "".join(b["text"] for b in assistant_blocks if b["type"] == "text").strip()
+                if reasoning:
+                    step = {"type": "reasoning", "text": reasoning}
+                    emitted_steps.append(step)
+                    yield _event(EventType.STEP, step)
 
                 transcript.append({"role": "assistant", "content": assistant_blocks})
 
@@ -133,12 +142,37 @@ class ChatService:
                         "status": "ok" if is_ok else "error",
                         "error_code": None if is_ok else result.code,
                     })
-                    tool_payload = (
-                        {"columns": result.columns, "rows": result.rows,
-                         "row_count": result.row_count, "truncated": result.truncated}
-                        if is_ok else
-                        {"error": asdict(result)}
-                    )
+                    if is_ok:
+                        tool_payload = {
+                            "columns": result.columns, "rows": result.rows,
+                            "row_count": result.row_count, "truncated": result.truncated,
+                        }
+                        step = {
+                            "type": "query",
+                            "sql": sql,
+                            "row_count": result.row_count,
+                            "duration_ms": result.duration_ms,
+                            "truncated": result.truncated,
+                            "columns": result.columns,
+                            "rows_preview": result.rows[:STEP_ROWS_PREVIEW],
+                            "error_code": None,
+                            "error_message": None,
+                        }
+                    else:
+                        tool_payload = {"error": asdict(result)}
+                        step = {
+                            "type": "query",
+                            "sql": sql,
+                            "row_count": None,
+                            "duration_ms": None,
+                            "truncated": None,
+                            "columns": None,
+                            "rows_preview": None,
+                            "error_code": result.code,
+                            "error_message": result.message,
+                        }
+                    emitted_steps.append(step)
+                    yield _event(EventType.STEP, step)
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tu.id,
