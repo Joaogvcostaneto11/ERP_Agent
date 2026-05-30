@@ -66,6 +66,7 @@ class ChatService:
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
         emitted_steps: list[dict] = []
+        status = "ok"
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
@@ -186,11 +187,43 @@ class ChatService:
 
                 transcript.append({"role": "user", "content": tool_results})
         except Exception as e:
+            status = "error"
             yield _event(EventType.ERROR, {
                 "code": ErrorCode.INTERNAL.value,
                 "message": str(e)[:500],
             })
             return
+        finally:
+            self._write_turn_summary(
+                turn_id, conversation_id, session_id, user_message,
+                emitted_steps, status,
+            )
+
+    def _write_turn_summary(
+        self, turn_id: str, conversation_id: str, session_id: str,
+        user_message: str, steps: list[dict], status: str,
+    ) -> None:
+        """One line per turn in queries.jsonl with kind='turn_summary',
+        aggregating all Claude calls (token counts + USD cost) and SQL
+        query count. Distinguishable from per-query rows via the kind field.
+        """
+        usages = [s for s in steps if s.get("type") == "usage"]
+        self._audit.append({
+            "ts": AuditLog.now_iso(),
+            "kind": "turn_summary",
+            "turn_id": turn_id,
+            "conversation_id": conversation_id,
+            "session_id": session_id,
+            "user_msg": user_message,
+            "status": status,
+            "claude_calls": len(usages),
+            "sql_queries": sum(1 for s in steps if s.get("type") == "query"),
+            "total_input_tokens": sum(u.get("input_tokens", 0) for u in usages),
+            "total_output_tokens": sum(u.get("output_tokens", 0) for u in usages),
+            "total_cache_read_input_tokens": sum(u.get("cache_read_input_tokens", 0) for u in usages),
+            "total_cache_creation_input_tokens": sum(u.get("cache_creation_input_tokens", 0) for u in usages),
+            "total_cost_usd": round(sum((u.get("cost_usd") or 0) for u in usages), 6),
+        })
 
     async def _call_claude(self, transcript: list[dict]) -> Any:
         kwargs = dict(

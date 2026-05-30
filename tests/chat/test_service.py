@@ -414,6 +414,67 @@ async def test_usage_step_emitted_per_claude_call(
 
 
 @pytest.mark.asyncio
+async def test_turn_summary_logged_with_total_cost(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """Every turn writes a single kind=turn_summary row to queries.jsonl
+    with aggregated tokens and total USD cost."""
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "ok"}], "citations": []})
+    client = FakeAnthropicClient([
+        _Response([_ContentText(final)], stop_reason="end_turn",
+                  usage=_Usage(input_tokens=100, output_tokens=50,
+                               cache_read_input_tokens=5000)),
+    ])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "hi")]
+    pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    lines = audit._path.read_text(encoding="utf-8").splitlines()
+    summaries = [json.loads(l) for l in lines if json.loads(l).get("kind") == "turn_summary"]
+    assert len(summaries) == 1
+    s = summaries[0]
+    assert s["status"] == "ok"
+    assert s["claude_calls"] == 1
+    assert s["sql_queries"] == 0
+    assert s["total_input_tokens"] == 100
+    assert s["total_output_tokens"] == 50
+    assert s["total_cache_read_input_tokens"] == 5000
+    # 100*3 + 50*15 + 5000*0.3 + 0 = 2550 → $0.00255
+    assert s["total_cost_usd"] == pytest.approx(0.00255, abs=1e-6)
+    assert s["turn_id"].startswith("t_")
+    assert s["conversation_id"] == CONV
+    assert s["session_id"] == SESSION
+
+
+@pytest.mark.asyncio
+async def test_turn_summary_records_error_status(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """An internal error during the turn still produces a turn_summary
+    with status='error'."""
+    class _Boom:
+        def __init__(self):
+            self.calls = []
+            self.messages = SimpleNamespace(create=self._create)
+
+        def _create(self, **kw):
+            self.calls.append(kw)
+            raise RuntimeError("boom")
+
+    svc = _make_service(_Boom(), schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "hi")]
+
+    lines = audit._path.read_text(encoding="utf-8").splitlines()
+    summaries = [json.loads(l) for l in lines if json.loads(l).get("kind") == "turn_summary"]
+    assert len(summaries) == 1
+    assert summaries[0]["status"] == "error"
+    # No usage step because the Claude call itself blew up
+    assert summaries[0]["total_input_tokens"] == 0
+
+
+@pytest.mark.asyncio
 async def test_usage_step_skips_cost_for_unknown_model(
     schema_ctx, audit, report_store, sql_executor, history
 ):
