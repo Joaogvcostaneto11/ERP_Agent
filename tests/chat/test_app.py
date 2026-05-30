@@ -27,7 +27,6 @@ def _factory() -> Iterator[_FakeSession]:
 def client(tmp_path: Path, monkeypatch) -> Iterator[TestClient]:
     schema = tmp_path / "schema.md"
     schema.write_text("SCHEMA", encoding="utf-8")
-    monkeypatch.setenv("CHAT_VOICE_LANG", "en-US")
     monkeypatch.setattr(app_module, "_SCHEMA_PATH", schema)
     monkeypatch.setattr(app_module, "_LOG_PATH", tmp_path / "queries.jsonl")
     monkeypatch.setattr(app_module, "_HISTORY_PATH", tmp_path / "history.sqlite")
@@ -41,12 +40,6 @@ def client(tmp_path: Path, monkeypatch) -> Iterator[TestClient]:
     app_module.reset_service()
     with TestClient(app_module.app) as c:
         yield c
-
-
-def test_config_returns_voice_lang(client):
-    r = client.get("/config")
-    assert r.status_code == 200
-    assert r.json() == {"voice_lang": "en-US"}
 
 
 def test_report_view_404_for_unknown(client):

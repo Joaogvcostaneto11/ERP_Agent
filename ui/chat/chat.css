@@ -11,7 +11,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
 #input { flex: 1; resize: none; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
-#send, #mic { padding: 8px 14px; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; }
+#send { padding: 8px 14px; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; }
 .msg { padding: 10px 14px; border-radius: 10px; max-width: 90%; }
 .msg.user { background: var(--bubble-user); align-self: flex-end; }
 .msg.assistant { background: var(--bubble-asst); border: 1px solid var(--border); align-self: flex-start; width: 100%; }

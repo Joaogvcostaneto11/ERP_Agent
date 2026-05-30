@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-An AI-native ERP system built around three tightly integrated layers: a voice-driven adaptive UI, an AI-powered business logic engine, and a robust data management layer. The system is designed so that AI is not a feature bolted on top — it is the core mechanism through which users interact with and the system enforces business rules.
+An AI-native ERP system built around three tightly integrated layers: an adaptive conversational UI, an AI-powered business logic engine, and a robust data management layer. The system is designed so that AI is not a feature bolted on top — it is the core mechanism through which users interact with and the system enforces business rules.
 
 ## Architecture
 
@@ -11,7 +11,7 @@ An AI-native ERP system built around three tightly integrated layers: a voice-dr
 The UI is minimal and dynamic — it exists to surface the right inputs and outputs at the right moment based on user intent. It does **not** contain business logic.
 
 **Responsibilities:**
-- Accept voice commands and natural language input from users
+- Accept natural language input from users
 - Translate intent into structured actions (insert, update, delete, query, report)
 - Render forms, confirmations, and data views dynamically based on context
 - Guide users step-by-step through ERP workflows (e.g., creating a sale, generating an invoice)
@@ -19,7 +19,7 @@ The UI is minimal and dynamic — it exists to surface the right inputs and outp
 
 **Design principles:**
 - The UI adapts to the task, not the other way around — screens are composed on demand
-- Voice is the primary input modality; text fallback is always available
+- Text is the primary input modality
 - Minimize clicks: the AI pre-fills what it can, the user confirms
 
 ### 2. Business Logic Layer (AI-Native Core)
@@ -93,7 +93,6 @@ ERP_Agent/
 - **AI is authoritative for business logic** — do not hard-code rules in application code that belong in a business rule document
 - **No direct database access from the UI** — all writes flow: UI → logic → db
 - **Audit trail is non-negotiable** — every data mutation must be traceable
-- **Voice commands must degrade gracefully** — if speech-to-text fails, text input takes over without breaking the flow
 - **Enterprise documents are the source of truth** for what is and is not a valid ERP operation; when in doubt, consult or update the relevant document
 
 ## Tech Stack

@@ -4,13 +4,11 @@ import { renderValue } from "./renderers/value.js";
 import { renderTable } from "./renderers/table.js";
 import { renderChart } from "./renderers/chart.js";
 import { renderReport } from "./renderers/report.js";
-import { isAvailable, createRecognizer } from "./voice.js";
 import { initSidebar, setActiveConversation, newConversation } from "./sidebar.js";
 
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
-const micBtn = document.getElementById("mic");
 
 const RENDERERS = {
   text: renderText,
@@ -303,24 +301,4 @@ initSidebar({
     }
   }
   await newConversation();
-})();
-
-(async function setupVoice() {
-  if (!isAvailable()) return;
-  const cfg = await fetch("/config").then(r => r.json()).catch(() => ({ voice_lang: "pt-PT" }));
-  const rec = createRecognizer(cfg.voice_lang);
-  micBtn.hidden = false;
-  let listening = false;
-  micBtn.addEventListener("click", () => {
-    if (listening) { rec.stop(); return; }
-    listening = true;
-    micBtn.textContent = "⏹";
-    rec.start();
-  });
-  rec.addEventListener("result", (ev) => {
-    const t = ev.results[0][0].transcript;
-    inputEl.value = (inputEl.value ? inputEl.value + " " : "") + t;
-  });
-  rec.addEventListener("end", () => { listening = false; micBtn.textContent = "🎙️"; });
-  rec.addEventListener("error", () => { listening = false; micBtn.textContent = "🎙️"; });
 })();

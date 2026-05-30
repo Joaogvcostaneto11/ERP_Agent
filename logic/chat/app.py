@@ -84,11 +84,6 @@ def _session_id(request: Request, response: Response) -> str:
     return sid
 
 
-@app.get("/config")
-def get_config() -> dict:
-    return {"voice_lang": os.environ.get("CHAT_VOICE_LANG", "pt-PT")}
-
-
 @app.get("/conversations")
 def list_conversations(request: Request, response: Response) -> dict:
     sid = _session_id(request, response)
