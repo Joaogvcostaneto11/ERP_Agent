@@ -66,7 +66,10 @@ class ChatService:
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
         emitted_steps: list[dict] = []
-        status = "ok"
+        # Starts "aborted" so a client disconnect (GeneratorExit at a yield,
+        # which bypasses the except below) is recorded as such. Flipped to
+        # "ok" only on the normal completion path; the except sets "error".
+        status = "aborted"
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
@@ -109,6 +112,7 @@ class ChatService:
                         ))
                         self._bg_tasks.add(t)
                         t.add_done_callback(self._bg_tasks.discard)
+                    status = "ok"
                     yield _event(EventType.DONE, {})
                     return
 

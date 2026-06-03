@@ -475,6 +475,29 @@ async def test_turn_summary_records_error_status(
 
 
 @pytest.mark.asyncio
+async def test_turn_summary_records_aborted_on_early_close(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """A client disconnect (generator closed mid-turn) raises GeneratorExit,
+    which bypasses the except. The turn_summary must record status='aborted',
+    not 'ok'."""
+    final = json.dumps({"blocks": [{"kind": "text", "markdown": "ok"}], "citations": []})
+    client = FakeAnthropicClient([
+        _Response([_ContentText(final)], stop_reason="end_turn",
+                  usage=_Usage(input_tokens=10, output_tokens=20)),
+    ])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    agen = svc.stream_turn(CONV, SESSION, "hi")
+    await agen.__anext__()   # advance past the first yield, then disconnect
+    await agen.aclose()
+
+    lines = audit._path.read_text(encoding="utf-8").splitlines()
+    summaries = [json.loads(l) for l in lines if json.loads(l).get("kind") == "turn_summary"]
+    assert len(summaries) == 1
+    assert summaries[0]["status"] == "aborted"
+
+
+@pytest.mark.asyncio
 async def test_usage_step_skips_cost_for_unknown_model(
     schema_ctx, audit, report_store, sql_executor, history
 ):
