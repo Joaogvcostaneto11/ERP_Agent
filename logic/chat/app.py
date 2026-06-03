@@ -5,6 +5,7 @@ import os
 import secrets
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,6 +21,9 @@ from logic.chat.sql_executor import SqlExecutor
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+# Load .env from the repo root so `uvicorn logic.chat.app:app` works without a
+# dotenv wrapper, regardless of the working directory it's launched from.
+load_dotenv(_REPO_ROOT / ".env")
 _SCHEMA_PATH: Path = _REPO_ROOT / "docs" / "db_schema.md"
 _LOG_PATH: Path = _REPO_ROOT / "logs" / "queries.jsonl"
 _HISTORY_PATH: Path = _REPO_ROOT / "logs" / "chat_history.sqlite"
