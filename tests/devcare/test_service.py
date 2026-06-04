@@ -9,7 +9,7 @@ from logic.chat.history import HistoryStore
 from logic.devcare.audit_writer import AuditWriter
 from logic.devcare.pending import PendingChangeStore
 from logic.devcare.rules.loader import RuleLoader
-from logic.devcare.service import DevCareService
+from logic.devcare.service import DevCareService, MAX_TOOL_ROUNDS
 from logic.devcare.validator import ChangeValidator
 from logic.devcare.write_executor import WriteExecutor
 
@@ -142,3 +142,26 @@ def test_commit_unknown_change_id_errors(deps):
     cid = deps.history.create_conversation(SESSION)
     result = svc.commit_change(cid, SESSION, OP, "chg_missing")
     assert result["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_tool_loop_stops_after_max_rounds(deps):
+    # Fake that always returns a lookup tool_use, never a final text turn
+    call_count = 0
+
+    class _InfiniteClient:
+        def __init__(self):
+            self.messages = SimpleNamespace(create=self._create)
+
+        def _create(self, **kw):
+            nonlocal call_count
+            call_count += 1
+            return _Resp([_ToolUse(f"t{call_count}", "lookup",
+                                   {"sql": "SELECT 1"})], "tool_use")
+
+    svc = _service(_InfiniteClient(), deps, executor=None)
+    cid = deps.history.create_conversation(SESSION)
+    events = [e async for e in svc.stream_turn(cid, SESSION, OP, "loop forever")]
+    error_events = [e for e in events if e["type"] == "error"]
+    assert len(error_events) >= 1
+    assert call_count <= MAX_TOOL_ROUNDS + 1

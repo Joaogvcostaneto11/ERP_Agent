@@ -1,10 +1,9 @@
 # logic/devcare/service.py
 from __future__ import annotations
 import asyncio
+import json
 import uuid
 from typing import Any, AsyncIterator, Callable
-
-from sqlalchemy import text
 
 from logic.chat.events import ErrorCode, EventType, Phase
 from logic.chat.history import HistoryStore
@@ -13,6 +12,9 @@ from logic.devcare.pending import PendingChangeStore
 from logic.devcare.prompts import (LOOKUP_TOOL, PROPOSE_CHANGE_TOOL, build_system)
 from logic.devcare.rules.loader import RuleLoader
 from logic.devcare.validator import ChangeValidator
+
+
+MAX_TOOL_ROUNDS = 10
 
 
 def _event(t: EventType, payload: dict) -> dict:
@@ -58,7 +60,12 @@ class DevCareService:
 
         try:
             yield _event(EventType.STATUS, {"phase": Phase.THINKING.value})
+            tool_rounds = 0
             while True:
+                if tool_rounds > MAX_TOOL_ROUNDS:
+                    yield _event(EventType.ERROR, {"code": ErrorCode.INTERNAL.value,
+                                                   "message": "too many tool rounds; stopping"})
+                    return
                 response = await self._call(system, transcript)
                 tool_uses, assistant_blocks = [], []
                 for c in response.content:
@@ -83,6 +90,7 @@ class DevCareService:
                     return
 
                 transcript.append({"role": "assistant", "content": assistant_blocks})
+                tool_rounds += 1
                 tool_results = []
                 for tu in tool_uses:
                     payload, block = self._handle_tool(conversation_id, tu)
@@ -97,7 +105,6 @@ class DevCareService:
                                            "message": str(e)[:500]})
 
     def _handle_tool(self, conversation_id: str, tu) -> tuple[str, dict | None]:
-        import json
         if tu.name == "lookup":
             rows = self._reader(tu.input.get("sql", ""), {})
             return json.dumps({"rows": rows}, default=str)[:8000], None
@@ -156,6 +163,7 @@ class DevCareService:
         if staged.change.operation == "create":
             return None
         ch = staged.change
+        # ch.table and ch.primary_key are registry-controlled identifiers (not user input); pk value is bound
         rows = self._reader(
             f"SELECT * FROM DevCare.dbo.{ch.table} WHERE {ch.primary_key} = :pk",
             {"pk": ch.target_pk})
