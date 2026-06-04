@@ -44,6 +44,7 @@ This is the most critical component. Business rules are not hard-coded — they 
 | Domain | Document | Status |
 |---|---|---|
 | Payroll | [business_rules/payroll.yaml](business_rules/payroll.yaml) | Active |
+| DevCare CRUD | [business_rules/devcare/](business_rules/devcare/) (patient, specialty) | Active (writes) |
 
 **Design principles:**
 - No business logic lives in the UI or the database layer — only here
@@ -112,6 +113,8 @@ Run tests: `pytest tests/`
 Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`.
 Run the chat UI server: `uvicorn logic.chat.app:app --reload`, then open http://localhost:8000/.
 The chat UI requires `ANTHROPIC_API_KEY` and a `DATABASE_URL` pointing at a read-only SQL Server login.
+Run the DevCare operations (write CRUD) server: `uvicorn logic.devcare.app:app --reload --port 8001`, then open http://localhost:8001/.
+DevCare CRUD requires `ANTHROPIC_API_KEY`, `DATABASE_URL` (read-only, for lookups), and `DEVCARE_WRITE_DATABASE_URL` (a writable login; ideally scoped to DevCare's curated tables). Writes only touch the registered entities in `business_rules/devcare/` and require explicit operator confirmation.
 
 ## Development Notes
 
