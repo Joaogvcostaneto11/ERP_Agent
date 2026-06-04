@@ -8,9 +8,10 @@ No FK constraints are defined in the DB — all relationships are **logical** (e
 | Database | Tables | Views | Purpose |
 |---|---|---|---|
 | DevDB | 228 | 12 | ForumSI IT company — software sales, hardware, support |
-| DOClinic | 195 | 49 | Medical clinic — consultations, exams, healthcare |
+| DOClinic | 190 | 49 | Medical clinic — consultations, exams, healthcare |
+| DevCare | 190 | 49 | Mirror of DOClinic (same schema, same data volume) |
 | ForumSI | 241 | 12 | Mirror of DevDB (same schema, same data volume) |
-| OpenInnovation | ~200 | — | Innovation entity — minimal data |
+| OpenInnovation | 165 | 10 | Innovation entity — minimal data |
 
 ## Core Document Model (all databases share this structure)
 
@@ -1365,7 +1366,7 @@ Total: **228 tables**, 12 views
 
 ## DOClinic — Full Table Inventory
 
-Total: **195 tables**, 49 views
+Total: **190 tables**, 49 views
 
 ### Group: SYS (25 tables)
 
@@ -1373,7 +1374,7 @@ Total: **195 tables**, 49 views
 |---|---|---|
 | SYS00 | 159 | 11 |
 | SYS01 | 403 | 10 |
-| SYS02 | 3414 | 25 |
+| SYS02 | 3416 | 25 |
 | SYS03 | 15 | 25 |
 | SYS05 | 2 | 4 |
 | SYS07 | 1565 | 38 |
@@ -1401,20 +1402,13 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| LinDoc001 | 6739 | 67 |
+| LinDoc001 | 7937 | 67 |
 
 ### Group: A (3 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
 | A | 101 | 38 |
-
-### Group: Doc (3 tables)
-
-| Table | Rows | Cols |
-|---|---|---|
-| Doc001 | 5487 | 88 |
-| Doc00120260106 | 1163 | 88 |
 
 ### Group: ESP (3 tables)
 
@@ -1436,17 +1430,23 @@ Total: **195 tables**, 49 views
 | SYSER02 | 56 | 6 |
 | SYSER03 | 6 | 3 |
 
+### Group: Doc (2 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Doc001 | 6389 | 88 |
+
 ### Group: Reservas (2 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| Reservas | 9542 | 167 |
+| Reservas | 11306 | 167 |
 
 ### Group: WebLoginEntidades (2 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| WebLoginEntidades | 26 | 16 |
+| WebLoginEntidades | 28 | 16 |
 | WebLoginEntidades_TMP | 35 | 3 |
 
 ### Group: Anexos (1 tables)
@@ -1480,31 +1480,25 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| ArtMedico | 37 | 7 |
+| ArtMedico | 44 | 7 |
 
 ### Group: ArtMerc (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| ArtMerc | 338 | 19 |
+| ArtMerc | 343 | 19 |
 
 ### Group: ArtMercHon (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| ArtMercHon | 242 | 19 |
+| ArtMercHon | 258 | 19 |
 
 ### Group: Artigos (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| Artigos | 191 | 101 |
-
-### Group: B (1 tables)
-
-| Table | Rows | Cols |
-|---|---|---|
-| B | 204 | 1 |
+| Artigos | 196 | 101 |
 
 ### Group: Bancos (1 tables)
 
@@ -1516,13 +1510,13 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| CCO | 5167 | 41 |
+| CCO | 6026 | 41 |
 
 ### Group: CCOLIQ (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| CCOLIQ | 5166 | 9 |
+| CCOLIQ | 6025 | 9 |
 
 ### Group: CTB (1 tables)
 
@@ -1600,7 +1594,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Declaracoes | 9118 | 5 |
+| Declaracoes | 9194 | 5 |
 
 ### Group: Devolucoes (1 tables)
 
@@ -1622,7 +1616,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Dias | 799 | 7 |
+| Dias | 800 | 7 |
 
 ### Group: DocCPart (1 tables)
 
@@ -1662,13 +1656,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Entidades | 28452 | 149 |
-
-### Group: EntidadesBkp (1 tables)
-
-| Table | Rows | Cols |
-|---|---|---|
-| EntidadesBkp | 12401 | 149 |
+| Entidades | 28772 | 149 |
 
 ### Group: EntidadesLP (1 tables)
 
@@ -1691,7 +1679,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Especialidades | 29 | 12 |
+| Especialidades | 31 | 12 |
 
 ### Group: Estados (1 tables)
 
@@ -1725,7 +1713,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| GrpArtigos | 47 | 25 |
+| GrpArtigos | 50 | 25 |
 
 ### Group: GrpDoc (1 tables)
 
@@ -1743,7 +1731,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| GrpRec | 122 | 4 |
+| GrpRec | 128 | 4 |
 
 ### Group: ImpressoesEnvios (1 tables)
 
@@ -1755,12 +1743,6 @@ Total: **195 tables**, 49 views
 | Table | Rows | Cols |
 |---|---|---|
 | Impressoras | 14 | 12 |
-
-### Group: KK (1 tables)
-
-| Table | Rows | Cols |
-|---|---|---|
-| KK | 11 | 25 |
 
 ### Group: Linguas (1 tables)
 
@@ -1910,7 +1892,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Regras | 704 | 25 |
+| Regras | 774 | 25 |
 
 ### Group: ReservasCredenciais (1 tables)
 
@@ -1921,13 +1903,13 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| ReservasEnvios | 9071 | 16 |
+| ReservasEnvios | 10680 | 16 |
 
 ### Group: ReservasEstados (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| ReservasEstados | 71755 | 8 |
+| ReservasEstados | 83780 | 8 |
 
 ### Group: ReservasHist (1 tables)
 
@@ -1943,7 +1925,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| ReservasServicos | 9575 | 13 |
+| ReservasServicos | 11336 | 13 |
 
 ### Group: Rotas (1 tables)
 
@@ -1966,7 +1948,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| SYSLOG | 32988 | 10 |
+| SYSLOG | 38507 | 10 |
 
 ### Group: Seccoes (1 tables)
 
@@ -1999,12 +1981,6 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-
-### Group: TipoTerc (1 tables)
-
-| Table | Rows | Cols |
-|---|---|---|
-| TipoTerc | 289 | 2 |
 
 ### Group: TiposContas (1 tables)
 
@@ -2215,7 +2191,7 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| WebLogin | 13 | 18 |
+| WebLogin | 14 | 18 |
 
 ### Group: WebMensagens (1 tables)
 
@@ -2233,13 +2209,13 @@ Total: **195 tables**, 49 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| WorkMail | 8 | 15 |
+| WorkMail | 17 | 15 |
 
 ### Group: WorkMailAnexos (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| WorkMailAnexos | 7 | 6 |
+| WorkMailAnexos | 18 | 6 |
 
 ### Group: Zonas (1 tables)
 
@@ -2247,7 +2223,876 @@ Total: **195 tables**, 49 views
 |---|---|---|
 | Zonas | 27 | 15 |
 
-### Group: Other (1 tables)
+### Group: _A_ESP_ResultadoEnvioSync (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: sysdiagrams (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+## DevCare — Full Table Inventory
+
+Total: **190 tables**, 49 views
+
+### Group: SYS (25 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| SYS00 | 159 | 11 |
+| SYS01 | 403 | 10 |
+| SYS02 | 3416 | 25 |
+| SYS03 | 15 | 25 |
+| SYS05 | 2 | 4 |
+| SYS07 | 1565 | 38 |
+| SYS08 | 210 | 3 |
+| SYS60 | 11 | 22 |
+| SYS61 | 1 | 9 |
+| SYS62 | 1 | 4 |
+| SYS63 | 4 | 6 |
+| SYS70 | 2 | 21 |
+| SYS81 | 2 | 4 |
+| SYS98 | 475 | 16 |
+| SYS99 | 3891 | 60 |
+
+### Group: CRM (5 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| CRM11 | 4 | 9 |
+| CRM12 | 12 | 9 |
+| CRM13 | 24 | 4 |
+| CRM14 | 10 | 4 |
+| CRM_Inbox | 1 | 20 |
+
+### Group: LinDoc (4 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| LinDoc001 | 7937 | 67 |
+
+### Group: A (3 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| A | 101 | 38 |
+
+### Group: ESP (3 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: SNS (3 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| SNS_LP | 6892 | 4 |
+| SNS_ListaErros | 23 | 5 |
+
+### Group: SYSER (3 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| SYSER01 | 25 | 19 |
+| SYSER02 | 56 | 6 |
+| SYSER03 | 6 | 3 |
+
+### Group: Doc (2 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Doc001 | 6389 | 88 |
+
+### Group: Reservas (2 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Reservas | 11306 | 167 |
+
+### Group: WebLoginEntidades (2 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WebLoginEntidades | 28 | 16 |
+| WebLoginEntidades_TMP | 35 | 3 |
+
+### Group: Anexos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ArtArm (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ArtArm | 6 | 25 |
+
+### Group: ArtComp (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ArtComp | 1 | 6 |
+
+### Group: ArtDim (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ArtLng (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ArtMedico (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMedico | 44 | 7 |
+
+### Group: ArtMerc (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMerc | 343 | 19 |
+
+### Group: ArtMercHon (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ArtMercHon | 258 | 19 |
+
+### Group: Artigos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Artigos | 196 | 101 |
+
+### Group: Bancos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Bancos | 12 | 15 |
+
+### Group: CCO (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| CCO | 6026 | 41 |
+
+### Group: CCOLIQ (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| CCOLIQ | 6025 | 9 |
+
+### Group: CTB (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Carimbos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Carimbos | 17 | 9 |
+
+### Group: CartEnt (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Carteiras (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Carteiras | 10 | 13 |
+
+### Group: Comissoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ComissoesTpEnt (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: CondPag (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| CondPag | 6 | 16 |
+
+### Group: ConfigResults (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ConfigResults | 5 | 31 |
+
+### Group: Consumos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ContCred (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Contactos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Contactos | 542 | 8 |
+
+### Group: Cred (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Cred | 6584 | 2 |
+
+### Group: CredenciaisSNS (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| CredenciaisSNS | 113560 | 12 |
+
+### Group: Declaracoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Declaracoes | 9194 | 5 |
+
+### Group: Devolucoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Diagnosticos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Diagnosticos | 1200 | 14 |
+
+### Group: DiagnosticosSnomed (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Dias (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Dias | 800 | 7 |
+
+### Group: DocCPart (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| DocCPart | 5 | 4 |
+
+### Group: DocCart (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| DocCart | 34 | 4 |
+
+### Group: ERPalavrasVox (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ERPalavrasVox | 2 | 8 |
+
+### Group: EmpresaConvencoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| EmpresaConvencoes | 59 | 7 |
+
+### Group: EmpresaSeries (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: EmpresasMeiosLiquidacao (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Entidades (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Entidades | 28772 | 149 |
+
+### Group: EntidadesLP (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesLP | 11800 | 142 |
+
+### Group: EntidadesSeries (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| EntidadesSeries | 23 | 4 |
+
+### Group: EntidadesTPA (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Especialidades (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Especialidades | 31 | 12 |
+
+### Group: Estados (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Estados | 103 | 23 |
+
+### Group: Expedicoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Expedicoes | 2 | 11 |
+
+### Group: FO (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| FO | 1 | 118 |
+
+### Group: Familias (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: GrTam (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: GrpArtigos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| GrpArtigos | 50 | 25 |
+
+### Group: GrpDoc (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDoc | 13 | 11 |
+
+### Group: GrpDocTp (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| GrpDocTp | 48 | 3 |
+
+### Group: GrpRec (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| GrpRec | 128 | 4 |
+
+### Group: ImpressoesEnvios (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Impressoras (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Impressoras | 14 | 12 |
+
+### Group: Linguas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ListaLP (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ListaLP_SNS | 6916 | 3 |
+
+### Group: Locais (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Locais | 3 | 12 |
+
+### Group: LocaisPrescricaoComissoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Lotes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Lotes | 1 | 13 |
+
+### Group: ModoPag (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ModoPag | 2 | 13 |
+
+### Group: Moeda (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Moeda | 2 | 18 |
+
+### Group: MovCCOCart (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: MultiDim (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: NHParticulares (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| NHParticulares | 525 | 1 |
+
+### Group: Numeradores (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Numeradores | 53 | 12 |
+
+### Group: Operacoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Operacoes | 33 | 15 |
+
+### Group: OrigensEntidades (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| OrigensEntidades | 8 | 4 |
+
+### Group: PagamentosTPA (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| PagamentosTPA | 1 | 12 |
+
+### Group: Paineis (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Paineis | 25 | 8 |
+
+### Group: PaineisTpPedidosExtras (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| PaineisTpPedidosExtras | 141 | 3 |
+
+### Group: PedidosRecolha (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Pessoal (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Pessoal | 1 | 21 |
+
+### Group: Pos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: Postos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Postos | 48 | 50 |
+
+### Group: Prescritores (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Prescritores | 8937 | 27 |
+
+### Group: PrescritoresLocais (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| PrescritoresLocais | 19391 | 5 |
+
+### Group: RefSIBSHist (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| RefSIBSHist | 44 | 2 |
+
+### Group: RegTpIVA (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| RegTpIVA | 16 | 5 |
+
+### Group: RegimesIVA (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| RegimesIVA | 4 | 16 |
+
+### Group: Regras (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Regras | 774 | 25 |
+
+### Group: ReservasCredenciais (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ReservasEnvios (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasEnvios | 10680 | 16 |
+
+### Group: ReservasEstados (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasEstados | 83780 | 8 |
+
+### Group: ReservasHist (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ReservasPedidos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: ReservasServicos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| ReservasServicos | 11336 | 13 |
+
+### Group: Rotas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Rotas | 1 | 17 |
+
+### Group: SYSDefaults (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| SYSDefaults | 9 | 11 |
+
+### Group: SYSLOCK (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: SYSLOG (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| SYSLOG | 38507 | 10 |
+
+### Group: Seccoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Seccoes | 15 | 12 |
+
+### Group: Sessoes (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: SmsQueue (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TMP (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TextoModificador (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TextoModificador | 63 | 8 |
+
+### Group: TimeService (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TiposContas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposContas | 4 | 13 |
+
+### Group: TiposDoc (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDoc | 28 | 57 |
+
+### Group: TiposDocAT (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocAT | 21 | 9 |
+
+### Group: TiposDocCCO (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCCO | 42 | 44 |
+
+### Group: TiposDocCtb (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocCtb | 18 | 23 |
+
+### Group: TiposDocLin (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLin | 64 | 4 |
+
+### Group: TiposDocLinCtb (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocLinCtb | 14 | 16 |
+
+### Group: TiposDocPst (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposDocPst | 240 | 11 |
+
+### Group: TiposInt (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposInt | 12 | 27 |
+
+### Group: TiposIntL (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIntL | 78 | 13 |
+
+### Group: TiposIva (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposIva | 5 | 14 |
+
+### Group: TiposLin (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLin | 36 | 60 |
+
+### Group: TiposLinSTC (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposLinSTC | 11 | 34 |
+
+### Group: TiposSerieNum (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieNum | 126 | 5 |
+
+### Group: TiposSerieTpDoc (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TiposSerieTpDoc | 3 | 4 |
+
+### Group: Titulos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Titulos | 21 | 15 |
+
+### Group: Tmp (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Tmp | 12 | 25 |
+
+### Group: TmpAgenda (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpCCO (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpCTB (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpConf (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpEncFact (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpEtiq (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpInt (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpIntAn (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpMultiDim (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TmpReservas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TpArtigos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TpArtigos | 4 | 15 |
+
+### Group: TpContactos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TpContactos | 6 | 13 |
+
+### Group: TpContas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TpContas | 5 | 6 |
+
+### Group: TpDocATSerie (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TpDocATSerie | 14 | 4 |
+
+### Group: TpDocML (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+
+### Group: TpEnt (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| TpEnt | 3 | 13 |
+
+### Group: Unidades (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Unidades | 5 | 17 |
+
+### Group: Vendedores (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Vendedores | 1 | 23 |
+
+### Group: WebLidos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WebLidos | 69779 | 8 |
+
+### Group: WebLogin (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WebLogin | 14 | 18 |
+
+### Group: WebMensagens (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WebMensagens | 12 | 23 |
+
+### Group: WebTipoMensagens (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WebTipoMensagens | 3 | 4 |
+
+### Group: WorkMail (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WorkMail | 17 | 15 |
+
+### Group: WorkMailAnexos (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| WorkMailAnexos | 18 | 6 |
+
+### Group: Zonas (1 tables)
+
+| Table | Rows | Cols |
+|---|---|---|
+| Zonas | 27 | 15 |
+
+### Group: _A_ESP_ResultadoEnvioSync (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
@@ -2339,7 +3184,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Doc001 | 21286 | 80 |
+| Doc001 | 21294 | 80 |
 | Doc001_Delete | 603 | 80 |
 | Doc005 | 3 | 3 |
 
@@ -2347,7 +3192,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| LinDoc001 | 63769 | 84 |
+| LinDoc001 | 63790 | 84 |
 
 ### Group: Chicken (2 tables)
 
@@ -2432,7 +3277,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| ArtArm | 3026 | 29 |
+| ArtArm | 3027 | 29 |
 
 ### Group: ArtComp (1 tables)
 
@@ -2448,7 +3293,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| ArtEmp | 1958 | 51 |
+| ArtEmp | 1959 | 51 |
 
 ### Group: ArtEnt (1 tables)
 
@@ -2500,7 +3345,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| Artigos | 2720 | 126 |
+| Artigos | 2721 | 126 |
 
 ### Group: Avaliacoes (1 tables)
 
@@ -2518,13 +3363,13 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| CCO | 34906 | 38 |
+| CCO | 34920 | 38 |
 
 ### Group: CCOLIQ (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
-| CCOLIQ | 56566 | 9 |
+| CCOLIQ | 56586 | 9 |
 
 ### Group: CTB (1 tables)
 
@@ -2944,7 +3789,7 @@ Total: **241 tables**, 12 views
 
 | Table | Rows | Cols |
 |---|---|---|
-| SYSLOG | 6260 | 10 |
+| SYSLOG | 6290 | 10 |
 
 ### Group: SYSProfiles (1 tables)
 
@@ -3208,7 +4053,7 @@ Total: **241 tables**, 12 views
 |---|---|---|
 | Zonas | 1 | 13 |
 
-### Group: Other (1 tables)
+### Group: _a (1 tables)
 
 | Table | Rows | Cols |
 |---|---|---|
