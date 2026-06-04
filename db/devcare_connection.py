@@ -16,6 +16,7 @@ def _factory():
         url = os.environ.get("DEVCARE_WRITE_DATABASE_URL")
         if not url:
             raise RuntimeError("DEVCARE_WRITE_DATABASE_URL is not set")
+        # Pool intentionally smaller than read-only db/connection.py — writes are low-volume and confirm-gated.
         _engine = create_engine(url, pool_pre_ping=True, pool_size=3, max_overflow=5)
         _SessionLocal = sessionmaker(bind=_engine, autocommit=False, autoflush=False)
     return _SessionLocal
@@ -23,6 +24,7 @@ def _factory():
 
 @contextmanager
 def get_write_session() -> Generator[Session, None, None]:
+    """Yields a session; commits on success, rolls back and re-raises on exception, always closes."""
     session = _factory()()
     try:
         yield session
