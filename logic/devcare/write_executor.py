@@ -27,7 +27,17 @@ class WriteExecutor:
         self._now = now
         self._operator_key = operator_key
 
+    @staticmethod
+    def _check_columns(rule: EntityRule, change: NormalizedChange) -> None:
+        """Raise ValueError if any key of change.columns is not a declared field column."""
+        allowed = {fr.column for fr in rule.fields.values()}
+        for key in change.columns:
+            if key not in allowed:
+                raise ValueError(f"column {key!r} is not a writable field of {rule.entity}")
+
     def execute(self, rule: EntityRule, change: NormalizedChange) -> Any:
+        if change.operation in ("create", "update"):
+            self._check_columns(rule, change)
         qtable = f"{self._prefix}{rule.table}"
         with self._factory() as session:
             if change.operation == "create":
@@ -68,6 +78,8 @@ class WriteExecutor:
             sets[rule.audit_columns.updated_at] = self._now()
         if rule.audit_columns.updated_by:
             sets[rule.audit_columns.updated_by] = self._operator_key
+        if not sets:
+            raise ValueError("update has no columns to set")
         assignments = ", ".join(f"{c} = :{c}" for c in sets)
         params = dict(sets)
         params["_pk"] = change.target_pk

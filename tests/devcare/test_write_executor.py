@@ -1,6 +1,5 @@
 # tests/devcare/test_write_executor.py
 from contextlib import contextmanager
-from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -101,3 +100,31 @@ def test_soft_delete_sets_flag(session_factory):
     with eng.begin() as c:
         hist = c.execute(text("SELECT Hist FROM Especialidades WHERE Chave=1")).scalar()
     assert hist == 1
+
+
+def test_create_rejects_unknown_column(session_factory):
+    factory, _ = session_factory
+    ex = _ex(factory)
+    change = NormalizedChange("specialty", "create", "Especialidades", "Chave",
+                              {"Codigo": "A", "Nome": "B", "Bogus": "x"}, None)
+    with pytest.raises(ValueError, match="Bogus"):
+        ex.execute(_rule(), change)
+
+
+def test_update_rejects_empty_columns(session_factory):
+    factory, eng = session_factory
+    # Rule without audit_columns so that sets stays empty after assembling
+    rule_no_audit = EntityRule(
+        entity="specialty", version=1, table="Especialidades",
+        primary_key="Chave", operations=["create", "update", "delete"],
+        fields={"code": {"column": "Codigo", "type": "string"},
+                "name": {"column": "Nome", "type": "string"}},
+    )
+    ex = _ex(factory)
+    # Insert a row so the UPDATE target exists
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO Especialidades (Chave, Codigo, Nome) VALUES (1,'A','A')"))
+    change = NormalizedChange("specialty", "update", "Especialidades", "Chave",
+                              {}, target_pk=1)
+    with pytest.raises(ValueError, match="no columns to set"):
+        ex.execute(rule_no_audit, change)
