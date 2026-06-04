@@ -49,7 +49,7 @@ class ChangeValidator:
             self._check_uniqueness(rule, entity, fields, columns, target_pk, viols)
             self._check_references(rule, fields, viols)
 
-        if operation in ("update", "delete"):
+        if not viols and operation in ("update", "delete"):
             self._check_target_exists(rule, target_pk, viols)
 
         if viols:
@@ -94,9 +94,9 @@ class ChangeValidator:
         if val.regex is not None and isinstance(value, str) and not re.match(val.regex, value):
             viols.append(ValidationViolation(name,
                 f"{fr.label or name} has invalid format"))
-        if val.min is not None and value < val.min:
+        if val.min is not None and isinstance(value, (int, float)) and value < val.min:
             viols.append(ValidationViolation(name, f"{fr.label or name} below minimum"))
-        if val.max is not None and value > val.max:
+        if val.max is not None and isinstance(value, (int, float)) and value > val.max:
             viols.append(ValidationViolation(name, f"{fr.label or name} above maximum"))
         if val.enum is not None and value not in val.enum:
             viols.append(ValidationViolation(name, f"{fr.label or name} not an allowed value"))
@@ -130,9 +130,13 @@ class ChangeValidator:
         for fname, ref in rule.references.items():
             if fname not in fields or fields[fname] in (None, ""):
                 continue
+            try:
+                value = _coerce(rule.fields[fname].type, fields[fname])
+            except (ValueError, TypeError):
+                continue
             sql = (f"SELECT TOP 1 1 AS n FROM DevCare.dbo.{ref.table} "
                    f"WHERE {ref.column} = :v")
-            rows = self._reader(sql, {"v": fields[fname]})
+            rows = self._reader(sql, {"v": value})
             if not rows:
                 viols.append(ValidationViolation(fname,
                     f"referenced {ref.table} {fields[fname]!r} does not exist"))

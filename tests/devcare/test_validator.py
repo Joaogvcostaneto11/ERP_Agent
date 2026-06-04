@@ -1,6 +1,7 @@
 # tests/devcare/test_validator.py
 import pytest
 from logic.devcare.rules.loader import RuleLoader
+from logic.devcare.rules.models import EntityRule, FieldRule, FieldValidation, Reference
 from logic.devcare.validator import ChangeValidator
 from logic.devcare.errors import ValidationViolation
 
@@ -85,3 +86,82 @@ def test_delete_disallowed_when_not_in_operations(tmp_path, loader):
     v = ChangeValidator(loader, FakeReader({"Especialidades": [{"cnt": 1}]}))
     result = v.validate("specialty", "delete", {}, target_pk=12)
     assert result.ok is True  # specialty allows delete
+
+
+# --- Regression tests ---
+
+def test_unknown_field_rejected(loader):
+    v = ChangeValidator(loader, FakeReader())
+    result = v.validate("specialty", "create", {"code": "Z9", "name": "X", "bogus": "1"}, None)
+    assert result.ok is False
+    assert any(viol.field == "bogus" for viol in result.violations)
+
+
+def test_min_max_on_string_does_not_crash():
+    """A string field with a numeric min bound must not raise TypeError."""
+    rule = EntityRule(
+        entity="fake",
+        version=1,
+        table="FakeTable",
+        primary_key="Chave",
+        operations=["create"],
+        fields={
+            "label": FieldRule(
+                column="Label",
+                type="string",
+                required=False,
+                validation=FieldValidation(min=1),
+            )
+        },
+    )
+
+    class FakeLoader:
+        def get(self, entity):
+            return rule
+
+    v = ChangeValidator(FakeLoader(), FakeReader())
+    # Must not raise; result may be ok=True or have unrelated violations
+    result = v.validate("fake", "create", {"label": "hello"}, None)
+    assert result is not None
+
+
+def test_reference_uses_coerced_value():
+    """Reference check must pass the coerced (int) value, not the raw string."""
+    rule = EntityRule(
+        entity="fake",
+        version=1,
+        table="FakeTable",
+        primary_key="Chave",
+        operations=["create"],
+        fields={
+            "name": FieldRule(column="Nome", type="string", required=True),
+            "spec": FieldRule(column="Especialidade", type="int", required=False),
+        },
+        references={"spec": Reference(table="Especialidades", column="Chave")},
+    )
+
+    class FakeLoader:
+        def get(self, entity):
+            return rule
+
+    class RecordingReader:
+        def __init__(self):
+            self.ref_params = []
+            self.calls = []
+
+        def __call__(self, sql, params):
+            self.calls.append((sql, params))
+            if "Especialidades" in sql:
+                self.ref_params.append(params)
+                return [{"n": 1}]
+            return []
+
+    reader = RecordingReader()
+    v = ChangeValidator(FakeLoader(), reader)
+    result = v.validate("fake", "create", {"name": "A", "spec": "7"}, None)
+
+    assert result.ok is True
+    assert len(reader.ref_params) == 1
+    passed_value = reader.ref_params[0]["v"]
+    assert passed_value == 7
+    assert isinstance(passed_value, int)
