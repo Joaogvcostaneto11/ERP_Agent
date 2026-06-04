@@ -36,7 +36,8 @@ def _entities_doc(loader: RuleLoader) -> str:
 class DevCareService:
     def __init__(self, *, anthropic_client: Any, validator: ChangeValidator,
                  loader: RuleLoader, reader: Callable, pending: PendingChangeStore,
-                 executor, audit: AuditWriter, history: HistoryStore, model: str) -> None:
+                 executor, audit: AuditWriter, history: HistoryStore, model: str,
+                 table_prefix: str = "DevCare.dbo.") -> None:
         self._anthropic = anthropic_client
         self._validator = validator
         self._loader = loader
@@ -46,6 +47,7 @@ class DevCareService:
         self._audit = audit
         self._history = history
         self._model = model
+        self._prefix = table_prefix
 
     async def stream_turn(self, conversation_id: str, session_id: str,
                           operator: str, user_message: str) -> AsyncIterator[dict]:
@@ -140,6 +142,7 @@ class DevCareService:
         staged = self._pending.pop(conversation_id, change_id)
         if staged is None:
             return {"status": "error", "message": "change not found or already used"}
+        before = None
         try:
             before = self._fetch_before(staged)
             pk = self._executor.execute(self._loader.get(staged.change.entity),
@@ -155,7 +158,7 @@ class DevCareService:
             self._audit.record(operator=operator, change=staged.change,
                                rule_doc=staged.rule_doc,
                                rule_version=staged.rule_version,
-                               primary_key=staged.change.target_pk, before=None,
+                               primary_key=staged.change.target_pk, before=before,
                                status="error")
             return {"status": "error", "message": str(e)[:500]}
 
@@ -165,7 +168,7 @@ class DevCareService:
         ch = staged.change
         # ch.table and ch.primary_key are registry-controlled identifiers (not user input); pk value is bound
         rows = self._reader(
-            f"SELECT * FROM DevCare.dbo.{ch.table} WHERE {ch.primary_key} = :pk",
+            f"SELECT * FROM {self._prefix}{ch.table} WHERE {ch.primary_key} = :pk",
             {"pk": ch.target_pk})
         return rows[0] if rows else None
 

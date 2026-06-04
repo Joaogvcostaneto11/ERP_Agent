@@ -51,6 +51,7 @@ class WriteExecutor:
             raise ValueError(f"unknown operation {change.operation!r}")
 
     def _next_key(self, session, rule, qtable) -> int:
+        # Relies on single-writer access; concurrent creates are not supported in v1.
         cur = session.execute(
             text(f"SELECT COALESCE(MAX({rule.primary_key}), 0) + 1 AS k FROM {qtable}")
         ).scalar()

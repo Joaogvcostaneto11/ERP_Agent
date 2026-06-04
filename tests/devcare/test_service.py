@@ -144,6 +144,121 @@ def test_commit_unknown_change_id_errors(deps):
     assert result["status"] == "error"
 
 
+def _sqlite_setup(tmp_path):
+    """Return (engine, sessionmaker factory, WriteExecutor) backed by SQLite with one pre-inserted row."""
+    from contextlib import contextmanager
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    eng = create_engine(f"sqlite:///{tmp_path / 'wx2.db'}")
+    with eng.begin() as c:
+        c.execute(text(
+            "CREATE TABLE Especialidades (Chave INTEGER, Codigo TEXT, "
+            "Nome TEXT, Obs TEXT, Hist INTEGER, Listar INTEGER, DC TEXT, "
+            "OC INTEGER, DUA TEXT, OUA INTEGER)"
+        ))
+        c.execute(text(
+            "INSERT INTO Especialidades (Chave, Codigo, Nome, Hist) VALUES (1, 'A', 'Old', 0)"
+        ))
+
+    Local = sessionmaker(bind=eng)
+
+    @contextmanager
+    def factory():
+        s = Local()
+        try:
+            yield s
+            s.commit()
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
+
+    executor = WriteExecutor(factory, table_prefix="", now=lambda: "T", operator_key=0)
+    return eng, executor
+
+
+def _fake_reader_with_snapshot(snapshot: dict):
+    """Reader that satisfies the validator's COUNT(*) check and returns snapshot for _fetch_before."""
+    def reader(sql, params):
+        if "COUNT(*)" in sql:
+            return [{"cnt": 1}]
+        return [snapshot]
+    return reader
+
+
+def _service_for_modify(client, deps, executor, snapshot):
+    """Build a DevCareService with table_prefix="" and a fake reader that returns the snapshot."""
+    reader = _fake_reader_with_snapshot(snapshot)
+    validator = ChangeValidator(deps.loader, reader)
+    return DevCareService(
+        anthropic_client=client, validator=validator, loader=deps.loader,
+        reader=reader, pending=deps.pending, executor=executor,
+        audit=deps.audit, history=deps.history, model="claude-sonnet-4-6",
+        table_prefix="",
+    )
+
+
+@pytest.mark.asyncio
+async def test_commit_update_via_service(deps, tmp_path):
+    from sqlalchemy import text as sqla_text
+
+    snapshot = {"Chave": 1, "Codigo": "A", "Nome": "Old"}
+    eng, executor = _sqlite_setup(tmp_path)
+
+    final = _Resp([_ToolUse("t1", "propose_change",
+                  {"entity": "specialty", "operation": "update",
+                   "fields": {"name": "New"}, "target_pk": 1})], "tool_use")
+    after_resp = _Resp([_Text("Updated.")], "end_turn")
+    svc = _service_for_modify(FakeAnthropic([final, after_resp]), deps, executor, snapshot)
+    cid = deps.history.create_conversation(SESSION)
+    events = [e async for e in svc.stream_turn(cid, SESSION, OP, "rename specialty 1 to New")]
+    change_id = next(e["payload"]["change_id"] for e in events
+                     if e["type"] == "block" and e["payload"].get("kind") == "pending_change")
+
+    result = svc.commit_change(cid, SESSION, OP, change_id)
+    assert result["status"] == "ok"
+
+    with eng.begin() as c:
+        nome = c.execute(sqla_text("SELECT Nome FROM Especialidades WHERE Chave = 1")).scalar()
+    assert nome == "New"
+
+    rec = json.loads((tmp_path / "w.jsonl").read_text(encoding="utf-8").strip())
+    assert rec["operation"] == "update"
+    assert rec["before"] == snapshot
+
+
+@pytest.mark.asyncio
+async def test_commit_delete_via_service(deps, tmp_path):
+    from sqlalchemy import text as sqla_text
+
+    snapshot = {"Chave": 1, "Codigo": "A", "Nome": "Old"}
+    eng, executor = _sqlite_setup(tmp_path)
+
+    final = _Resp([_ToolUse("t1", "propose_change",
+                  {"entity": "specialty", "operation": "delete",
+                   "fields": {}, "target_pk": 1})], "tool_use")
+    after_resp = _Resp([_Text("Deleted.")], "end_turn")
+    svc = _service_for_modify(FakeAnthropic([final, after_resp]), deps, executor, snapshot)
+    cid = deps.history.create_conversation(SESSION)
+    events = [e async for e in svc.stream_turn(cid, SESSION, OP, "delete specialty 1")]
+    change_id = next(e["payload"]["change_id"] for e in events
+                     if e["type"] == "block" and e["payload"].get("kind") == "pending_change")
+
+    result = svc.commit_change(cid, SESSION, OP, change_id)
+    assert result["status"] == "ok"
+
+    with eng.begin() as c:
+        hist = c.execute(sqla_text("SELECT Hist FROM Especialidades WHERE Chave = 1")).scalar()
+    assert hist == 1  # soft-deleted
+
+    rec = json.loads((tmp_path / "w.jsonl").read_text(encoding="utf-8").strip())
+    assert rec["operation"] == "delete"
+    assert rec["after"] is None
+    assert rec["before"] == snapshot
+
+
 @pytest.mark.asyncio
 async def test_tool_loop_stops_after_max_rounds(deps):
     # Fake that always returns a lookup tool_use, never a final text turn
