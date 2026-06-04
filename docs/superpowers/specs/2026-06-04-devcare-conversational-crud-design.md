@@ -247,4 +247,9 @@ A new surface that reuses the SSE channel and block renderers, adding a
 - Exact field subsets and the precise soft-delete column (`Estado` vs `Hist`) for
   `Entidades` and `Especialidades` — verify against live schema.
 - Whether the operator-provided writable login already exists, or needs creating.
-- Conversation persistence: reuse `HistoryStore`, or a lighter pending-change store.
+
+## 14. Resolved (post-review)
+
+- **Conversation persistence:** reuse the existing chat `HistoryStore`. The
+  pending-change staging attaches to the conversation/turn rather than introducing
+  a separate store.
