@@ -23,3 +23,17 @@ def test_writes_one_record(tmp_path):
     assert rec["rule_doc"] == "specialty" and rec["rule_version"] == 1
     assert rec["status"] == "ok"
     assert "ts" in rec
+
+
+def test_delete_record_has_no_after(tmp_path):
+    log = AuditLog(tmp_path / "deletes.jsonl")
+    writer = AuditWriter(log)
+    change = NormalizedChange("specialty", "delete", "Especialidades", "Chave", {}, 5)
+    writer.record(operator="Joao", change=change, rule_doc="specialty",
+                  rule_version=1, primary_key=5, before={"Nome": "Old"}, status="ok")
+    line = (tmp_path / "deletes.jsonl").read_text(encoding="utf-8").strip()
+    rec = json.loads(line)
+    assert rec["operation"] == "delete"
+    assert rec["after"] is None
+    assert rec["before"] == {"Nome": "Old"}
+    assert rec["status"] == "ok"
