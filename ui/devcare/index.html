@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DevCare Operations</title>
+  <link rel="stylesheet" href="/devcare.css" />
+</head>
+<body>
+  <div id="operator-gate" class="gate">
+    <div class="gate-card">
+      <h2>DevCare Operations</h2>
+      <p>Enter your name to begin. Every change you confirm is recorded against it.</p>
+      <input id="operator-name" placeholder="Your name" />
+      <button id="operator-go">Continue</button>
+    </div>
+  </div>
+  <main id="app" hidden>
+    <header><strong>DevCare Operations</strong> — <span id="who"></span></header>
+    <div id="messages"></div>
+    <form id="composer">
+      <input id="input" autocomplete="off"
+             placeholder="Describe the operation, e.g. 'add specialty 99 Dermatology'" />
+      <button type="submit">Send</button>
+    </form>
+  </main>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

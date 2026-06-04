@@ -1,0 +1,22 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #0f172a; }
+.gate { position: fixed; inset: 0; display: grid; place-items: center; background: #f8fafc; }
+.gate-card { background: #fff; padding: 28px; border-radius: 10px; box-shadow: 0 6px 24px #0001; width: 340px; }
+.gate-card input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid #cbd5e1; border-radius: 6px; }
+.gate-card button, #composer button, .pc-actions button { background: #2563eb; color: #fff; border: 0; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+main { max-width: 760px; margin: 0 auto; padding: 16px; }
+header { padding: 8px 0 16px; border-bottom: 1px solid #e2e8f0; }
+#messages { padding: 16px 0; min-height: 50vh; }
+.msg { margin: 10px 0; padding: 10px 12px; border-radius: 8px; }
+.msg.user { background: #eff6ff; }
+.msg.ai { background: #f1f5f9; white-space: pre-wrap; }
+.msg.error { background: #fef2f2; color: #b91c1c; }
+#composer { display: flex; gap: 8px; position: sticky; bottom: 0; background: #fff; padding: 12px 0; }
+#composer input { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.pending-change { border: 1px solid #93c5fd; border-radius: 10px; padding: 12px; margin: 12px 0; background: #fff; }
+.pending-change h4 { margin: 0 0 8px; }
+.pending-change table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pending-change td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; }
+.pc-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.pc-actions .cancel { background: #e2e8f0; color: #0f172a; }
+.pending-change.done { opacity: .6; }
