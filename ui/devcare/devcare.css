@@ -1,6 +1,9 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, sans-serif; color: #0f172a; }
 .gate { position: fixed; inset: 0; display: grid; place-items: center; background: #f8fafc; }
+/* The `hidden` attribute must win over the .gate display rule, otherwise the
+   gate overlay stays covering the app after the operator continues. */
+.gate[hidden] { display: none; }
 .gate-card { background: #fff; padding: 28px; border-radius: 10px; box-shadow: 0 6px 24px #0001; width: 340px; }
 .gate-card input { width: 100%; padding: 8px; margin: 12px 0; border: 1px solid #cbd5e1; border-radius: 6px; }
 .gate-card button, #composer button, .pc-actions button { background: #2563eb; color: #fff; border: 0; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
