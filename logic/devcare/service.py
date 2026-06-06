@@ -8,8 +8,10 @@ from typing import Any, AsyncIterator, Callable
 from logic.chat.events import ErrorCode, EventType, Phase
 from logic.chat.history import HistoryStore
 from logic.devcare.audit_writer import AuditWriter
+from logic.devcare.form_builder import build_form
 from logic.devcare.pending import PendingChangeStore
-from logic.devcare.prompts import (LOOKUP_TOOL, PROPOSE_CHANGE_TOOL, build_system)
+from logic.devcare.prompts import (LOOKUP_TOOL, PRESENT_FORM_TOOL,
+                                    PROPOSE_CHANGE_TOOL, build_system)
 from logic.devcare.rules.loader import RuleLoader
 from logic.devcare.validator import ChangeValidator
 
@@ -23,6 +25,10 @@ def _event(t: EventType, payload: dict) -> dict:
 
 def _field_desc(field_name: str, fr) -> str:
     label = fr.label or field_name
+    opts = fr.validation.options
+    if opts:
+        mapping = ", ".join(f"{o.label}={o.value}" for o in opts)
+        return f"{field_name} ({label}: {mapping})"
     return f"{field_name} ({label})" if fr.label else field_name
 
 
@@ -112,34 +118,70 @@ class DevCareService:
             yield _event(EventType.ERROR, {"code": ErrorCode.INTERNAL.value,
                                            "message": str(e)[:500]})
 
+    def _validate_and_stage(self, conversation_id: str, entity: str, operation: str,
+                            fields: dict, target_pk):
+        """Validate + stage a change. Returns (pending_change_block, None) on
+        success or (None, violations_list) on failure. Raises KeyError for an
+        unknown entity."""
+        result = self._validator.validate(entity, operation, fields, target_pk)
+        if not result.ok:
+            return None, [{"field": v.field, "message": v.message}
+                          for v in result.violations]
+        change_id = self._pending.stage(conversation_id, result.change,
+                                        rule_doc=result.rule_doc,
+                                        rule_version=result.rule_version)
+        block = {"kind": "pending_change", "change_id": change_id,
+                 "entity": entity, "operation": operation,
+                 "table": result.change.table,
+                 "primary_key_column": result.change.primary_key,
+                 "target_pk": target_pk, "columns": result.change.columns}
+        return block, None
+
     def _handle_tool(self, conversation_id: str, tu) -> tuple[str, dict | None]:
         if tu.name == "lookup":
             rows = self._reader(tu.input.get("sql", ""), {})
             return json.dumps({"rows": rows}, default=str)[:8000], None
+        if tu.name == "present_form":
+            entity = tu.input.get("entity", "")
+            operation = tu.input.get("operation", "create")
+            try:
+                rule = self._loader.get(entity)
+            except KeyError:
+                return json.dumps({"error": f"unknown entity {entity!r}"}), None
+            form = build_form(rule, self._loader, operation, self._reader,
+                              self._prefix, target_pk=tu.input.get("target_pk"),
+                              prefill=tu.input.get("prefill") or {})
+            return json.dumps({"ok": True, "form_presented": entity}), form
         if tu.name == "propose_change":
             entity = tu.input.get("entity", "")
             operation = tu.input.get("operation", "")
             fields = tu.input.get("fields", {}) or {}
             target_pk = tu.input.get("target_pk")
             try:
-                result = self._validator.validate(entity, operation, fields, target_pk)
+                block, viols = self._validate_and_stage(
+                    conversation_id, entity, operation, fields, target_pk)
             except KeyError:
                 return json.dumps({"error": f"unknown entity {entity!r}"}), None
-            if not result.ok:
-                viols = [{"field": v.field, "message": v.message}
-                         for v in result.violations]
+            if viols is not None:
                 return json.dumps({"ok": False, "violations": viols}), None
-            change_id = self._pending.stage(conversation_id, result.change,
-                                            rule_doc=result.rule_doc,
-                                            rule_version=result.rule_version)
-            block = {"kind": "pending_change", "change_id": change_id,
-                     "entity": entity, "operation": operation,
-                     "table": result.change.table,
-                     "primary_key_column": result.change.primary_key,
-                     "target_pk": target_pk, "columns": result.change.columns}
-            return json.dumps({"ok": True, "change_id": change_id,
+            return json.dumps({"ok": True, "change_id": block["change_id"],
                                "preview": block}), block
         return json.dumps({"error": f"unknown tool {tu.name!r}"}), None
+
+    def stage_change(self, conversation_id: str, session_id: str, operator: str,
+                     entity: str, operation: str, fields: dict, target_pk=None) -> dict:
+        """Validate + stage a change submitted from a form. Returns the pending
+        change preview, or the validation violations, for the operator to confirm."""
+        if self._history.get_conversation(conversation_id, session_id) is None:
+            return {"ok": False, "error": "conversation not found"}
+        try:
+            block, viols = self._validate_and_stage(
+                conversation_id, entity, operation, fields or {}, target_pk)
+        except KeyError:
+            return {"ok": False, "error": f"unknown entity {entity!r}"}
+        if viols is not None:
+            return {"ok": False, "violations": viols}
+        return {"ok": True, "pending_change": block}
 
     def commit_change(self, conversation_id: str, session_id: str, operator: str,
                       change_id: str) -> dict:
@@ -180,7 +222,8 @@ class DevCareService:
 
     async def _call(self, system: str, transcript: list[dict]) -> Any:
         kwargs = dict(model=self._model, max_tokens=2048, system=system,
-                      tools=[LOOKUP_TOOL, PROPOSE_CHANGE_TOOL], messages=transcript)
+                      tools=[LOOKUP_TOOL, PRESENT_FORM_TOOL, PROPOSE_CHANGE_TOOL],
+                      messages=transcript)
         result = self._anthropic.messages.create(**kwargs)
         if asyncio.iscoroutine(result):
             return await result

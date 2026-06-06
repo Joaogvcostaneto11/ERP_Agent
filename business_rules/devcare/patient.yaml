@@ -17,8 +17,12 @@ fields:
     column: Sexo
     type: int
     required: false
-    label: "Gender (1=Male, 2=Female, 0=Unspecified)"
-    validation: { enum: [0, 1, 2] }
+    label: Gender
+    validation:
+      options:
+        - { value: 1, label: Male }
+        - { value: 2, label: Female }
+        - { value: 0, label: Unspecified }
   birth_date:
     column: DataNasc
     type: date

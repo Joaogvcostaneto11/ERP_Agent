@@ -6,6 +6,12 @@ FieldType = Literal["string", "int", "float", "date"]
 Operation = Literal["create", "update", "delete"]
 
 
+class EnumOption(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    value: int | str
+    label: str
+
+
 class FieldValidation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     max_length: int | None = None
@@ -13,6 +19,14 @@ class FieldValidation(BaseModel):
     min: float | None = None
     max: float | None = None
     enum: list[str | int] | None = None
+    # value+label choices for form dropdowns; supersedes `enum` for the
+    # allowed-value set when present.
+    options: list[EnumOption] | None = None
+
+    def allowed_values(self) -> list | None:
+        if self.options is not None:
+            return [o.value for o in self.options]
+        return self.enum
 
 
 class FieldRule(BaseModel):
@@ -35,6 +49,8 @@ class Reference(BaseModel):
     model_config = ConfigDict(extra="forbid")
     table: str
     column: str
+    # Human-readable column used to label the value in form dropdowns.
+    display_column: str | None = None
 
 
 class AuditColumns(BaseModel):

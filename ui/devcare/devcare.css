@@ -23,3 +23,15 @@ header { padding: 8px 0 16px; border-bottom: 1px solid #e2e8f0; }
 .pc-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 .pc-actions .cancel { background: #e2e8f0; color: #0f172a; }
 .pending-change.done { opacity: .6; }
+
+.devcare-form { border: 1px solid #93c5fd; border-radius: 10px; padding: 14px; margin: 12px 0; background: #fff; }
+.devcare-form h4 { margin: 0 0 12px; text-transform: capitalize; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.form-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.form-label { color: var(--muted, #64748b); font-weight: 600; }
+.form-field input, .form-field select { padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+.form-field input:focus, .form-field select:focus { outline: 2px solid var(--accent, #2563eb); outline-offset: -1px; }
+.form-error { color: #b91c1c; font-size: 12px; min-height: 0; }
+.form-error:not(:empty) { min-height: 14px; }
+.devcare-form.done { opacity: .6; pointer-events: none; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }

@@ -280,3 +280,49 @@ async def test_tool_loop_stops_after_max_rounds(deps):
     error_events = [e for e in events if e["type"] == "error"]
     assert len(error_events) >= 1
     assert call_count <= MAX_TOOL_ROUNDS + 1
+
+
+@pytest.mark.asyncio
+async def test_present_form_emits_form_block(deps):
+    final = _Resp([_ToolUse("t1", "present_form",
+                  {"entity": "patient", "operation": "create"})], "tool_use")
+    after = _Resp([_Text("Please fill in the form.")], "end_turn")
+    svc = _service(FakeAnthropic([final, after]), deps, executor=None)
+    cid = deps.history.create_conversation(SESSION)
+    events = [e async for e in svc.stream_turn(cid, SESSION, OP, "register a new patient")]
+    forms = [e["payload"] for e in events
+             if e["type"] == "block" and e["payload"].get("kind") == "form"]
+    assert len(forms) == 1
+    assert forms[0]["entity"] == "patient" and forms[0]["operation"] == "create"
+    by = {f["name"]: f for f in forms[0]["fields"]}
+    assert by["birth_date"]["input"] == "date"
+    assert by["gender"]["input"] == "select"
+    # no pending_change is staged just by presenting a form
+    assert not [e for e in events if e["type"] == "block"
+                and e["payload"].get("kind") == "pending_change"]
+
+
+def test_stage_change_valid_returns_pending(deps):
+    svc = _service(FakeAnthropic([]), deps, executor=None)
+    cid = deps.history.create_conversation(SESSION)
+    res = svc.stage_change(cid, SESSION, OP, "specialty", "create",
+                           {"code": "Z9", "name": "Test"})
+    assert res["ok"] is True
+    assert res["pending_change"]["entity"] == "specialty"
+    assert res["pending_change"]["columns"]["Nome"] == "Test"
+    assert res["pending_change"]["change_id"].startswith("chg_")
+
+
+def test_stage_change_invalid_returns_violations(deps):
+    svc = _service(FakeAnthropic([]), deps, executor=None)
+    cid = deps.history.create_conversation(SESSION)
+    res = svc.stage_change(cid, SESSION, OP, "specialty", "create", {"code": "Z9"})
+    assert res["ok"] is False
+    assert any(v["field"] == "name" for v in res["violations"])
+
+
+def test_stage_change_unknown_conversation(deps):
+    svc = _service(FakeAnthropic([]), deps, executor=None)
+    res = svc.stage_change("nope", SESSION, OP, "specialty", "create",
+                           {"code": "Z9", "name": "Test"})
+    assert res["ok"] is False

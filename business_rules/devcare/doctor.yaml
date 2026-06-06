@@ -17,7 +17,7 @@ fields:
     column: Especialidade
     type: int
     required: false
-    label: "Medical specialty (its Especialidades Chave; use lookup to find it by name)"
+    label: Medical specialty
   license:
     column: Cedula
     type: string
@@ -28,8 +28,12 @@ fields:
     column: Sexo
     type: int
     required: false
-    label: "Gender (1=Male, 2=Female, 0=Unspecified)"
-    validation: { enum: [0, 1, 2] }
+    label: Gender
+    validation:
+      options:
+        - { value: 1, label: Male }
+        - { value: 2, label: Female }
+        - { value: 0, label: Unspecified }
   email:
     column: Email
     type: string
@@ -79,4 +83,4 @@ fields:
     label: Code
     validation: { max_length: 50 }
 references:
-  specialty: { table: Especialidades, column: Chave }
+  specialty: { table: Especialidades, column: Chave, display_column: Nome }

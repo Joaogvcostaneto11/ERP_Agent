@@ -168,6 +168,27 @@ async def post_operations(request: Request) -> Response:
     return resp
 
 
+@app.post("/devcare/stage")
+async def stage(request: Request, response: Response) -> dict:
+    """Validate + stage a record submitted from a form, returning the pending
+    change preview (or field violations) for the operator to confirm."""
+    operator = _operator(request)
+    if not operator:
+        raise HTTPException(status_code=400, detail="operator not set")
+    sid = _session_id(request, response)
+    body = await request.json()
+    conversation_id = body.get("conversation_id")
+    if not conversation_id:
+        raise HTTPException(status_code=400, detail="conversation_id required")
+    try:
+        svc = get_service()
+    except RuntimeError as e:
+        return {"ok": False, "error": str(e)}
+    return svc.stage_change(conversation_id, sid, operator,
+                            body.get("entity", ""), body.get("operation", "create"),
+                            body.get("fields") or {}, body.get("target_pk"))
+
+
 @app.post("/devcare/commit/{change_id}")
 async def commit(change_id: str, request: Request, response: Response) -> dict:
     operator = _operator(request)

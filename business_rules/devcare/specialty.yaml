@@ -29,7 +29,10 @@ fields:
     column: Predefinido
     type: int
     required: false
-    label: "Is the default specialty (1=yes, 0=no)"
-    validation: { enum: [0, 1] }
+    label: Default specialty
+    validation:
+      options:
+        - { value: 0, label: "No" }
+        - { value: 1, label: "Yes" }
 uniqueness:
   - [code]

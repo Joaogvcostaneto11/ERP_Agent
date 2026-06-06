@@ -104,7 +104,8 @@ class ChangeValidator:
             viols.append(ValidationViolation(name, f"{fr.label or name} below minimum"))
         if val.max is not None and isinstance(value, (int, float)) and value > val.max:
             viols.append(ValidationViolation(name, f"{fr.label or name} above maximum"))
-        if val.enum is not None and value not in val.enum:
+        allowed = val.allowed_values()
+        if allowed is not None and value not in allowed:
             viols.append(ValidationViolation(name, f"{fr.label or name} not an allowed value"))
 
     def _check_uniqueness(self, rule, entity, fields, columns, target_pk, viols):

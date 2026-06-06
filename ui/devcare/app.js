@@ -29,6 +29,101 @@ function addMsg(cls, textContent) {
   return el;
 }
 
+function renderForm(form) {
+  const card = document.createElement("div");
+  card.className = "devcare-form";
+  const h = document.createElement("h4");
+  h.textContent = form.title;
+  card.appendChild(h);
+
+  const grid = document.createElement("div");
+  grid.className = "form-grid";
+  const inputs = {};
+  for (const f of form.fields) {
+    const row = document.createElement("label");
+    row.className = "form-field";
+    const cap = document.createElement("span");
+    cap.className = "form-label";
+    cap.textContent = f.label + (f.required ? " *" : "");
+    row.appendChild(cap);
+
+    let el;
+    if (f.input === "select") {
+      el = document.createElement("select");
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = f.required ? "— choose —" : "—";
+      el.appendChild(blank);
+      for (const o of f.options || []) {
+        const opt = document.createElement("option");
+        opt.value = String(o.value);
+        opt.textContent = o.label;
+        if (f.value != null && String(o.value) === String(f.value)) opt.selected = true;
+        el.appendChild(opt);
+      }
+    } else {
+      el = document.createElement("input");
+      el.type = f.input; // text | number | date
+      if (f.maxlength) el.maxLength = f.maxlength;
+      if (f.step != null) el.step = String(f.step);
+      if (f.value != null) el.value = f.value;
+    }
+    inputs[f.name] = el;
+    row.appendChild(el);
+    const err = document.createElement("span");
+    err.className = "form-error";
+    err.dataset.errFor = f.name;
+    row.appendChild(err);
+    grid.appendChild(row);
+  }
+  card.appendChild(grid);
+
+  const actions = document.createElement("div");
+  actions.className = "pc-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "cancel";
+  cancel.textContent = "Cancel";
+  const review = document.createElement("button");
+  review.className = "confirm";
+  review.textContent = "Review";
+  actions.appendChild(cancel);
+  actions.appendChild(review);
+  card.appendChild(actions);
+
+  cancel.onclick = () => card.classList.add("done");
+
+  review.onclick = async () => {
+    card.querySelectorAll(".form-error").forEach((e) => (e.textContent = ""));
+    const fields = {};
+    for (const [name, el] of Object.entries(inputs)) {
+      const v = typeof el.value === "string" ? el.value.trim() : el.value;
+      if (v !== "") fields[name] = v;
+    }
+    const r = await fetch("/devcare/stage", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conversation_id: conversationId, entity: form.entity,
+                             operation: form.operation, fields, target_pk: form.target_pk }),
+    });
+    let res = {};
+    try { res = await r.json(); } catch (_) { /* empty */ }
+    if (r.ok && res.ok && res.pending_change) {
+      card.classList.add("done");
+      renderPendingChange(res.pending_change);
+    } else if (res.violations) {
+      for (const v of res.violations) {
+        const slot = card.querySelector(`.form-error[data-err-for="${v.field}"]`);
+        if (slot) slot.textContent = v.message;
+        else addMsg("error", `${v.field}: ${v.message}`);
+      }
+    } else {
+      addMsg("error", res.error || res.message || "could not stage the record");
+    }
+  };
+
+  messages.appendChild(card);
+  card.scrollIntoView({ block: "end" });
+}
+
 function renderPendingChange(p) {
   const card = document.createElement("div");
   card.className = "pending-change";
@@ -127,6 +222,7 @@ document.getElementById("composer").onsubmit = async (e) => {
       if (!ev || !dataLine) continue;
       const data = JSON.parse(dataLine);
       if (ev === "block" && data.kind === "pending_change") renderPendingChange(data);
+      else if (ev === "block" && data.kind === "form") renderForm(data);
       else if (ev === "block" && data.kind === "text") addMsg("ai", data.markdown);
       else if (ev === "error") addMsg("error", data.message || "error");
     }
