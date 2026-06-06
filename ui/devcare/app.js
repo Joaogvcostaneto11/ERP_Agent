@@ -29,6 +29,45 @@ function addMsg(cls, textContent) {
   return el;
 }
 
+// Year/Month/Day dropdowns instead of a native date input, so the year is a
+// type-ahead dropdown (no slow scrolling through the calendar). Exposes a
+// `.value` getter returning "YYYY-MM-DD" (or "" while incomplete).
+function makeDateControl(value) {
+  const wrap = document.createElement("div");
+  wrap.className = "date-parts";
+  const mk = (placeholder, opts) => {
+    const s = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = ""; blank.textContent = placeholder;
+    s.appendChild(blank);
+    for (const o of opts) {
+      const opt = document.createElement("option");
+      opt.value = o.value; opt.textContent = o.label;
+      s.appendChild(opt);
+    }
+    return s;
+  };
+  const now = new Date().getFullYear();
+  const years = [];
+  for (let y = now; y >= 1900; y--) years.push({ value: String(y), label: String(y) });
+  const months = ["January", "February", "March", "April", "May", "June", "July",
+                  "August", "September", "October", "November", "December"]
+    .map((name, i) => ({ value: String(i + 1).padStart(2, "0"), label: name }));
+  const days = [];
+  for (let d = 1; d <= 31; d++) days.push({ value: String(d).padStart(2, "0"), label: String(d) });
+
+  const y = mk("Year", years), m = mk("Month", months), d = mk("Day", days);
+  if (value) {
+    const [yy, mm, dd] = String(value).split("-");
+    y.value = yy || ""; m.value = mm || ""; d.value = dd || "";
+  }
+  wrap.append(y, m, d);
+  Object.defineProperty(wrap, "value", {
+    get() { return (y.value && m.value && d.value) ? `${y.value}-${m.value}-${d.value}` : ""; },
+  });
+  return wrap;
+}
+
 function renderForm(form) {
   const card = document.createElement("div");
   card.className = "devcare-form";
@@ -61,9 +100,11 @@ function renderForm(form) {
         if (f.value != null && String(o.value) === String(f.value)) opt.selected = true;
         el.appendChild(opt);
       }
+    } else if (f.input === "date") {
+      el = makeDateControl(f.value);
     } else {
       el = document.createElement("input");
-      el.type = f.input; // text | number | date
+      el.type = f.input; // text | number
       if (f.maxlength) el.maxLength = f.maxlength;
       if (f.step != null) el.step = String(f.step);
       if (f.value != null) el.value = f.value;
@@ -202,29 +243,38 @@ document.getElementById("composer").onsubmit = async (e) => {
   if (!msg) return;
   addMsg("user", msg);
   input.value = "";
-  const resp = await fetch("/devcare/operations", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ conversation_id: conversationId, message: msg }),
-  });
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  // Fix 5: removed dead `aiEl` variable
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop();
-    for (const part of parts) {
-      const ev = part.match(/^event: (.+)$/m)?.[1];
-      const dataLine = part.match(/^data: (.+)$/m)?.[1];
-      if (!ev || !dataLine) continue;
-      const data = JSON.parse(dataLine);
-      if (ev === "block" && data.kind === "pending_change") renderPendingChange(data);
-      else if (ev === "block" && data.kind === "form") renderForm(data);
-      else if (ev === "block" && data.kind === "text") addMsg("ai", data.markdown);
-      else if (ev === "error") addMsg("error", data.message || "error");
+  // Show a "being processed" indicator until the first response arrives.
+  const pending = addMsg("ai processing", "Processing your request…");
+  const clearPending = () => { if (pending.parentNode) pending.remove(); };
+  try {
+    const resp = await fetch("/devcare/operations", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conversation_id: conversationId, message: msg }),
+    });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop();
+      for (const part of parts) {
+        const ev = part.match(/^event: (.+)$/m)?.[1];
+        const dataLine = part.match(/^data: (.+)$/m)?.[1];
+        if (!ev || !dataLine) continue;
+        const data = JSON.parse(dataLine);
+        if (ev === "block" || ev === "error") clearPending(); // first content arrived
+        if (ev === "block" && data.kind === "pending_change") renderPendingChange(data);
+        else if (ev === "block" && data.kind === "form") renderForm(data);
+        else if (ev === "block" && data.kind === "text") addMsg("ai", data.markdown);
+        else if (ev === "error") addMsg("error", data.message || "error");
+      }
     }
+  } catch (err) {
+    addMsg("error", "Could not reach the server. Please try again.");
+  } finally {
+    clearPending();
   }
 };

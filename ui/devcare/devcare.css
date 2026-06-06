@@ -35,3 +35,12 @@ header { padding: 8px 0 16px; border-bottom: 1px solid #e2e8f0; }
 .form-error:not(:empty) { min-height: 14px; }
 .devcare-form.done { opacity: .6; pointer-events: none; }
 @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* Year / Month / Day dropdowns for date fields */
+.date-parts { display: flex; gap: 6px; }
+.date-parts select { flex: 1; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+
+/* "Processing your request…" indicator */
+.msg.processing { color: var(--muted, #64748b); font-style: italic;
+  animation: dc-pulse 1.2s ease-in-out infinite; }
+@keyframes dc-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
