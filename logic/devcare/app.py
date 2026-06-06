@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 import json as _json
 import os
 import secrets
@@ -206,5 +207,31 @@ async def commit(change_id: str, request: Request, response: Response) -> dict:
     return svc.commit_change(conversation_id, sid, operator, change_id)
 
 
+def _asset_version() -> str:
+    """Short token over the UI assets; changes whenever app.js/devcare.css
+    change, so the version-stamped URLs below always defeat a stale cache."""
+    h = hashlib.md5()
+    for fname in ("app.js", "devcare.css"):
+        p = _UI_DIR / fname
+        if p.exists():
+            st = p.stat()
+            h.update(f"{fname}:{st.st_mtime_ns}:{st.st_size}".encode())
+    return h.hexdigest()[:8]
+
+
+def _index() -> Response:
+    """Serve index.html with version-stamped asset URLs so the browser always
+    fetches the current app.js/devcare.css after a deploy."""
+    html = (_UI_DIR / "index.html").read_text(encoding="utf-8")
+    v = _asset_version()
+    html = html.replace('href="/devcare.css"', f'href="/devcare.css?v={v}"')
+    html = html.replace('src="/app.js"', f'src="/app.js?v={v}"')
+    return Response(content=html, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
 if _UI_DIR.exists():
+    # Register the index routes BEFORE the catch-all mount so they win.
+    app.add_api_route("/", _index, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/index.html", _index, methods=["GET"], include_in_schema=False)
     app.mount("/", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")
