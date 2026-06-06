@@ -36,6 +36,24 @@ _OPERATOR_COOKIE = "devcare_operator"
 
 app = FastAPI(title="DevCare Operations")
 
+
+@app.middleware("http")
+async def _no_cache_ui(request: Request, call_next):
+    """Serve the UI assets with no-store so CSS/JS edits always reach the
+    browser (StaticFiles sends no cache headers, so browsers otherwise keep
+    stale copies across reloads)."""
+    response = await call_next(request)
+    if request.url.path in ("/", "/index.html", "/app.js", "/devcare.css"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def _favicon() -> Response:
+    # Browsers auto-request this; return empty so it doesn't 404 in the log.
+    return Response(status_code=204)
+
+
 _service: DevCareService | None = None
 _history: HistoryStore | None = None
 
