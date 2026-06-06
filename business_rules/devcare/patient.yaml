@@ -1,5 +1,5 @@
 entity: patient
-version: 1
+version: 2
 table: Entidades
 primary_key: Chave
 operations: [create, update, delete]
@@ -13,12 +13,17 @@ fields:
     required: true
     label: Full name
     validation: { max_length: 200 }
-  code:
-    column: Codigo
-    type: string
+  gender:
+    column: Sexo
+    type: int
     required: false
-    label: Code
-    validation: { max_length: 10 }
+    label: "Gender (1=Male, 2=Female, 0=Unspecified)"
+    validation: { enum: [0, 1, 2] }
+  birth_date:
+    column: DataNasc
+    type: date
+    required: false
+    label: Date of birth (YYYY-MM-DD)
   tax_id:
     column: NCont
     type: string
@@ -31,6 +36,12 @@ fields:
     required: false
     label: Phone
     validation: { max_length: 200 }
+  mobile:
+    column: Telefone2
+    type: string
+    required: false
+    label: Mobile
+    validation: { max_length: 20 }
   email:
     column: Email
     type: string
@@ -55,5 +66,23 @@ fields:
     required: false
     label: Postal code
     validation: { max_length: 200 }
+  country:
+    column: Pais
+    type: string
+    required: false
+    label: Country (e.g. PT)
+    validation: { max_length: 150 }
+  notes:
+    column: Obs
+    type: string
+    required: false
+    label: Notes
+    validation: { max_length: 3000 }
+  code:
+    column: Codigo
+    type: string
+    required: false
+    label: Code
+    validation: { max_length: 10 }
 uniqueness:
   - [tax_id]

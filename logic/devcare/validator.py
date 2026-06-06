@@ -1,6 +1,7 @@
 # logic/devcare/validator.py
 from __future__ import annotations
 import re
+from datetime import datetime
 from typing import Callable
 
 from logic.devcare.errors import NormalizedChange, ValidationResult, ValidationViolation
@@ -15,6 +16,11 @@ def _coerce(field_type: str, value):
         return int(value)
     if field_type == "float":
         return float(value)
+    if field_type == "date":
+        # Validate an ISO date; keep it as a YYYY-MM-DD string for binding
+        # (SQL Server converts it to the datetime column on insert).
+        datetime.strptime(str(value), "%Y-%m-%d")
+        return str(value)
     return str(value)
 
 

@@ -165,3 +165,36 @@ def test_reference_uses_coerced_value():
     passed_value = reader.ref_params[0]["v"]
     assert passed_value == 7
     assert isinstance(passed_value, int)
+
+
+def test_patient_birth_date_valid(loader):
+    v = ChangeValidator(loader, FakeReader())
+    result = v.validate("patient", "create",
+                        {"name": "Maria", "birth_date": "1990-05-14"}, None)
+    assert result.ok is True
+    assert result.change.columns["DataNasc"] == "1990-05-14"
+
+
+def test_patient_birth_date_invalid_rejected(loader):
+    v = ChangeValidator(loader, FakeReader())
+    for bad in ("14-05-1990", "1990/05/14", "not-a-date", "1990-13-01"):
+        result = v.validate("patient", "create",
+                            {"name": "Maria", "birth_date": bad}, None)
+        assert result.ok is False, bad
+        assert any(viol.field == "birth_date" for viol in result.violations), bad
+
+
+def test_patient_gender_enum(loader):
+    v = ChangeValidator(loader, FakeReader())
+    ok = v.validate("patient", "create", {"name": "Ana", "gender": 2}, None)
+    assert ok.ok is True
+    assert ok.change.columns["Sexo"] == 2
+    bad = v.validate("patient", "create", {"name": "Ana", "gender": 5}, None)
+    assert bad.ok is False
+    assert any(viol.field == "gender" for viol in bad.violations)
+
+
+def test_patient_version_is_two(loader):
+    v = ChangeValidator(loader, FakeReader())
+    result = v.validate("patient", "create", {"name": "Ana"}, None)
+    assert result.rule_version == 2

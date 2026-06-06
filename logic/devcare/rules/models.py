@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
-FieldType = Literal["string", "int", "float"]
+FieldType = Literal["string", "int", "float", "date"]
 Operation = Literal["create", "update", "delete"]
 
 

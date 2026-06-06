@@ -14,3 +14,10 @@ def test_system_lists_entities_and_operator():
     assert "Joao" in text
     assert "propose_change" in text
     assert "confirm" in text.lower()
+
+
+def test_system_recommends_optional_fields():
+    text = build_system(entities_doc="patient: ...", operator="Joao").lower()
+    # The assistant should proactively recommend (not require) optional fields.
+    assert "optional" in text
+    assert "recommend" in text

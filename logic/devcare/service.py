@@ -21,15 +21,21 @@ def _event(t: EventType, payload: dict) -> dict:
     return {"type": t.value, "payload": payload}
 
 
+def _field_desc(field_name: str, fr) -> str:
+    label = fr.label or field_name
+    return f"{field_name} ({label})" if fr.label else field_name
+
+
 def _entities_doc(loader: RuleLoader) -> str:
     lines = []
     for name in loader.entities():
         rule = loader.get(name)
-        flds = ", ".join(
-            f"{fn}{'*' if fr.required else ''}" for fn, fr in rule.fields.items()
-        )
-        lines.append(f"- {name} (ops: {', '.join(rule.operations)}): {flds}  "
-                     f"(* = required)")
+        required = [_field_desc(fn, fr) for fn, fr in rule.fields.items() if fr.required]
+        optional = [_field_desc(fn, fr) for fn, fr in rule.fields.items() if not fr.required]
+        lines.append(f"- {name} (table {rule.table}; operations: "
+                     f"{', '.join(rule.operations)})")
+        lines.append(f"    required: {', '.join(required) or '(none)'}")
+        lines.append(f"    recommended (optional): {', '.join(optional) or '(none)'}")
     return "\n".join(lines)
 
 
