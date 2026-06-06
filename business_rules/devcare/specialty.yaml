@@ -1,5 +1,5 @@
 entity: specialty
-version: 1
+version: 2
 table: Especialidades
 primary_key: Chave
 operations: [create, update, delete]
@@ -25,5 +25,11 @@ fields:
     required: false
     label: Notes
     validation: { max_length: 500 }
+  is_default:
+    column: Predefinido
+    type: int
+    required: false
+    label: "Is the default specialty (1=yes, 0=no)"
+    validation: { enum: [0, 1] }
 uniqueness:
   - [code]

@@ -1,0 +1,82 @@
+entity: doctor
+version: 1
+table: Prescritores
+primary_key: Chave
+operations: [create, update, delete]
+soft_delete: { column: Hist, active_value: 0, deleted_value: 1 }
+audit_columns: { created_at: DC, updated_at: DUA, created_by: OC, updated_by: OUA }
+create_defaults: { Listar: 1 }
+fields:
+  name:
+    column: Nome
+    type: string
+    required: true
+    label: Full name
+    validation: { max_length: 50 }
+  specialty:
+    column: Especialidade
+    type: int
+    required: false
+    label: "Medical specialty (its Especialidades Chave; use lookup to find it by name)"
+  license:
+    column: Cedula
+    type: string
+    required: false
+    label: Professional license number
+    validation: { max_length: 10 }
+  gender:
+    column: Sexo
+    type: int
+    required: false
+    label: "Gender (1=Male, 2=Female, 0=Unspecified)"
+    validation: { enum: [0, 1, 2] }
+  email:
+    column: Email
+    type: string
+    required: false
+    label: Email
+    validation: { max_length: 100 }
+  phone:
+    column: Telefone1
+    type: string
+    required: false
+    label: Phone
+    validation: { max_length: 30 }
+  mobile:
+    column: Telefone2
+    type: string
+    required: false
+    label: Mobile
+    validation: { max_length: 20 }
+  address:
+    column: Morada
+    type: string
+    required: false
+    label: Address
+    validation: { max_length: 100 }
+  city:
+    column: Localidade
+    type: string
+    required: false
+    label: City
+    validation: { max_length: 100 }
+  postal_code:
+    column: CPostal
+    type: string
+    required: false
+    label: Postal code
+    validation: { max_length: 100 }
+  notes:
+    column: Obs
+    type: string
+    required: false
+    label: Notes
+    validation: { max_length: 500 }
+  code:
+    column: Codigo
+    type: string
+    required: false
+    label: Code
+    validation: { max_length: 50 }
+references:
+  specialty: { table: Especialidades, column: Chave }

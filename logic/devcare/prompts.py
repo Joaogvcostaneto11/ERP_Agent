@@ -25,7 +25,8 @@ PROPOSE_CHANGE_TOOL: dict = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "entity": {"type": "string", "description": "patient or specialty"},
+            "entity": {"type": "string",
+                       "description": "the entity name, exactly as listed in the system prompt"},
             "operation": {"type": "string", "enum": ["create", "update", "delete"]},
             "fields": {"type": "object", "description": "field name -> value"},
             "target_pk": {"type": ["integer", "null"]},

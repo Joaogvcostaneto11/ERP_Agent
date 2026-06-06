@@ -44,7 +44,7 @@ This is the most critical component. Business rules are not hard-coded — they 
 | Domain | Document | Status |
 |---|---|---|
 | Payroll | [business_rules/payroll.yaml](business_rules/payroll.yaml) | Active |
-| DevCare CRUD | [business_rules/devcare/](business_rules/devcare/) (patient, specialty) | Active (writes) |
+| DevCare CRUD | [business_rules/devcare/](business_rules/devcare/) (patient, specialty, doctor) | Active (writes) |
 
 **Design principles:**
 - No business logic lives in the UI or the database layer — only here

@@ -40,7 +40,7 @@ def test_create_specialty_valid(loader):
     assert result.change.operation == "create"
     assert result.change.columns["Codigo"] == "Z9"
     assert result.change.columns["Nome"] == "Test"
-    assert result.rule_version == 1
+    assert result.rule_version == 2
 
 
 def test_regex_violation_on_tax_id(loader):
@@ -198,3 +198,32 @@ def test_patient_version_is_two(loader):
     v = ChangeValidator(loader, FakeReader())
     result = v.validate("patient", "create", {"name": "Ana"}, None)
     assert result.rule_version == 2
+
+
+def test_doctor_create_requires_name(loader):
+    v = ChangeValidator(loader, FakeReader())
+    result = v.validate("doctor", "create", {"license": "M12345"}, None)
+    assert result.ok is False
+    assert any(viol.field == "name" for viol in result.violations)
+
+
+def test_doctor_create_with_valid_specialty_reference(loader):
+    # FakeReader returns a row for the Especialidades reference lookup.
+    reader = FakeReader({"Especialidades": [{"n": 1}]})
+    v = ChangeValidator(loader, reader)
+    result = v.validate("doctor", "create",
+                        {"name": "Dr. Joao", "specialty": "23", "license": "M30637"}, None)
+    assert result.ok is True
+    assert result.change.table == "Prescritores"
+    assert result.change.columns["Especialidade"] == 23  # coerced to int
+    assert result.change.columns["Cedula"] == "M30637"
+
+
+def test_doctor_create_with_missing_specialty_reference(loader):
+    # No row returned -> referenced specialty does not exist.
+    reader = FakeReader({})
+    v = ChangeValidator(loader, reader)
+    result = v.validate("doctor", "create",
+                        {"name": "Dr. X", "specialty": "9999"}, None)
+    assert result.ok is False
+    assert any(viol.field == "specialty" for viol in result.violations)
