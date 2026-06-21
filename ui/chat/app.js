@@ -10,6 +10,228 @@ const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 
+// ── Feedback (Teach / Fix) ────────────────────────────────────────────────────
+// Keyed on assistant element → array of SQL strings (from query steps)
+const turnSqls = new WeakMap();
+
+let feedbackEnabled = false;
+
+const FEEDBACK_TOKEN_KEY = "feedback_token";
+
+function feedbackToken() {
+  return localStorage.getItem(FEEDBACK_TOKEN_KEY) || "";
+}
+
+async function initFeedback() {
+  try {
+    const r = await fetch("/feedback/enabled");
+    if (!r.ok) return;
+    const { enabled } = await r.json();
+    feedbackEnabled = enabled;
+    if (!feedbackEnabled) return;
+    renderDevControl();
+  } catch {
+    // feedback endpoint absent — silently skip
+  }
+}
+
+function renderDevControl() {
+  const header = document.querySelector(".sidebar-header");
+  if (!header || header.querySelector(".dev-unlock")) return;
+  const btn = document.createElement("button");
+  btn.className = "dev-unlock";
+  btn.type = "button";
+  btn.title = "Set dev feedback token";
+  btn.textContent = "🔓 Dev";
+  btn.addEventListener("click", () => {
+    const tok = window.prompt("Enter feedback token:", feedbackToken());
+    if (tok !== null) localStorage.setItem(FEEDBACK_TOKEN_KEY, tok.trim());
+  });
+  header.appendChild(btn);
+}
+
+// Called after a turn is fully rendered (both live and history replay).
+// asstEl: the assistant .msg div
+// userQuestion: the user's text for this turn
+// turnId: server-side turn id (may be undefined)
+function attachTeachButton(asstEl, userQuestion, turnId) {
+  if (!feedbackEnabled || !feedbackToken()) return;
+  if (asstEl.querySelector(".teach-btn")) return; // already attached
+  const btn = document.createElement("button");
+  btn.className = "teach-btn";
+  btn.type = "button";
+  btn.textContent = "Teach / Fix";
+  btn.addEventListener("click", () => openTeachPanel(asstEl, userQuestion, turnId));
+  asstEl.appendChild(btn);
+}
+
+function openTeachPanel(asstEl, userQuestion, turnId) {
+  // Collect SQL from this turn (stored in WeakMap by makeHandlers / loadConversation)
+  const sqls = turnSqls.get(asstEl) || [];
+  const sqlText = sqls.join("\n\n-- next query --\n\n");
+
+  const overlay = document.createElement("div");
+  overlay.className = "teach-overlay";
+
+  const panel = document.createElement("div");
+  panel.className = "teach-panel";
+
+  // Header
+  const h = document.createElement("div");
+  h.className = "teach-panel-header";
+  const title = document.createElement("strong");
+  title.textContent = "Teach / Fix";
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "teach-close";
+  closeBtn.type = "button";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => overlay.remove());
+  h.append(title, closeBtn);
+  panel.appendChild(h);
+
+  // Question (read-only display)
+  const qLabel = document.createElement("label");
+  qLabel.className = "teach-label";
+  qLabel.textContent = "Question";
+  const qEl = document.createElement("textarea");
+  qEl.className = "teach-field";
+  qEl.rows = 2;
+  qEl.value = userQuestion;
+  qEl.readOnly = true;
+  panel.append(qLabel, qEl);
+
+  // SQL (editable)
+  const sqlLabel = document.createElement("label");
+  sqlLabel.className = "teach-label";
+  sqlLabel.textContent = "SQL";
+  const sqlEl = document.createElement("textarea");
+  sqlEl.className = "teach-field teach-sql";
+  sqlEl.rows = 5;
+  sqlEl.value = sqlText;
+  panel.append(sqlLabel, sqlEl);
+
+  // Explanation
+  const expLabel = document.createElement("label");
+  expLabel.className = "teach-label";
+  expLabel.textContent = "Business logic explanation";
+  const expEl = document.createElement("textarea");
+  expEl.className = "teach-field";
+  expEl.rows = 4;
+  expEl.placeholder = "Explain what business rule should govern this query…";
+  panel.append(expLabel, expEl);
+
+  // Draft button
+  const draftBtn = document.createElement("button");
+  draftBtn.className = "teach-btn-action";
+  draftBtn.type = "button";
+  draftBtn.textContent = "Draft";
+
+  // Entry result (editable)
+  const entryLabel = document.createElement("label");
+  entryLabel.className = "teach-label";
+  entryLabel.textContent = "Drafted entry (editable)";
+  const entryEl = document.createElement("textarea");
+  entryEl.className = "teach-field teach-entry";
+  entryEl.rows = 8;
+  entryEl.placeholder = "Click Draft to generate…";
+
+  // Status line
+  const statusEl = document.createElement("div");
+  statusEl.className = "teach-status";
+
+  // Save button
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "teach-btn-action teach-save";
+  saveBtn.type = "button";
+  saveBtn.textContent = "Save";
+
+  const actions = document.createElement("div");
+  actions.className = "teach-actions";
+  actions.append(draftBtn, saveBtn);
+
+  panel.append(actions, entryLabel, entryEl, statusEl);
+
+  draftBtn.addEventListener("click", async () => {
+    draftBtn.disabled = true;
+    statusEl.textContent = "Drafting…";
+    statusEl.className = "teach-status";
+    try {
+      const r = await fetch("/feedback/draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Feedback-Token": feedbackToken(),
+        },
+        body: JSON.stringify({
+          question: qEl.value,
+          sql: sqlEl.value,
+          explanation: expEl.value,
+        }),
+      });
+      if (!r.ok) {
+        const msg = r.status === 403 ? "Invalid token (403)" : `Error ${r.status}`;
+        statusEl.textContent = msg;
+        statusEl.classList.add("teach-status-error");
+        return;
+      }
+      const { entry } = await r.json();
+      entryEl.value = entry;
+      statusEl.textContent = "Draft ready — review and click Save.";
+    } catch (e) {
+      statusEl.textContent = `Network error: ${e.message}`;
+      statusEl.classList.add("teach-status-error");
+    } finally {
+      draftBtn.disabled = false;
+    }
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    if (!entryEl.value.trim()) {
+      statusEl.textContent = "Draft an entry first.";
+      statusEl.className = "teach-status teach-status-error";
+      return;
+    }
+    saveBtn.disabled = true;
+    statusEl.textContent = "Saving…";
+    statusEl.className = "teach-status";
+    try {
+      const r = await fetch("/feedback/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Feedback-Token": feedbackToken(),
+        },
+        body: JSON.stringify({
+          entry: entryEl.value,
+          question: qEl.value,
+          explanation: expEl.value,
+          source_turn_id: turnId || "",
+          conversation_id: currentConversationId || "",
+        }),
+      });
+      if (!r.ok) {
+        const msg = r.status === 403 ? "Invalid token (403)" : `Error ${r.status}`;
+        statusEl.textContent = msg;
+        statusEl.classList.add("teach-status-error");
+        saveBtn.disabled = false;
+        return;
+      }
+      const { ke_id } = await r.json();
+      statusEl.textContent = `Saved ${ke_id}`;
+      statusEl.className = "teach-status teach-status-ok";
+      setTimeout(() => overlay.remove(), 1800);
+    } catch (e) {
+      statusEl.textContent = `Network error: ${e.message}`;
+      statusEl.classList.add("teach-status-error");
+      saveBtn.disabled = false;
+    }
+  });
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+// ── End Feedback ──────────────────────────────────────────────────────────────
+
 const RENDERERS = {
   text: renderText,
   value: renderValue,
@@ -205,7 +427,7 @@ function insertBlockBeforeSources(parent, blockData) {
   else parent.appendChild(node);
 }
 
-function makeHandlers(asstEl, convId) {
+function makeHandlers(asstEl, convId, userQuestion, turnId) {
   let lastStatus = null;
   const clearStatus = () => {
     if (lastStatus) { lastStatus.remove(); lastStatus = null; }
@@ -219,9 +441,20 @@ function makeHandlers(asstEl, convId) {
     status(data) { clearStatus(); lastStatus = addStatus(asstEl, data.phase, data.sql || ""); scrollIfActive(); },
     block(data) { clearStatus(); insertBlockBeforeSources(asstEl, data); scrollIfActive(); },
     citation(data) { appendCitation(asstEl, data); scrollIfActive(); },
-    step(data) { appendStep(asstEl, data); },
+    step(data) {
+      appendStep(asstEl, data);
+      if (data.type === "query" && data.sql) {
+        const sqls = turnSqls.get(asstEl) || [];
+        sqls.push(data.sql);
+        turnSqls.set(asstEl, sqls);
+      }
+    },
     error(data) { clearStatus(); addError(asstEl, data.message || "unknown"); scrollIfActive(); },
-    done() { clearStatus(); scrollIfActive(); },
+    done() {
+      clearStatus();
+      attachTeachButton(asstEl, userQuestion, turnId);
+      scrollIfActive();
+    },
   };
 }
 
@@ -244,7 +477,7 @@ async function send() {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  const handlers = makeHandlers(asstEl, convIdAtSend);
+  const handlers = makeHandlers(asstEl, convIdAtSend, text, "");
   try {
     for await (const ev of streamSse("/chat", {
       conversation_id: convIdAtSend,
@@ -299,7 +532,13 @@ async function loadConversation(id) {
       const a = appendMsg(v, "assistant");
       for (const block of turn.blocks) renderBlock(a, block);
       for (const c of turn.citations) appendCitation(a, c);
-      for (const step of (turn.steps || [])) appendStep(a, step);
+      const querySqls = [];
+      for (const step of (turn.steps || [])) {
+        appendStep(a, step);
+        if (step.type === "query" && step.sql) querySqls.push(step.sql);
+      }
+      if (querySqls.length) turnSqls.set(a, querySqls);
+      attachTeachButton(a, turn.user_message, turn.id || "");
     }
     v.loaded = true;
     if (isCurrentlyViewing(id)) {
@@ -328,6 +567,7 @@ initSidebar({
 });
 
 (async function bootstrap() {
+  await initFeedback();
   const lastId = localStorage.getItem(LAST_CONV_KEY);
   if (lastId) {
     const r = await fetch(`/conversations/${lastId}`);
