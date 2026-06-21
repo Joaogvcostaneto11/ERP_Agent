@@ -256,8 +256,8 @@ th { background: #f1f5f9; }
 .dev-unlock {
   font-size: 12px;
   padding: 3px 8px;
-  border: 1px solid #cfcfcf;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--bg);
   border-radius: 4px;
   cursor: pointer;
   color: var(--muted);

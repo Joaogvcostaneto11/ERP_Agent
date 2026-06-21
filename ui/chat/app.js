@@ -171,7 +171,7 @@ function openTeachPanel(asstEl, userQuestion, turnId) {
       if (!r.ok) {
         const msg = r.status === 403 ? "Invalid token (403)" : `Error ${r.status}`;
         statusEl.textContent = msg;
-        statusEl.classList.add("teach-status-error");
+        statusEl.className = "teach-status teach-status-error";
         return;
       }
       const { entry } = await r.json();
@@ -179,7 +179,7 @@ function openTeachPanel(asstEl, userQuestion, turnId) {
       statusEl.textContent = "Draft ready — review and click Save.";
     } catch (e) {
       statusEl.textContent = `Network error: ${e.message}`;
-      statusEl.classList.add("teach-status-error");
+      statusEl.className = "teach-status teach-status-error";
     } finally {
       draftBtn.disabled = false;
     }
@@ -212,7 +212,7 @@ function openTeachPanel(asstEl, userQuestion, turnId) {
       if (!r.ok) {
         const msg = r.status === 403 ? "Invalid token (403)" : `Error ${r.status}`;
         statusEl.textContent = msg;
-        statusEl.classList.add("teach-status-error");
+        statusEl.className = "teach-status teach-status-error";
         saveBtn.disabled = false;
         return;
       }
@@ -222,7 +222,7 @@ function openTeachPanel(asstEl, userQuestion, turnId) {
       setTimeout(() => overlay.remove(), 1800);
     } catch (e) {
       statusEl.textContent = `Network error: ${e.message}`;
-      statusEl.classList.add("teach-status-error");
+      statusEl.className = "teach-status teach-status-error";
       saveBtn.disabled = false;
     }
   });
