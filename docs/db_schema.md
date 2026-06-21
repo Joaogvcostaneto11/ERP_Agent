@@ -430,7 +430,88 @@ rows=1955
 - `NIF` / `NIFPais` — tax ID
 - `Tipo` — entity type (C=customer, F=supplier, O=other)
 
-### TipoDoc — Document Types
+### TiposDoc — Document Types
+Lookup of document types (invoice, quote, order, credit note, ...). Referenced by `Doc001.TipoDoc`.
+rows=35
+```
+  Chave                                    bigint(19,0)          PK
+  DC                                       smalldatetime
+  OC                                       bigint(19,0)
+  DUA                                      smalldatetime
+  OUA                                      bigint(19,0)
+  Nome                                     varchar(30)
+  Codigo                                   varchar(3)
+  Abreviatura                              varchar(10)
+  Hist                                     tinyint(3,0)
+  Numerador                                bigint(19,0)
+  Listar                                   tinyint(3,0)
+  Predefinido                              tinyint(3,0)
+  Status                                   tinyint(3,0)
+  Obs                                      varchar(500)
+  Op                                       tinyint(3,0)
+  TipoTab                                  tinyint(3,0)
+  Data                                     tinyint(3,0)
+  Dt                                       smalldatetime
+  AnulApg                                  tinyint(3,0)
+  TpDesc                                   tinyint(3,0)
+  TpCCO                                    bigint(19,0)
+  Entidade                                 tinyint(3,0)
+  Mensagem                                 varchar(500)
+  Credito                                  tinyint(3,0)
+  Anexos                                   smallint(5,0)
+  Armazem                                  tinyint(3,0)
+  vRef                                     tinyint(3,0)
+  Sinal                                    smallint(5,0)
+  Classif                                  tinyint(3,0)
+  doc_auto                                 bigint(19,0)
+  TpCredito                                tinyint(3,0)
+  CredForn                                 tinyint(3,0)
+  TipoCTb                                  bigint(19,0)
+  Serie                                    tinyint(3,0)
+  ControloDesc                             tinyint(3,0)
+  Margem                                   tinyint(3,0)
+  TpLinhaPsion                             bigint(19,0)
+  TotalNulo                                tinyint(3,0)
+  Etiqueta                                 tinyint(3,0)
+  chPai                                    bigint(19,0)
+  DocAuto                                  bigint(19,0)
+  TpchPai                                  tinyint(3,0)
+  Pontos                                   tinyint(3,0)
+  Doc_AutoPos                              tinyint(3,0)
+  Cartao                                   tinyint(3,0)
+  Reembolso                                tinyint(3,0)
+  Mercado                                  bigint(19,0)
+  DUT                                      tinyint(3,0)
+  DataAlt                                  tinyint(3,0)
+  Liquidacao                               tinyint(3,0)
+  RecAdiantamento                          bigint(19,0)
+  OrdPagamento                             bigint(19,0)
+  TpIntAn                                  bigint(19,0)
+  EmailSMTP                                varchar(200)          NULL
+  EmailBody                                text(2147483647)
+  EmailSubject                             varchar(200)
+  SaveTo                                   varchar(200)
+  certificacao                             tinyint(3,0)
+  SGQ1                                     varchar(50)
+  SGQ2                                     varchar(50)
+  SAFT                                     varchar(50)
+  IOLinha1                                 bigint(19,0)          NULL
+  IOLinha2                                 bigint(19,0)          NULL
+  TipoDocAT                                bigint(19,0)          NULL
+```
+
+**Key columns:**
+- `Chave` — surrogate PK, referenced by `Doc001.TipoDoc`
+- `Codigo` — short type code (varchar(3), e.g. FA, OR, NC)
+- `Nome` — document type name (e.g. Fatura, Orçamento)
+- `Abreviatura` — abbreviation used on printed documents
+- `Numerador` → Numeradores.Chave — numbering sequence
+- `Sinal` — sign of the document's effect (+/-) on stock / account
+- `TpCCO` → TiposDocCCO — current-account document type
+- `TipoCTb` → TiposDocCtb — accounting document type
+- `TipoDocAT` → TiposDocAT.Chave / `SAFT` — Portuguese fiscal (AT/SAF-T) document type mapping
+- `certificacao` — whether documents of this type are fiscally certified
+- `Predefinido` / `Listar` / `Status` / `Hist` — default, visibility, status, and history flags
 
 ## DevDB — Full Table Inventory
 
