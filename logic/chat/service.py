@@ -13,6 +13,7 @@ from logic.chat.audit import AuditLog
 from logic.chat.envelope import ClaudeEnvelope, RawReportBlock, ReportBlock
 from logic.chat.events import ErrorCode, EventType, Phase
 from logic.chat.history import HistoryStore
+from logic.chat.knowledge_store import KnowledgeStore
 from logic.chat.prompts import RUN_QUERY_TOOL
 from logic.chat.report_store import Report, ReportStore
 from logic.chat.schema_context import SchemaContext
@@ -35,6 +36,7 @@ class ChatService:
         schema_context: SchemaContext,
         report_store: ReportStore,
         history: HistoryStore,
+        knowledge_store: KnowledgeStore,
         model: str,
     ) -> None:
         self._anthropic = anthropic_client
@@ -43,6 +45,7 @@ class ChatService:
         self._schema = schema_context
         self._reports = report_store
         self._history = history
+        self._knowledge = knowledge_store
         self._model = model
         self._bg_tasks: set[asyncio.Task] = set()
 
@@ -230,10 +233,14 @@ class ChatService:
         })
 
     async def _call_claude(self, transcript: list[dict]) -> Any:
+        system_blocks = self._schema.system_blocks()
+        knowledge_block = self._knowledge.system_block()
+        if knowledge_block is not None:
+            system_blocks = system_blocks + [knowledge_block]
         kwargs = dict(
             model=self._model,
             max_tokens=4096,
-            system=self._schema.system_blocks(),
+            system=system_blocks,
             tools=[RUN_QUERY_TOOL],
             messages=_compress_past_turns_for_claude(transcript),
         )

@@ -14,6 +14,7 @@ from db.connection import get_session as _session_factory
 from logic.chat.audit import AuditLog
 from logic.chat.events import ErrorCode, EventType
 from logic.chat.history import HistoryStore
+from logic.chat.knowledge_store import KnowledgeStore
 from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService
@@ -25,6 +26,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 # dotenv wrapper, regardless of the working directory it's launched from.
 load_dotenv(_REPO_ROOT / ".env")
 _SCHEMA_PATH: Path = _REPO_ROOT / "docs" / "db_schema.md"
+_KNOWLEDGE_PATH: Path = _REPO_ROOT / "business_rules" / "query_knowledge.md"
 _LOG_PATH: Path = _REPO_ROOT / "logs" / "queries.jsonl"
 _HISTORY_PATH: Path = _REPO_ROOT / "logs" / "chat_history.sqlite"
 _UI_DIR: Path = _REPO_ROOT / "ui" / "chat"
@@ -60,6 +62,7 @@ def get_service() -> ChatService:
             schema_context=SchemaContext(_SCHEMA_PATH),
             report_store=ReportStore(),
             history=_get_history(),
+            knowledge_store=KnowledgeStore(_KNOWLEDGE_PATH),
             model="claude-sonnet-4-6",
         )
     return _service
