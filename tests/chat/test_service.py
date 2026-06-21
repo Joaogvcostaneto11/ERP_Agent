@@ -9,6 +9,7 @@ from typing import Any, Iterator
 import pytest
 
 from logic.chat.audit import AuditLog
+from logic.chat.knowledge_store import KnowledgeStore
 from logic.chat.report_store import ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import (
@@ -136,6 +137,7 @@ def _make_service(client, schema_ctx, audit, report_store, sql_executor, history
         report_store=report_store,
         history=history,
         model="claude-sonnet-4-6",
+        knowledge_store=KnowledgeStore("/nonexistent/path/knowledge.md"),
     )
 
 
@@ -511,6 +513,7 @@ async def test_usage_step_skips_cost_for_unknown_model(
         anthropic_client=client, sql_executor=sql_executor, audit=audit,
         schema_context=schema_ctx, report_store=report_store, history=history,
         model="some-unreleased-future-model",
+        knowledge_store=KnowledgeStore("/nonexistent/path/knowledge.md"),
     )
     events = [e async for e in svc.stream_turn(CONV, SESSION, "hi")]
     usages = [e["payload"] for e in events
