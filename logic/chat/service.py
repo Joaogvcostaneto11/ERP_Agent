@@ -255,6 +255,23 @@ class ChatService:
             return await result
         return result
 
+    def save_entry(
+        self, *, entry: str, question: str, explanation: str,
+        source_turn_id: str, conversation_id: str,
+    ) -> str:
+        ke_id = self._knowledge.append_entry(entry, source_turn_id)
+        self._audit.append({
+            "ts": self._audit.now_iso(),
+            "kind": "knowledge_entry",
+            "ke_id": ke_id,
+            "source_turn_id": source_turn_id,
+            "conversation_id": conversation_id,
+            "question": question,
+            "explanation": explanation,
+            "entry": entry,
+        })
+        return ke_id
+
     async def draft_entry(self, question: str, sql: str, explanation: str) -> str:
         prompt = DRAFT_ENTRY_INSTRUCTIONS.format(
             question=question, sql=sql, explanation=explanation

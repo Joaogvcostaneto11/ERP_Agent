@@ -204,5 +204,47 @@ async def post_chat(request: Request) -> StreamingResponse:
     return resp
 
 
+def _feedback_token() -> str | None:
+    return os.environ.get("CHAT_FEEDBACK_TOKEN") or None
+
+
+def _require_feedback(request: Request) -> None:
+    token = _feedback_token()
+    if not token:
+        raise HTTPException(status_code=404, detail="feedback disabled")
+    provided = request.headers.get("X-Feedback-Token", "")
+    if not secrets.compare_digest(provided, token):
+        raise HTTPException(status_code=403, detail="invalid feedback token")
+
+
+@app.get("/feedback/enabled")
+def feedback_enabled() -> dict:
+    return {"enabled": _feedback_token() is not None}
+
+
+@app.post("/feedback/draft")
+async def feedback_draft(request: Request) -> dict:
+    _require_feedback(request)
+    body = await request.json()
+    entry = await get_service().draft_entry(
+        body.get("question", ""), body.get("sql", ""), body.get("explanation", ""),
+    )
+    return {"entry": entry}
+
+
+@app.post("/feedback/save")
+async def feedback_save(request: Request) -> dict:
+    _require_feedback(request)
+    body = await request.json()
+    ke_id = get_service().save_entry(
+        entry=body.get("entry", ""),
+        question=body.get("question", ""),
+        explanation=body.get("explanation", ""),
+        source_turn_id=body.get("source_turn_id", ""),
+        conversation_id=body.get("conversation_id", ""),
+    )
+    return {"ke_id": ke_id}
+
+
 if _UI_DIR.exists():
     app.mount("/", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")
