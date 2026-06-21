@@ -261,7 +261,7 @@ class ChatService:
     ) -> str:
         ke_id = self._knowledge.append_entry(entry, source_turn_id)
         self._audit.append({
-            "ts": self._audit.now_iso(),
+            "ts": AuditLog.now_iso(),
             "kind": "knowledge_entry",
             "ke_id": ke_id,
             "source_turn_id": source_turn_id,
