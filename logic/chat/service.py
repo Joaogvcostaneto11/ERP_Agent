@@ -14,7 +14,7 @@ from logic.chat.envelope import ClaudeEnvelope, RawReportBlock, ReportBlock
 from logic.chat.events import ErrorCode, EventType, Phase
 from logic.chat.history import HistoryStore
 from logic.chat.knowledge_store import KnowledgeStore
-from logic.chat.prompts import RUN_QUERY_TOOL
+from logic.chat.prompts import DRAFT_ENTRY_INSTRUCTIONS, RUN_QUERY_TOOL
 from logic.chat.report_store import Report, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.sql_executor import QueryResult, SqlExecutor
@@ -254,6 +254,23 @@ class ChatService:
         if asyncio.iscoroutine(result):
             return await result
         return result
+
+    async def draft_entry(self, question: str, sql: str, explanation: str) -> str:
+        prompt = DRAFT_ENTRY_INSTRUCTIONS.format(
+            question=question, sql=sql, explanation=explanation
+        )
+        result = self._anthropic.messages.create(
+            model=self._model,
+            max_tokens=1024,
+            system=self._schema.system_blocks(),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if asyncio.iscoroutine(result):
+            result = await result
+        return "".join(
+            getattr(c, "text", "") for c in result.content
+            if getattr(c, "type", None) == "text"
+        ).strip()
 
     async def _emit_envelope(
         self, raw: str, emitted_blocks: list[dict], emitted_citations: list[dict]

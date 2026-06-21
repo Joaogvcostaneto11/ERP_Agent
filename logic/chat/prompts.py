@@ -36,6 +36,24 @@ Rules:
 - Reply with the JSON object only. No prose outside the JSON.
 """
 
+DRAFT_ENTRY_INSTRUCTIONS = """\
+A developer is correcting how a question was answered. Write ONE knowledge entry
+capturing the reusable business rule, so future questions are answered correctly.
+
+Output Markdown ONLY, in exactly this shape (no id, no provenance, no code fences):
+
+### <short title>
+- **Intent:** <kinds of questions this applies to>
+- **Business rule:** <the rule in plain terms — the developer's explanation>
+- **Schema mapping:** <tables/columns/filters that encode the rule>
+- **Example query:** `<a correct SELECT>`
+- **Scope:** <database name(s)>
+
+Question: {question}
+SQL that ran (wrong): {sql}
+Developer explanation: {explanation}
+"""
+
 RUN_QUERY_TOOL: dict = {
     "name": "run_query",
     "description": (
