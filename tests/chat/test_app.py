@@ -66,6 +66,14 @@ def test_static_index_served(client):
     assert "<!doctype html" in r.text.lower() or "<html" in r.text.lower()
 
 
+def test_index_version_stamps_assets(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == "no-store"
+    assert "/app.js?v=" in r.text
+    assert "chat.css?v=" in r.text
+
+
 def test_chat_sse_streams_envelope(client):
     cid = client.post("/conversations").json()["id"]
     with client.stream("POST", "/chat", json={"conversation_id": cid, "message": "hi"}) as r:
