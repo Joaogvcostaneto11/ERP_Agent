@@ -112,19 +112,36 @@ th { background: #f1f5f9; }
 .sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid #e2e2e2;
 }
 
-.sidebar-header button {
-  font-size: 14px;
-  padding: 4px 10px;
-  border: 1px solid #cfcfcf;
-  background: #fff;
-  border-radius: 4px;
-  cursor: pointer;
+.sidebar-header > strong {
+  margin-right: auto;       /* title left, action buttons grouped right */
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
 }
+
+.sidebar-header button {
+  font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--fg);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.sidebar-header button:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+#new-chat {
+  color: var(--accent);
+  border-color: #bcd0e8;
+  font-weight: 500;
+}
+#new-chat:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 .conversation-list {
   list-style: none;
@@ -252,18 +269,17 @@ th { background: #f1f5f9; }
   }
 }
 
-/* ── Feedback: Dev unlock button in sidebar header ─────────────────────────── */
+/* ── Feedback: Dev lock/unlock toggle in sidebar header ────────────────────── */
 .dev-unlock {
-  font-size: 12px;
-  padding: 3px 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--muted);
-  margin-left: auto;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 7px;
 }
-.dev-unlock:hover { background: #f1f5f9; }
+.dev-unlock.unlocked {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+.dev-unlock.unlocked:hover { background: #bbf7d0; border-color: #15803d; }
 
 /* ── Feedback: "Teach / Fix" button on each assistant turn ─────────────────── */
 .teach-btn {

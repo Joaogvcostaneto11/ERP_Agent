@@ -41,13 +41,37 @@ function renderDevControl() {
   const btn = document.createElement("button");
   btn.className = "dev-unlock";
   btn.type = "button";
-  btn.title = "Set dev feedback token";
-  btn.textContent = "🔓 Dev";
-  btn.addEventListener("click", () => {
-    const tok = window.prompt("Enter feedback token:", feedbackToken());
-    if (tok !== null) localStorage.setItem(FEEDBACK_TOKEN_KEY, tok.trim());
-  });
+  btn.addEventListener("click", onDevClick);
   header.appendChild(btn);
+  updateDevControl();
+}
+
+// Reflect lock state on the dev control: 🔒 when no token is stored,
+// 🔓 (highlighted) when feedback is unlocked for this browser.
+function updateDevControl() {
+  const btn = document.querySelector(".dev-unlock");
+  if (!btn) return;
+  const unlocked = !!feedbackToken();
+  btn.classList.toggle("unlocked", unlocked);
+  btn.textContent = unlocked ? "🔓" : "🔒";
+  btn.title = unlocked
+    ? "Dev feedback active — click to change or lock"
+    : "Dev feedback locked — click to enter token";
+  btn.setAttribute("aria-label", btn.title);
+}
+
+function onDevClick() {
+  const current = feedbackToken();
+  const tok = window.prompt(
+    current ? "Dev token (clear the field to lock):" : "Enter dev feedback token to unlock:",
+    current,
+  );
+  if (tok === null) return; // cancelled — no change
+  const trimmed = tok.trim();
+  if (trimmed) localStorage.setItem(FEEDBACK_TOKEN_KEY, trimmed);
+  else localStorage.removeItem(FEEDBACK_TOKEN_KEY);
+  updateDevControl();
+  syncTeachButtons();
 }
 
 // Called after a turn is fully rendered (both live and history replay).
@@ -55,14 +79,34 @@ function renderDevControl() {
 // userQuestion: the user's text for this turn
 // turnId: server-side turn id (may be undefined)
 function attachTeachButton(asstEl, userQuestion, turnId) {
-  if (!feedbackEnabled || !feedbackToken()) return;
-  if (asstEl.querySelector(".teach-btn")) return; // already attached
+  // Stash the turn's context so the button can be (re)created if the
+  // developer locks/unlocks mid-session.
+  asstEl.dataset.userQuestion = userQuestion || "";
+  asstEl.dataset.turnId = turnId || "";
+  ensureTeachButton(asstEl);
+}
+
+function ensureTeachButton(asstEl) {
+  const on = feedbackEnabled && !!feedbackToken();
+  const existing = asstEl.querySelector(".teach-btn");
+  if (!on) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
   const btn = document.createElement("button");
   btn.className = "teach-btn";
   btn.type = "button";
   btn.textContent = "Teach / Fix";
-  btn.addEventListener("click", () => openTeachPanel(asstEl, userQuestion, turnId));
+  btn.addEventListener("click", () =>
+    openTeachPanel(asstEl, asstEl.dataset.userQuestion, asstEl.dataset.turnId));
   asstEl.appendChild(btn);
+}
+
+// Add/remove the per-answer Teach buttons across the visible conversation
+// when the lock state changes.
+function syncTeachButtons() {
+  document.querySelectorAll("#messages .msg.assistant").forEach(ensureTeachButton);
 }
 
 function openTeachPanel(asstEl, userQuestion, turnId) {
