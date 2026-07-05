@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+env
+.env
+.env.local
+__pycache__
+*.pyc
+.pytest_cache
+.playwright-mcp
+.superpowers
+erp_agent.egg-info
+node_modules
+logs/*.sqlite
+logs/*.jsonl
+docs/superpowers
