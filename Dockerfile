@@ -7,24 +7,18 @@ FROM python:3.12-slim
 # Microsoft's signing key because its binding signature uses SHA-1, which sqv
 # treats as insecure after 2026-02-01. We fetch over HTTPS from Microsoft's
 # official host, so we bypass the apt-layer key check rather than fight it.
+# libgssapi-krb5-2 is installed explicitly: the driver .so links against
+# libgssapi_krb5.so.2 but msodbcsql18 does not pull it, so on the slim base the
+# driver fails to load ("file not found" from unixODBC) without it.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && echo "deb [trusted=yes] https://packages.microsoft.com/debian/12/prod bookworm main" \
        > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+       msodbcsql18 unixodbc-dev libgssapi-krb5-2 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# TEMP DIAGNOSTIC: surface the real driver file, its registered path, and any
-# missing shared-lib dependency (ldd). Remove once the driver loads cleanly.
-RUN echo "===ODBC DIAG START===" \
-    && ls -l /opt/microsoft/msodbcsql18/lib64/ 2>&1 || true; \
-    echo "---odbcinst.ini---"; cat /etc/odbcinst.ini 2>&1 || true; \
-    for f in /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so.*; do \
-      echo "---ldd $f---"; ldd "$f" 2>&1 || true; \
-    done; \
-    echo "===ODBC DIAG END==="
 
 WORKDIR /app
 
