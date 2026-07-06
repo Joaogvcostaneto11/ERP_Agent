@@ -16,6 +16,16 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# TEMP DIAGNOSTIC: surface the real driver file, its registered path, and any
+# missing shared-lib dependency (ldd). Remove once the driver loads cleanly.
+RUN echo "===ODBC DIAG START===" \
+    && ls -l /opt/microsoft/msodbcsql18/lib64/ 2>&1 || true; \
+    echo "---odbcinst.ini---"; cat /etc/odbcinst.ini 2>&1 || true; \
+    for f in /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so.*; do \
+      echo "---ldd $f---"; ldd "$f" 2>&1 || true; \
+    done; \
+    echo "===ODBC DIAG END==="
+
 WORKDIR /app
 
 # Install Python deps first so the layer caches across code changes.
