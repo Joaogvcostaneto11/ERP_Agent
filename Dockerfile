@@ -3,14 +3,16 @@
 FROM python:3.12-slim
 
 # Install Microsoft ODBC Driver 18 for SQL Server (pulls in unixODBC runtime).
+# The MS apt repo is added with [trusted=yes]: Debian 12's sqv verifier rejects
+# Microsoft's signing key because its binding signature uses SHA-1, which sqv
+# treats as insecure after 2026-02-01. We fetch over HTTPS from Microsoft's
+# official host, so we bypass the apt-layer key check rather than fight it.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gnupg ca-certificates \
-    && curl -sSL -O https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && echo "deb [trusted=yes] https://packages.microsoft.com/debian/12/prod bookworm main" \
+       > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 unixodbc-dev \
-    && apt-get purge -y --auto-remove curl gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

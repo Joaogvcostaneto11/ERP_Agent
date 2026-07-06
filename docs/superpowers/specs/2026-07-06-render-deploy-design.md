@@ -33,8 +33,10 @@ request (cold start) is acceptable.
 ### Components (all new files except the one edit)
 
 1. **`Dockerfile`** — `python:3.12-slim` base; install Microsoft ODBC Driver 18
-   via the official `packages-microsoft-prod.deb`; `pip install -r
-   requirements.lock`; `COPY . .`; run
+   from the MS apt repo added with `[trusted=yes]` (Debian 12's `sqv` verifier
+   rejects Microsoft's SHA-1-bound signing key after 2026-02-01, so the
+   apt-layer signature check is bypassed; fetch is still HTTPS from Microsoft's
+   host); `pip install -r requirements.lock`; `COPY . .`; run
    `uvicorn logic.chat.app:app --host 0.0.0.0 --port $PORT`.
    Render injects `$PORT`.
 

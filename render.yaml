@@ -6,7 +6,7 @@ services:
     name: erp-chat
     runtime: docker
     plan: free
-    region: virginia        # pick the Render region closest to your Azure SQL
+    region: frankfurt        # pick the Render region closest to your Azure SQL
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
     autoDeploy: true
