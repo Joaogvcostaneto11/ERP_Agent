@@ -2,14 +2,6 @@
 
 Authoritative business rules for translating user questions into SQL. Prefer them over inference. Note the KE id you applied in your citation.
 
-### KE-0001 — Untitled
-d
-- **Provenance:** added 2026-06-22 · source turn
-
-### KE-0002 — Untitled
-I need to see the developer's explanation to write the knowledge entry, but it appears to be empty in the message. Could you please provide the developer's explanation of what the correct rule/approach should be?
-- **Provenance:** added 2026-06-22 · source turn
-
 ### KE-0003 — Sales Analytics Using Document Type Groups (GrpDoc) with Sign Correction
 - **Intent:** Questions asking for sales totals, invoice amounts, or revenue figures filtered by a named document group (e.g. "Análise de Vendas"), where the sign of the document type must be applied correctly to produce meaningful financial values.
 - **Business rule:** Documents (Doc001) have types (TiposDoc), and document types belong to one or more named groups (GrpDoc) via the bridge table GrpDocTp. To aggregate sales correctly: (1) join GrpDoc → GrpDocTp → TiposDoc → Doc001; (2) the net amount is `(Iliquido - DescontoTotal)`, where `Iliquido` is the gross amount and `DescontoTotal` is the total discount; (3) each document type has a `Sinal` column (0 = negative/credit, 1 = positive/debit) — multiply the net amount by `(Sinal - 1)` to apply the correct sign (positive documents yield 0 × net = 0 when Sinal=1, but the pattern `(Sinal - 1)` as used here means Sinal=0 gives -1 and Sinal=1 gives 0; confirm the intended direction with the developer). The same sign factor applies to IVA. GrpDocTp links groups to document types with the group as FK (`CF`) and the document type as PK (`CP`).
