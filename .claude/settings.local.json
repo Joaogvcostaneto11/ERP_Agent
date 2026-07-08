@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd '/c/Users/joaog/OneDrive/Documentos/GitHub/ERP_Agent' && tail -20 ui/chat/chat.css)",
+      "Read(//c/c/Users/joaog/OneDrive/Documentos/GitHub/ERP_Agent/ui/chat/**)"
+    ]
+  }
+}

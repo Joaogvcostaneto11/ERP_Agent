@@ -1,0 +1,21 @@
+# Render Blueprint for the ERP Chat UI.
+# Create the service by pointing Render at this repo (New > Blueprint).
+# Secret values are entered in the dashboard, not stored here (sync: false).
+services:
+  - type: web
+    name: erp-chat
+    runtime: docker
+    plan: free
+    region: frankfurt        # pick the Render region closest to your Azure SQL
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: CHAT_FEEDBACK_TOKEN
+        sync: false

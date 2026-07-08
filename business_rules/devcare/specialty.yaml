@@ -1,0 +1,38 @@
+entity: specialty
+version: 2
+table: Especialidades
+primary_key: Chave
+operations: [create, update, delete]
+soft_delete: { column: Hist, active_value: 0, deleted_value: 1 }
+audit_columns: { created_at: DC, updated_at: DUA, created_by: OC, updated_by: OUA }
+create_defaults: { Listar: 1 }
+fields:
+  code:
+    column: Codigo
+    type: string
+    required: true
+    label: Code
+    validation: { max_length: 10 }
+  name:
+    column: Nome
+    type: string
+    required: true
+    label: Name
+    validation: { max_length: 50 }
+  notes:
+    column: Obs
+    type: string
+    required: false
+    label: Notes
+    validation: { max_length: 500 }
+  is_default:
+    column: Predefinido
+    type: int
+    required: false
+    label: Default specialty
+    validation:
+      options:
+        - { value: 0, label: "No" }
+        - { value: 1, label: "Yes" }
+uniqueness:
+  - [code]

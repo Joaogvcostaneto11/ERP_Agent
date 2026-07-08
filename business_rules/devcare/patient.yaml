@@ -1,0 +1,92 @@
+entity: patient
+version: 2
+table: Entidades
+primary_key: Chave
+operations: [create, update, delete]
+soft_delete: { column: Hist, active_value: 0, deleted_value: 1 }
+audit_columns: { created_at: DC, updated_at: DUA, created_by: OC, updated_by: OUA }
+create_defaults: { Tipo: 0, Listar: 1 }
+fields:
+  name:
+    column: Nome
+    type: string
+    required: true
+    label: Full name
+    validation: { max_length: 200 }
+  gender:
+    column: Sexo
+    type: int
+    required: false
+    label: Gender
+    validation:
+      options:
+        - { value: 1, label: Male }
+        - { value: 2, label: Female }
+        - { value: 0, label: Unspecified }
+  birth_date:
+    column: DataNasc
+    type: date
+    required: false
+    label: Date of birth (YYYY-MM-DD)
+  tax_id:
+    column: NCont
+    type: string
+    required: false
+    label: Tax ID (NIF)
+    validation: { regex: "^[0-9]{9}$", max_length: 20 }
+  phone:
+    column: Telefone1
+    type: string
+    required: false
+    label: Phone
+    validation: { max_length: 200 }
+  mobile:
+    column: Telefone2
+    type: string
+    required: false
+    label: Mobile
+    validation: { max_length: 20 }
+  email:
+    column: Email
+    type: string
+    required: false
+    label: Email
+    validation: { max_length: 250 }
+  address:
+    column: Morada
+    type: string
+    required: false
+    label: Address
+    validation: { max_length: 200 }
+  city:
+    column: Localidade
+    type: string
+    required: false
+    label: City
+    validation: { max_length: 200 }
+  postal_code:
+    column: CPostal
+    type: string
+    required: false
+    label: Postal code
+    validation: { max_length: 200 }
+  country:
+    column: Pais
+    type: string
+    required: false
+    label: Country (e.g. PT)
+    validation: { max_length: 150 }
+  notes:
+    column: Obs
+    type: string
+    required: false
+    label: Notes
+    validation: { max_length: 3000 }
+  code:
+    column: Codigo
+    type: string
+    required: false
+    label: Code
+    validation: { max_length: 10 }
+uniqueness:
+  - [tax_id]

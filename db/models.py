@@ -1,105 +1,79 @@
 from __future__ import annotations
-
-import uuid
-from datetime import date, datetime
+from datetime import date
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, ForeignKey, JSON, Numeric, String, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import Date, Integer, Numeric, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
     pass
 
 
-class EmployeeDB(Base):
+class EmployeeRow(Base):
     __tablename__ = "employees"
 
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    type: Mapped[str] = mapped_column(String, nullable=False)
-    pay_period: Mapped[str] = mapped_column(String, nullable=False)
-    annual_salary: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
-    hourly_rate: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
-    deduction_elections: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
-    payslips: Mapped[list[PayslipDB]] = relationship(back_populates="employee")
-
-
-class PayrollRunDB(Base):
-    __tablename__ = "payroll_runs"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    status: Mapped[str] = mapped_column(String, nullable=False)
-    period_start: Mapped[date] = mapped_column(Date, nullable=False)
-    period_end: Mapped[date] = mapped_column(Date, nullable=False)
-    initiated_by: Mapped[str] = mapped_column(String, nullable=False)
-    approved_by: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    rule_version: Mapped[str] = mapped_column(String, nullable=False, default="1.0.0")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
-    payslips: Mapped[list[PayslipDB]] = relationship(
-        back_populates="run", cascade="all, delete-orphan"
-    )
+    employee_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(200))
+    tax_id: Mapped[str] = mapped_column(String(20))
+    social_security_id: Mapped[str] = mapped_column(String(20))
+    birth_date: Mapped[date] = mapped_column(Date)
+    hire_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
+    fiscal_profile: Mapped[str] = mapped_column(Text)  # JSON: FiscalProfile
+    current_contract_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    bank_iban: Mapped[Optional[str]] = mapped_column(String(34), nullable=True)
 
 
-class PayslipDB(Base):
+class ContractRow(Base):
+    __tablename__ = "contracts"
+
+    contract_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    employee_id: Mapped[str] = mapped_column(String(50), index=True)
+    type: Mapped[str] = mapped_column(String(20))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    role_category: Mapped[str] = mapped_column(String(100))
+    weekly_hours: Mapped[Decimal] = mapped_column(Numeric(8, 2, asdecimal=True))
+    fte_percent: Mapped[Decimal] = mapped_column(Numeric(5, 4, asdecimal=True))
+    base_monthly_salary: Mapped[Decimal] = mapped_column(Numeric(15, 2, asdecimal=True))
+    cct_reference: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: CCTReference
+    company_id: Mapped[str] = mapped_column(String(50))
+    pay_frequency: Mapped[str] = mapped_column(String(20))
+
+
+class PayrollPeriodRow(Base):
+    __tablename__ = "payroll_periods"
+
+    period_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    company_id: Mapped[str] = mapped_column(String(50))
+    pay_frequency: Mapped[str] = mapped_column(String(20))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    pay_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20))
+
+
+class TimeInputRow(Base):
+    __tablename__ = "time_inputs"
+
+    period_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    employee_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    normal_hours: Mapped[Decimal] = mapped_column(Numeric(8, 2, asdecimal=True))
+    overtime_buckets: Mapped[str] = mapped_column(Text)   # JSON: OvertimeBuckets
+    absences: Mapped[str] = mapped_column(Text)            # JSON: list[AbsenceEntry]
+    meal_allowance_days: Mapped[int] = mapped_column(Integer)
+    notes: Mapped[str] = mapped_column(Text)
+
+
+class PayslipRow(Base):
     __tablename__ = "payslips"
 
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    run_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("payroll_runs.id"), nullable=False
-    )
-    employee_id: Mapped[str] = mapped_column(
-        String, ForeignKey("employees.id"), nullable=False
-    )
-    period_start: Mapped[date] = mapped_column(Date, nullable=False)
-    period_end: Mapped[date] = mapped_column(Date, nullable=False)
-    gross_pay: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    total_deductions: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    net_pay: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    rule_version: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-
-    run: Mapped[PayrollRunDB] = relationship(back_populates="payslips")
-    employee: Mapped[EmployeeDB] = relationship(back_populates="payslips")
-    lines: Mapped[list[PayslipLineDB]] = relationship(
-        back_populates="payslip", cascade="all, delete-orphan"
-    )
-
-
-class PayslipLineDB(Base):
-    __tablename__ = "payslip_lines"
-
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    payslip_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("payslips.id"), nullable=False
-    )
-    description: Mapped[str] = mapped_column(String, nullable=False)
-    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    type: Mapped[str] = mapped_column(String, nullable=False)
-
-    payslip: Mapped[PayslipDB] = relationship(back_populates="lines")
-
-
-class AuditLogDB(Base):
-    """Immutable audit trail — no update or delete methods are exposed."""
-
-    __tablename__ = "audit_log"
-
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
-    )
-    timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    user_id: Mapped[str] = mapped_column(String, nullable=False)
-    action: Mapped[str] = mapped_column(String, nullable=False)
-    entity_type: Mapped[str] = mapped_column(String, nullable=False)
-    entity_id: Mapped[str] = mapped_column(String, nullable=False)
-    rule_applied: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    rule_version: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    details: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    period_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    employee_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    gross_earnings: Mapped[str] = mapped_column(Text)         # JSON: list[PayslipLine]
+    deductions: Mapped[str] = mapped_column(Text)             # JSON: list[PayslipLine]
+    employer_contributions: Mapped[str] = mapped_column(Text) # JSON: list[PayslipLine]
+    net_pay: Mapped[Decimal] = mapped_column(Numeric(15, 2, asdecimal=True))
+    audit: Mapped[str] = mapped_column(Text)                  # JSON: list[AuditTrailEntry]

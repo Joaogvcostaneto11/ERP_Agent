@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ERP Chat</title>
+  <link rel="stylesheet" href="chat.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.5/dist/purify.min.js" integrity="sha384-nszIONF2FGC59kn+pPFaRa6WUNGwsZgXZiJxJwQbym+TzcH7smolUviLgpPbNx7V" crossorigin="anonymous"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <strong>ERP Chat</strong>
+        <button id="new-chat" type="button" title="Start a new conversation">+ New</button>
+      </div>
+      <ul id="conversation-list" class="conversation-list"></ul>
+    </aside>
+    <main id="chat-pane">
+      <div id="messages" class="messages"></div>
+      <div class="input-row">
+        <textarea id="input" rows="1" placeholder="Ask me anything…"></textarea>
+        <button id="send" type="button">Send</button>
+      </div>
+    </main>
+    <button id="sidebar-toggle" type="button" aria-label="Toggle sidebar">☰</button>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
