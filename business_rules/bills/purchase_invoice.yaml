@@ -1,0 +1,30 @@
+document: purchase_invoice
+version: 1
+header:
+  table: Doc001
+  primary_key: Chave
+  tipo_doc: { resolve_by: code, code: "31" }   # 31 = "V/ Factura" (Vossa Factura = supplier invoice); verified in DevDB, 2341 docs in Doc001
+  draft_defaults: { Estado: 0, ATCUD: "", CodigoAT: "", Certificacao: "" }
+  audit_columns: { created_at: DC, created_by: OC }
+  fields:
+    supplier:  { column: Entidade, source: supplier.match, required: true }
+    doc_date:  { column: Data, source: bill.issue_date, required: true }
+    due_date:  { column: Vencimento, source: bill.due_date }
+    supplier_ref: { column: VRef, source: bill.number }
+    net:   { column: Iliquido, source: bill.net_total }
+    vat:   { column: IVA, source: bill.vat_total }
+    total: { column: Total, source: bill.gross_total, required: true }
+    notes: { column: Obs, source: bill.notes }
+lines:
+  table: LinDoc001
+  parent_fk: Documento
+  fields:
+    article:    { column: ChaveProd, source: line.match }
+    description: { column: Descricao, source: line.description, required: true }
+    quantity:  { column: Quantidade, source: line.quantity }
+    unit_price: { column: Punit, source: line.unit_price }
+    vat_rate:  { column: Iva, source: line.vat_rate }
+    line_total: { column: Valor, source: line.total }
+matching:
+  supplier: { table: Entidades, tipo: supplier, match_on: [tax_id, name], create: true }
+  article:  { table: Artigos, match_on: [code, barcode, name], create: true }
