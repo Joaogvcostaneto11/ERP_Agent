@@ -1,0 +1,15 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; }
+header { display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid #ddd; }
+main { padding: 20px; max-width: 900px; margin: 0 auto; }
+#upload-zone { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 14px; }
+input.cell { width: 100%; border: none; }
+.badge { padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.matched { background: #e6f4ea; } .ambiguous { background: #fef7e0; } .new { background: #e8f0fe; }
+.warn { color: #b06000; }
+button { padding: 6px 12px; cursor: pointer; }
+#accept { background: #1a73e8; color: #fff; border: none; border-radius: 4px; padding: 10px 16px; }
+select.cell { width: 100%; }

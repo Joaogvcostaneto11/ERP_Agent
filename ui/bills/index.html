@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bill Ingestion</title>
+  <link rel="stylesheet" href="/bills.css" />
+</head>
+<body>
+  <header>
+    <h1>Bill Ingestion</h1>
+    <label>Operator <input id="operator" placeholder="your name" /></label>
+  </header>
+  <main>
+    <section id="upload-zone">
+      <input type="file" id="file" accept="application/pdf" />
+      <button id="upload-btn">Upload &amp; extract</button>
+      <span id="status"></span>
+    </section>
+    <form id="review" hidden></form>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
