@@ -120,7 +120,7 @@ version: 1
 header:
   table: Doc001
   primary_key: Chave
-  tipo_doc: { resolve_by: code, code: "VFA" }
+  tipo_doc: { resolve_by: code, code: "31" }   # 31 = "V/ Factura" (Vossa Factura = supplier invoice); verified in DevDB, 2341 docs in Doc001
   draft_defaults: { Estado: 0, ATCUD: "", CodigoAT: "", Certificacao: "" }
   audit_columns: { created_at: DC, created_by: OC }
   fields:
@@ -1010,7 +1010,7 @@ def session_factory(tmp_path):
     eng = create_engine(f"sqlite:///{tmp_path/'w.db'}")
     with eng.begin() as c:
         c.execute(text("CREATE TABLE TiposDoc (Chave INTEGER, Codigo TEXT)"))
-        c.execute(text("INSERT INTO TiposDoc (Chave, Codigo) VALUES (5, 'VFA')"))
+        c.execute(text("INSERT INTO TiposDoc (Chave, Codigo) VALUES (5, '31')"))
         c.execute(text("CREATE TABLE Entidades (Chave INTEGER, Nome TEXT, NCont TEXT, "
                        "Tipo INTEGER, Listar INTEGER, DC TEXT, OC INTEGER)"))
         c.execute(text("INSERT INTO Entidades (Chave, Nome) VALUES (7, 'Existing Supplier')"))
