@@ -45,6 +45,7 @@ This is the most critical component. Business rules are not hard-coded — they 
 |---|---|---|
 | Payroll | [business_rules/payroll.yaml](business_rules/payroll.yaml) | Active |
 | DevCare CRUD | [business_rules/devcare/](business_rules/devcare/) (patient, specialty, doctor) | Active (writes) |
+| Bill ingestion | [business_rules/bills/](business_rules/bills/) (purchase_invoice) | Active (draft writes) |
 
 **Design principles:**
 - No business logic lives in the UI or the database layer — only here
@@ -115,6 +116,8 @@ Run the chat UI server: `uvicorn logic.chat.app:app --reload`, then open http://
 The chat UI requires `ANTHROPIC_API_KEY` and a `DATABASE_URL` pointing at a read-only SQL Server login.
 Run the DevCare operations (write CRUD) server: `uvicorn logic.devcare.app:app --reload --port 8001`, then open http://localhost:8001/.
 DevCare CRUD requires `ANTHROPIC_API_KEY`, `DATABASE_URL` (read-only, for lookups), and `DEVCARE_WRITE_DATABASE_URL` (a writable login; ideally scoped to DevCare's curated tables). Writes only touch the registered entities in `business_rules/devcare/` and require explicit operator confirmation.
+Run the Bill ingestion server: `uvicorn logic.bills.app:app --reload --port 8002`, then open http://localhost:8002/.
+Bill ingestion requires `ANTHROPIC_API_KEY`, `DATABASE_URL` (read-only, for lookups), `BILLS_WRITE_DATABASE_URL` (a writable login scoped to the ForumSI mirror), and the Tesseract + Poppler binaries (`tesseract-ocr`, `poppler-utils`). Accepted bills are written as draft, uncertified `Doc001` documents.
 
 ## Development Notes
 
