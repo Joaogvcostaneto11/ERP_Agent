@@ -47,6 +47,7 @@ class MatchTargetRule(BaseModel):
     match_on: list[str]
     create: bool = False
     create_defaults: dict[str, int | str] = {}
+    create_columns: list[str] = []
 
 
 class MatchingRule(BaseModel):

@@ -158,3 +158,24 @@ def test_unconfirmed_new_article_rolls_back_header(session_factory):
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
         assert c.execute(text("SELECT COUNT(*) FROM LinDoc001")).scalar() == 0
+
+
+def test_rogue_proposed_new_key_is_rejected_and_nothing_written(session_factory):
+    factory, eng = session_factory
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO Artigos (Chave, Nome) VALUES (42, 'W')"))
+    plan = WritePlan(
+        proposal_id="pRogue",
+        supplier=MatchResult(status="new", confirmed=True,
+                             proposed_new={"Nome": "Evil", "Hist": 1}),  # Hist not in create_columns
+        header={"Data": "2026-06-01", "VRef": "A", "Iliquido": "1", "IVA": "0",
+                "Total": "1", "Obs": ""},
+        lines=[LinePlan(article=MatchResult(status="matched", chave=42),
+                        columns={"Descricao": "x", "Quantidade": "1", "Punit": "1",
+                                 "Iva": "23", "Valor": "1"})],
+        rule_doc="purchase_invoice", rule_version=1)
+    with pytest.raises(ValueError, match="Hist"):
+        _ex(factory).execute(plan, _rule())
+    with eng.begin() as c:
+        assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
+        assert c.execute(text("SELECT COUNT(*) FROM Entidades WHERE Nome='Evil'")).scalar() == 0

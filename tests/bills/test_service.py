@@ -133,3 +133,16 @@ def test_stage_rejects_ambiguous_supplier_without_choice():
     assert result["ok"] is False
     assert any(("candidate" in v["message"].lower()) or ("pick" in v["message"].lower())
                for v in result["violations"])
+
+
+def test_stage_rejects_line_match_length_mismatch():
+    svc = _service(_reader_supplier_and_article)
+    proposal = svc.upload(b"%PDF")
+    edited = proposal.model_dump(mode="json")
+    # extra bill line with no corresponding line_match
+    edited["bill"]["lines"].append({"description": "Ghost", "quantity": "1",
+                                    "unit_price": "1", "vat_rate": "23", "total": "1"})
+    result = svc.stage(proposal.proposal_id, edited)
+    assert result["ok"] is False
+    assert any("line" in v["field"].lower() or "line" in v["message"].lower()
+               for v in result["violations"])

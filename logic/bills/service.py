@@ -79,6 +79,10 @@ class BillService:
         self._pending.pop(proposal_id + ":plan")
         violations: list[dict] = []
 
+        if len(proposal.bill.lines) != len(proposal.line_matches):
+            violations.append({"field": "lines",
+                               "message": "line count does not match line_matches count"})
+
         # confirmation gate for new records
         if proposal.supplier_match.status == "new" and not proposal.supplier_match.confirmed:
             violations.append({"field": "supplier",

@@ -67,6 +67,16 @@ class BillWriteExecutor:
         for lp in plan.lines:
             self._check_columns(allowed_line, lp.columns)
 
+        # Whitelist new-record column keys too (proposed_new is caller-controlled
+        # at stage time) — same identifier-safety invariant as header/line columns.
+        allowed_supplier_new = set(rule.matching.supplier.create_columns)
+        allowed_article_new = set(rule.matching.article.create_columns)
+        if plan.supplier.status == "new" and plan.supplier.proposed_new:
+            self._check_columns(allowed_supplier_new, plan.supplier.proposed_new)
+        for lp in plan.lines:
+            if lp.article.status == "new" and lp.article.proposed_new:
+                self._check_columns(allowed_article_new, lp.article.proposed_new)
+
         with self._factory() as session:
             supplier_chave, created_supplier = self._resolve_entity(
                 session, plan.supplier, rule.matching.supplier.table,
