@@ -102,3 +102,34 @@ def test_stage_then_commit_writes_and_audits():
     assert svc._audit.records[0]["status"] == "ok"
     # proposal consumed
     assert svc.commit(proposal.proposal_id, operator="alice")["status"] == "error"
+
+
+def test_failing_restage_clears_prior_valid_plan():
+    executor = FakeExecutor()
+    svc = _service(_reader_supplier_and_article, executor=executor)
+    proposal = svc.upload(b"%PDF")
+    # first stage succeeds and stashes a plan
+    assert svc.stage(proposal.proposal_id, proposal.model_dump(mode="json"))["ok"] is True
+    # operator edits into an invalid state and re-stages
+    edited = proposal.model_dump(mode="json")
+    edited["bill"]["gross_total"] = None
+    assert svc.stage(proposal.proposal_id, edited)["ok"] is False
+    # commit must NOT execute the stale, previously-valid plan
+    out = svc.commit(proposal.proposal_id, operator="alice")
+    assert out["status"] == "error"
+    assert executor.calls == []
+
+
+def test_stage_rejects_ambiguous_supplier_without_choice():
+    svc = _service(_reader_supplier_and_article)
+    proposal = svc.upload(b"%PDF")
+    edited = proposal.model_dump(mode="json")
+    edited["supplier_match"] = {
+        "status": "ambiguous", "chave": None,
+        "candidates": [{"chave": 1, "label": "A", "score": 1.0},
+                       {"chave": 2, "label": "B", "score": 1.0}],
+        "proposed_new": None, "confirmed": False}
+    result = svc.stage(proposal.proposal_id, edited)
+    assert result["ok"] is False
+    assert any(("candidate" in v["message"].lower()) or ("pick" in v["message"].lower())
+               for v in result["violations"])

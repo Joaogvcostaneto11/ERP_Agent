@@ -48,7 +48,7 @@ class BillService:
     def _build_header(self, bill: Bill) -> tuple[dict, list[dict]]:
         cols, violations = {}, []
         for name, fr in self._rule.header.fields.items():
-            if fr.source in ("supplier.match",):
+            if fr.source.endswith(".match"):
                 continue  # resolved by executor
             val = self._bill_value(bill, fr.source)
             if fr.required and (val is None or val == ""):
@@ -74,6 +74,9 @@ class BillService:
     def stage(self, proposal_id: str, edited: dict) -> dict:
         proposal = BillProposal.model_validate(edited)
         self._pending.put(proposal_id, proposal)  # keep latest edits
+        # Any previously-staged plan is now stale — clear it so only a stage()
+        # call that ends ok:True can leave a committable plan for commit().
+        self._pending.pop(proposal_id + ":plan")
         violations: list[dict] = []
 
         # confirmation gate for new records
