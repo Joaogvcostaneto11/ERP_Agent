@@ -26,6 +26,6 @@ lines:
     vat_rate:  { column: Iva, source: line.vat_rate }
     line_total: { column: Valor, source: line.total }
 matching:
-  # Tipo: 2 = supplier — UNVERIFIED against Entidades.Tipo; confirm before go-live.
-  supplier: { table: Entidades, tipo: supplier, match_on: [tax_id, name], create: true, create_defaults: { Tipo: 2, Listar: 1 }, create_columns: [Nome, NCont] }
+  # Tipo: 1 = supplier — verified against DevDB (120 entities on purchase invoices, all Tipo 1).
+  supplier: { table: Entidades, tipo: supplier, match_on: [tax_id, name], create: true, create_defaults: { Tipo: 1, Listar: 1 }, create_columns: [Nome, NCont] }
   article:  { table: Artigos, match_on: [code, barcode, name], create: true, create_columns: [Nome] }
