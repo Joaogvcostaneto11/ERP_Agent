@@ -1,4 +1,9 @@
 const $ = (s) => document.querySelector(s);
+function esc(v) {
+  if (v == null) return "";
+  return String(v).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 let proposal = null;
 
 async function setOperator() {
@@ -23,7 +28,7 @@ async function upload() {
 function badge(status) { return `<span class="badge ${status}">${status}</span>`; }
 
 function candidateSelect(cands, attr) {
-  const opts = cands.map((c) => `<option value="${c.chave}">${c.label}</option>`).join("");
+  const opts = cands.map((c) => `<option value="${esc(c.chave)}">${esc(c.label)}</option>`).join("");
   return `<select class="cell" ${attr}><option value="">— pick —</option>${opts}</select>`;
 }
 
@@ -40,26 +45,26 @@ function render() {
   const rows = b.lines.map((ln, i) => {
     const m = proposal.line_matches[i];
     return `<tr>
-      <td><input class="cell" data-line="${i}" data-k="description" value="${ln.description ?? ""}"></td>
-      <td><input class="cell" data-line="${i}" data-k="quantity" value="${ln.quantity ?? ""}"></td>
-      <td><input class="cell" data-line="${i}" data-k="unit_price" value="${ln.unit_price ?? ""}"></td>
-      <td><input class="cell" data-line="${i}" data-k="vat_rate" value="${ln.vat_rate ?? ""}"></td>
-      <td><input class="cell" data-line="${i}" data-k="total" value="${ln.total ?? ""}"></td>
+      <td><input class="cell" data-line="${i}" data-k="description" value="${esc(ln.description)}"></td>
+      <td><input class="cell" data-line="${i}" data-k="quantity" value="${esc(ln.quantity)}"></td>
+      <td><input class="cell" data-line="${i}" data-k="unit_price" value="${esc(ln.unit_price)}"></td>
+      <td><input class="cell" data-line="${i}" data-k="vat_rate" value="${esc(ln.vat_rate)}"></td>
+      <td><input class="cell" data-line="${i}" data-k="total" value="${esc(ln.total)}"></td>
       <td>${matchCell(m, i)}</td>
     </tr>`;
   }).join("");
-  const warnings = (proposal.warnings || []).map((w) => `<li class="warn">${w}</li>`).join("");
+  const warnings = (proposal.warnings || []).map((w) => `<li class="warn">${esc(w)}</li>`).join("");
   $("#review").innerHTML = `
     <h2>Supplier ${badge(proposal.supplier_match.status)}</h2>
-    <p><input class="cell" data-h="supplier_name" value="${b.supplier_name ?? ""}"> ·
-       NIF <input class="cell" data-h="supplier_tax_id" value="${b.supplier_tax_id ?? ""}"></p>
+    <p><input class="cell" data-h="supplier_name" value="${esc(b.supplier_name)}"> ·
+       NIF <input class="cell" data-h="supplier_tax_id" value="${esc(b.supplier_tax_id)}"></p>
     ${proposal.supplier_match.status === "new" ?
       `<label><input type="checkbox" id="confirm-supplier"> create this supplier</label>` :
       proposal.supplier_match.status === "ambiguous" ?
       candidateSelect(proposal.supplier_match.candidates, `id="pick-supplier"`) : ""}
-    <p>Invoice # <input class="cell" data-h="number" value="${b.number ?? ""}"> ·
-       Date <input class="cell" data-h="issue_date" value="${b.issue_date ?? ""}"> ·
-       Total <input class="cell" data-h="gross_total" value="${b.gross_total ?? ""}"></p>
+    <p>Invoice # <input class="cell" data-h="number" value="${esc(b.number)}"> ·
+       Date <input class="cell" data-h="issue_date" value="${esc(b.issue_date)}"> ·
+       Total <input class="cell" data-h="gross_total" value="${esc(b.gross_total)}"></p>
     <table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>VAT</th><th>Total</th><th>Match</th></tr></thead>
       <tbody>${rows}</tbody></table>
     <ul>${warnings}</ul>
@@ -94,19 +99,22 @@ function collectEdits() {
 async function accept() {
   collectEdits();
   const id = proposal.proposal_id;
-  const staged = await (await fetch(`/bills/stage/${id}`, {
+  const stageRes = await fetch(`/bills/stage/${id}`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(proposal) })).json();
+    body: JSON.stringify(proposal) });
+  if (!stageRes.ok) { $("#result").textContent = "Stage failed (server error)"; return; }
+  const staged = await stageRes.json();
   if (!staged.ok) {
-    $("#result").innerHTML = staged.violations.map((v) =>
-      `<span class="warn">${v.field}: ${v.message}</span>`).join("<br>");
+    $("#result").innerHTML = (staged.violations || []).map((v) =>
+      `<span class="warn">${esc(v.field)}: ${esc(v.message)}</span>`).join("<br>");
     return;
   }
-  const out = await (await fetch(`/bills/commit/${id}`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json();
+  const commitRes = await fetch(`/bills/commit/${id}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  const out = await commitRes.json();
   $("#result").textContent = out.status === "ok"
-    ? `Draft document created: Chave ${out.document_chave}`
-    : `Error: ${out.message}`;
+    ? `Draft document created: Chave ${esc(out.document_chave)}`
+    : `Error: ${esc(out.message)}`;
 }
 
 $("#upload-btn").addEventListener("click", upload);
