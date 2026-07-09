@@ -21,5 +21,9 @@ def pdf_to_text(pdf_bytes: bytes, *, dpi: int = 300) -> list[PageText]:
         images = convert_from_bytes(pdf_bytes, dpi=dpi)
         return [PageText(page=i + 1, text=pytesseract.image_to_string(img))
                 for i, img in enumerate(images)]
-    except (OSError, RuntimeError) as e:
+    except Exception as e:
+        # pdf2image/pytesseract raise heterogeneous, non-OSError types when the
+        # Poppler/Tesseract binaries are missing (e.g. pdf2image's
+        # PDFInfoNotInstalledError subclasses plain Exception). Normalize every
+        # extraction failure to OcrUnavailable — the wrapper's contract.
         raise OcrUnavailable(str(e)) from e

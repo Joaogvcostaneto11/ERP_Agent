@@ -32,6 +32,6 @@ def test_pdf_to_text_returns_page_tagged_text(monkeypatch):
 
 def test_pdf_to_text_raises_ocr_unavailable_on_missing_binary(monkeypatch):
     from logic.bills.extract import ocr
-    _install_fakes(monkeypatch, [], raise_exc=OSError("poppler not found"))
+    _install_fakes(monkeypatch, [], raise_exc=Exception("Unable to get page count. Is poppler installed?"))
     with pytest.raises(ocr.OcrUnavailable):
         ocr.pdf_to_text(b"%PDF-fake")
