@@ -1387,7 +1387,7 @@ def _reader_supplier_and_article(sql, params):
 
 def _bill():
     return Bill(supplier_name="ACME", supplier_tax_id="500100200",
-                number="FT1", issue_date=None, net_total=Decimal("100"),
+                number="FT1", issue_date="2026-06-01", net_total=Decimal("100"),
                 vat_total=Decimal("23"), gross_total=Decimal("123"),
                 lines=[BillLine(description="Widget", quantity=Decimal("2"),
                                 unit_price=Decimal("50"), vat_rate=Decimal("23"),
