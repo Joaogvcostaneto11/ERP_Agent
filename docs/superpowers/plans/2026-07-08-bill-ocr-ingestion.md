@@ -688,8 +688,16 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
 def field_hint(rule: PurchaseInvoiceRule) -> str:
-    header = ", ".join(rule.header.fields)
-    lines = ", ".join(rule.lines.fields)
+    # Emit the Bill/line OUTPUT field names (from each field's source, e.g.
+    # bill.issue_date -> issue_date) so the hint matches the JSON keys Claude
+    # must return; skip the .match sources (resolved by the executor).
+    def _out_names(fields) -> str:
+        names = [fr.source.split(".", 1)[1]
+                 for fr in fields.values()
+                 if not fr.source.endswith(".match")]
+        return ", ".join(names)
+    header = _out_names(rule.header.fields)
+    lines = _out_names(rule.lines.fields)
     return f"Header fields: {header}. Line fields: {lines}."
 
 
