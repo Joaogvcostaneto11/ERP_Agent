@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -108,7 +107,54 @@ def test_unconfirmed_new_supplier_is_rejected_and_nothing_written(session_factor
     plan = _plan_matched_supplier()
     plan.supplier = MatchResult(status="new", confirmed=False,
                                 proposed_new={"Nome": "X"})
-    with pytest.raises(ValueError, match="not confirmed"):
+    with pytest.raises(ValueError, match="not resolvable"):
         _ex(factory).execute(plan, _rule())
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
+
+
+def test_unknown_header_column_is_rejected_and_nothing_written(session_factory):
+    factory, eng = session_factory
+    plan = _plan_matched_supplier()
+    plan.header["Bogus"] = "x"
+    with pytest.raises(ValueError, match="Bogus"):
+        _ex(factory).execute(plan, _rule())
+    with eng.begin() as c:
+        assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
+
+
+def test_two_new_articles_get_distinct_keys(session_factory):
+    factory, eng = session_factory
+    plan = WritePlan(
+        proposal_id="p3",
+        supplier=MatchResult(status="matched", chave=7),
+        header={"Data": "2026-06-01", "VRef": "A2", "Iliquido": "20", "IVA": "4",
+                "Total": "24", "Obs": ""},
+        lines=[
+            LinePlan(article=MatchResult(status="new", confirmed=True,
+                                         proposed_new={"Nome": "Item A"}),
+                     columns={"Descricao": "Item A", "Quantidade": "1",
+                              "Punit": "10", "Iva": "23", "Valor": "10"}),
+            LinePlan(article=MatchResult(status="new", confirmed=True,
+                                         proposed_new={"Nome": "Item B"}),
+                     columns={"Descricao": "Item B", "Quantidade": "1",
+                              "Punit": "10", "Iva": "23", "Valor": "10"}),
+        ],
+        rule_doc="purchase_invoice", rule_version=1)
+    result = _ex(factory).execute(plan, _rule())
+    assert len(set(result["created_articles"])) == 2
+    with eng.begin() as c:
+        chaves = [r[0] for r in c.execute(text("SELECT Chave FROM Artigos")).fetchall()]
+    assert len(set(chaves)) == len(chaves) == 2
+
+
+def test_unconfirmed_new_article_rolls_back_header(session_factory):
+    factory, eng = session_factory
+    plan = _plan_matched_supplier()
+    plan.lines[0].article = MatchResult(status="new", confirmed=False,
+                                        proposed_new={"Nome": "X"})
+    with pytest.raises(ValueError, match="not resolvable"):
+        _ex(factory).execute(plan, _rule())
+    with eng.begin() as c:
+        assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
+        assert c.execute(text("SELECT COUNT(*) FROM LinDoc001")).scalar() == 0

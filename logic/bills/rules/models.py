@@ -46,6 +46,7 @@ class MatchTargetRule(BaseModel):
     tipo: str | None = None
     match_on: list[str]
     create: bool = False
+    create_defaults: dict[str, int | str] = {}
 
 
 class MatchingRule(BaseModel):
