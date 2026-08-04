@@ -13,13 +13,16 @@ def _install_fakes(monkeypatch, pages_text, raise_exc=None):
             raise raise_exc
         return [f"IMG{i}" for i in range(len(pages_text))]
 
-    def image_to_string(img):
+    def image_to_string(img, lang=None):
+        langs_seen.append(lang)
         return pages_text[int(str(img)[3:])]
 
+    langs_seen: list[str | None] = []
     fake_p2i.convert_from_bytes = convert_from_bytes
     fake_tess.image_to_string = image_to_string
     monkeypatch.setitem(sys.modules, "pdf2image", fake_p2i)
     monkeypatch.setitem(sys.modules, "pytesseract", fake_tess)
+    return langs_seen
 
 
 def test_pdf_to_text_returns_page_tagged_text(monkeypatch):
@@ -28,6 +31,13 @@ def test_pdf_to_text_returns_page_tagged_text(monkeypatch):
     pages = ocr.pdf_to_text(b"%PDF-fake")
     assert [p.page for p in pages] == [1, 2]
     assert pages[0].text == "hello" and pages[1].text == "world"
+
+
+def test_pdf_to_text_ocrs_portuguese_by_default(monkeypatch):
+    from logic.bills.extract import ocr
+    langs_seen = _install_fakes(monkeypatch, ["ola", "mundo"])
+    ocr.pdf_to_text(b"%PDF-fake")
+    assert langs_seen == ["por+eng", "por+eng"]
 
 
 def test_pdf_to_text_raises_ocr_unavailable_on_missing_binary(monkeypatch):
