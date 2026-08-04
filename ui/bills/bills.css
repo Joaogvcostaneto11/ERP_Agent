@@ -1,10 +1,10 @@
 * { box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; }
-header { display: flex; justify-content: space-between; align-items: center;
+header { display: flex; justify-content: flex-start; align-items: center; gap: 24px;
   padding: 12px 20px; border-bottom: 1px solid #ddd; }
-main { padding: 20px; max-width: 900px; margin: 0 auto; }
+main { padding: 20px; }
 #upload-zone { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; }
-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+table { width: auto; max-width: 100%; border-collapse: collapse; margin: 12px 0; }
 th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 14px; }
 input.cell { width: 100%; border: none; }
 .badge { padding: 2px 6px; border-radius: 4px; font-size: 12px; }
@@ -14,17 +14,16 @@ button { padding: 6px 12px; cursor: pointer; }
 #accept { background: #1a73e8; color: #fff; border: none; border-radius: 4px; padding: 10px 16px; }
 select.cell { width: 100%; }
 
-/* Bill summary: labelled two-column table instead of running paragraphs. */
-table.summary { table-layout: fixed; }
+/* Bill summary: labelled two-column table instead of running paragraphs.
+   Auto layout so each column is only as wide as its text needs. */
 col.c-label { width: 120px; }
 table.summary th { font-weight: 600; color: #444;
   background: #fafafa; white-space: nowrap; }
 
-/* Line items: fixed columns so long descriptions wrap and stay readable
-   while the numeric columns stay compact. */
-table.lines { table-layout: fixed; }
+/* Line items: auto layout so the table sizes to its content and grows to
+   full page width when the Match column's controls need the room. Numeric
+   columns get a compact preferred width; description and Match stay dynamic. */
 table.lines td { vertical-align: top; }
 col.c-num { width: 78px; }
-col.c-match { width: 130px; }
 textarea.cell { width: 100%; border: none; background: transparent; resize: none;
   font: inherit; line-height: 1.35; padding: 0; overflow: hidden; }
