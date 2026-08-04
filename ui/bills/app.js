@@ -45,7 +45,7 @@ function render() {
   const rows = b.lines.map((ln, i) => {
     const m = proposal.line_matches[i];
     return `<tr>
-      <td><input class="cell" data-line="${i}" data-k="description" value="${esc(ln.description)}"></td>
+      <td><textarea class="cell desc" data-line="${i}" data-k="description" rows="1">${esc(ln.description)}</textarea></td>
       <td><input class="cell" data-line="${i}" data-k="quantity" value="${esc(ln.quantity)}"></td>
       <td><input class="cell" data-line="${i}" data-k="unit_price" value="${esc(ln.unit_price)}"></td>
       <td><input class="cell" data-line="${i}" data-k="vat_rate" value="${esc(ln.vat_rate)}"></td>
@@ -56,22 +56,37 @@ function render() {
   const warnings = (proposal.warnings || []).map((w) => `<li class="warn">${esc(w)}</li>`).join("");
   $("#review").innerHTML = `
     <h2>Supplier ${badge(proposal.supplier_match.status)}</h2>
-    <p><input class="cell" data-h="supplier_name" value="${esc(b.supplier_name)}"> ·
-       NIF <input class="cell" data-h="supplier_tax_id" value="${esc(b.supplier_tax_id)}"></p>
+    <table class="summary">
+      <colgroup><col class="c-label"><col></colgroup>
+      <tbody>
+      <tr><th scope="row">Provider</th><td><input class="cell" data-h="supplier_name" value="${esc(b.supplier_name)}"></td></tr>
+      <tr><th scope="row">NIF</th><td><input class="cell" data-h="supplier_tax_id" value="${esc(b.supplier_tax_id)}"></td></tr>
+      <tr><th scope="row">Invoice #</th><td><input class="cell" data-h="number" value="${esc(b.number)}"></td></tr>
+      <tr><th scope="row">Date</th><td><input class="cell" data-h="issue_date" value="${esc(b.issue_date)}"></td></tr>
+      <tr><th scope="row">Total</th><td><input class="cell" data-h="gross_total" value="${esc(b.gross_total)}"></td></tr>
+    </tbody></table>
     ${proposal.supplier_match.status === "new" ?
       `<label><input type="checkbox" id="confirm-supplier"> create this supplier</label>` :
       proposal.supplier_match.status === "ambiguous" ?
       candidateSelect(proposal.supplier_match.candidates, `id="pick-supplier"`) : ""}
-    <p>Invoice # <input class="cell" data-h="number" value="${esc(b.number)}"> ·
-       Date <input class="cell" data-h="issue_date" value="${esc(b.issue_date)}"> ·
-       Total <input class="cell" data-h="gross_total" value="${esc(b.gross_total)}"></p>
-    <table><thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>VAT</th><th>Total</th><th>Match</th></tr></thead>
+    <table class="lines">
+      <colgroup><col class="c-desc"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-match"></colgroup>
+      <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><th>VAT</th><th>Total</th><th>Match</th></tr></thead>
       <tbody>${rows}</tbody></table>
     <ul>${warnings}</ul>
     <button id="accept" type="button">Accept &amp; write draft</button>
     <p id="result"></p>`;
   $("#review").hidden = false;
+  $("#review").querySelectorAll("textarea.desc").forEach((el) => {
+    autosize(el);
+    el.addEventListener("input", () => autosize(el));
+  });
   $("#accept").addEventListener("click", accept);
+}
+
+function autosize(el) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 }
 
 function collectEdits() {

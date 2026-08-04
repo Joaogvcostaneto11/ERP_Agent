@@ -13,3 +13,18 @@ input.cell { width: 100%; border: none; }
 button { padding: 6px 12px; cursor: pointer; }
 #accept { background: #1a73e8; color: #fff; border: none; border-radius: 4px; padding: 10px 16px; }
 select.cell { width: 100%; }
+
+/* Bill summary: labelled two-column table instead of running paragraphs. */
+table.summary { table-layout: fixed; }
+col.c-label { width: 120px; }
+table.summary th { font-weight: 600; color: #444;
+  background: #fafafa; white-space: nowrap; }
+
+/* Line items: fixed columns so long descriptions wrap and stay readable
+   while the numeric columns stay compact. */
+table.lines { table-layout: fixed; }
+table.lines td { vertical-align: top; }
+col.c-num { width: 78px; }
+col.c-match { width: 130px; }
+textarea.cell { width: 100%; border: none; background: transparent; resize: none;
+  font: inherit; line-height: 1.35; padding: 0; overflow: hidden; }
