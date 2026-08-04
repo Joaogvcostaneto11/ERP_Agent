@@ -13,6 +13,7 @@ _SYSTEM = (
     "(YYYY-MM-DD), currency, net_total, vat_total, gross_total, and lines (a list "
     "of objects with description, quantity, unit_price, vat_rate, total). Use null "
     "for anything not present. Amounts as decimal strings without currency symbols. "
+    "vat_rate as a plain number without a percent sign (e.g. \"23\", not \"23%\"). "
     "Do not invent values."
 )
 

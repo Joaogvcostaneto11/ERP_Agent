@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PageText(BaseModel):
@@ -17,6 +17,14 @@ class BillLine(BaseModel):
     unit_price: Decimal | None = None
     vat_rate: Decimal | None = None
     total: Decimal | None = None
+
+    @field_validator("vat_rate", mode="before")
+    @classmethod
+    def _strip_percent(cls, v):
+        # OCR/LLM output carries the rate as "23%"; drop the sign and keep 23.
+        if isinstance(v, str):
+            return v.replace("%", "").strip()
+        return v
 
 
 class Bill(BaseModel):

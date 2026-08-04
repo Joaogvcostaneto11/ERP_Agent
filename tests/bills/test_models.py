@@ -31,3 +31,10 @@ def test_missing_totals_produce_no_arithmetic_warning():
     b = _bill(net_total=None, vat_total=None, gross_total=None,
               lines=[BillLine(description="X")])
     assert arithmetic_warnings(b) == []
+
+
+def test_vat_rate_strips_percent_sign():
+    # The model routinely emits "23%" despite the prompt; keep the numeric value.
+    assert BillLine(description="X", vat_rate="23%").vat_rate == Decimal("23")
+    assert BillLine(description="X", vat_rate=" 23 % ").vat_rate == Decimal("23")
+    assert BillLine(description="X", vat_rate=None).vat_rate is None
