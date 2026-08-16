@@ -10,8 +10,13 @@ RULES_DIR = Path(__file__).resolve().parents[2] / "business_rules" / "bills"
 
 
 class FakeParser:
-    def __init__(self, bill): self._bill = bill
+    def __init__(self, bill):
+        self._bill = bill
+        self.image_calls = []
     def parse(self, pages): return self._bill
+    def parse_image(self, media_type, b64):
+        self.image_calls.append((media_type, b64))
+        return self._bill
 
 
 class FakeExecutor:
@@ -146,3 +151,49 @@ def test_stage_rejects_line_match_length_mismatch():
     assert result["ok"] is False
     assert any("line" in v["field"].lower() or "line" in v["message"].lower()
                for v in result["violations"])
+
+
+import base64
+import io
+
+import pytest
+from PIL import Image
+
+from logic.bills.extract.media import UnsupportedMedia
+
+
+def _png_bytes(size=(60, 40)) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", size, "white").save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_upload_routes_pdf_to_ocr():
+    ocr_calls = []
+    svc = _service(_reader_no_matches)
+    svc._ocr = lambda data: ocr_calls.append(data) or []
+    svc.upload(b"%PDF-1.7 fake")
+    assert ocr_calls == [b"%PDF-1.7 fake"]
+    assert svc._parser.image_calls == []
+
+
+def test_upload_routes_image_to_vision_and_never_ocrs():
+    def _boom(data):
+        raise AssertionError("OCR must not run for an image upload")
+
+    svc = _service(_reader_no_matches)
+    svc._ocr = _boom
+    data = _png_bytes()
+    proposal = svc.upload(data)
+
+    assert proposal.proposal_id.startswith("bill_")
+    assert len(svc._parser.image_calls) == 1
+    media_type, b64 = svc._parser.image_calls[0]
+    assert media_type == "image/png"
+    assert base64.b64decode(b64) == data
+
+
+def test_upload_rejects_unsupported_bytes():
+    svc = _service(_reader_no_matches)
+    with pytest.raises(UnsupportedMedia):
+        svc.upload(b"\x00\x00\x00\x18ftypheic" + b"\x00" * 16)

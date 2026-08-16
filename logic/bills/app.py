@@ -81,9 +81,9 @@ def set_operator(response: Response, body: dict) -> dict:
 async def upload(request: Request, file: UploadFile = File(...)) -> Response:
     if not _operator(request):
         return JSONResponse({"detail": "operator not set"}, status_code=400)
-    pdf_bytes = await file.read()
+    data = await file.read()
     try:
-        proposal = get_service().upload(pdf_bytes)
+        proposal = get_service().upload(data)
     except RuntimeError as e:
         return JSONResponse({"detail": str(e)}, status_code=400)
     return JSONResponse(proposal.model_dump(mode="json"))

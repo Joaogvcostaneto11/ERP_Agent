@@ -2,6 +2,8 @@ from __future__ import annotations
 import uuid
 from typing import Any, Callable
 
+from logic.bills.extract.image import prepare
+from logic.bills.extract.media import sniff
 from logic.bills.extract.parser import BillParser
 from logic.bills.matching import Matcher
 from logic.bills.models import (Bill, BillLine, BillProposal, LinePlan,
@@ -25,9 +27,8 @@ class BillService:
         self._matcher = Matcher(reader, rule, table_prefix=table_prefix)
 
     # ---- upload -----------------------------------------------------------
-    def upload(self, pdf_bytes: bytes) -> BillProposal:
-        pages = self._ocr(pdf_bytes)
-        bill = self._parser.parse(pages)
+    def upload(self, data: bytes) -> BillProposal:
+        bill = self._extract(data)
         supplier_match = self._matcher.match_supplier(bill)
         line_matches = [self._matcher.match_line(ln) for ln in bill.lines]
         proposal = BillProposal(
@@ -36,6 +37,15 @@ class BillService:
             warnings=arithmetic_warnings(bill))
         self._pending.put(proposal.proposal_id, proposal)
         return proposal
+
+    def _extract(self, data: bytes) -> Bill:
+        """PDFs go through Tesseract; images go straight to Claude vision, which
+        reads skewed phone photos and preserves table layout that flat OCR text
+        would destroy."""
+        media_type = sniff(data)
+        if media_type == "application/pdf":
+            return self._parser.parse(self._ocr(data))
+        return self._parser.parse_image(*prepare(data, media_type))
 
     # ---- stage ------------------------------------------------------------
     def _bill_value(self, bill: Bill, source: str):
