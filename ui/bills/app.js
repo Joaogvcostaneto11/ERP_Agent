@@ -16,7 +16,7 @@ async function setOperator() {
 async function upload() {
   await setOperator();
   const file = $("#file").files[0];
-  if (!file) { $("#status").textContent = "pick a PDF first"; return; }
+  if (!file) { $("#status").textContent = "pick a file first"; return; }
   $("#status").textContent = "extracting…";
   const fd = new FormData(); fd.append("file", file);
   const res = await fetch("/bills/upload", { method: "POST", body: fd });

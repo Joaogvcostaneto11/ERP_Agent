@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 import logic.bills.app as appmod
 from logic.bills.models import Bill, BillLine, BillProposal, MatchResult
+from logic.bills.extract.media import UnsupportedMedia
 
 
 class StubService:
@@ -11,7 +12,7 @@ class StubService:
             proposal_id="bill_x", bill=Bill(supplier_name="ACME"),
             supplier_match=MatchResult(status="matched", chave=7),
             line_matches=[], warnings=[])
-    def upload(self, pdf_bytes):
+    def upload(self, data):
         return self._proposal
     def stage(self, proposal_id, edited):
         return {"ok": True, "write_plan": {"proposal_id": proposal_id}, "warnings": []}
@@ -43,3 +44,28 @@ def test_stage_then_commit(monkeypatch):
     client.post("/bills/operator", json={"name": "alice"})
     assert client.post("/bills/stage/bill_x", json={"proposal_id": "bill_x"}).json()["ok"] is True
     assert client.post("/bills/commit/bill_x", json={}).json()["document_chave"] == 99
+
+
+def test_upload_accepts_an_image(monkeypatch):
+    client = _client(monkeypatch)
+    client.post("/bills/operator", json={"name": "alice"})
+    r = client.post("/bills/upload",
+                    files={"file": ("bill.jpeg", b"\xff\xd8\xff\xe0", "image/jpeg")})
+    assert r.status_code == 200
+    assert r.json()["proposal_id"] == "bill_x"
+
+
+def test_upload_rejects_unsupported_type_with_400(monkeypatch):
+    class RejectingService(StubService):
+        def upload(self, data):
+            raise UnsupportedMedia("unsupported file type — upload a PDF, JPEG, "
+                                   "PNG, WebP or GIF file")
+
+    monkeypatch.setattr(appmod, "get_service", lambda: RejectingService())
+    client = TestClient(appmod.app)
+    client.post("/bills/operator", json={"name": "alice"})
+    r = client.post("/bills/upload",
+                    files={"file": ("bill.heic", b"\x00\x00\x00\x18ftypheic",
+                                    "image/heic")})
+    assert r.status_code == 400
+    assert "unsupported file type" in r.json()["detail"]
