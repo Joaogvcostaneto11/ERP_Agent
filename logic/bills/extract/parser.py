@@ -6,16 +6,24 @@ from typing import Any
 from logic.bills.models import Bill, PageText
 from logic.bills.rules.models import PurchaseInvoiceRule
 
-_SYSTEM = (
-    "You extract structured data from a supplier invoice. You are given the raw "
-    "OCR text of the invoice pages. Return ONLY a JSON object with these keys: "
+_SYSTEM_HEAD = "You extract structured data from a supplier invoice. "
+_TEXT_SOURCE = "You are given the raw OCR text of the invoice pages. "
+_IMAGE_SOURCE = "You are given a photograph or scan of the invoice. "
+_SYSTEM_TAIL = (
+    "Return ONLY a JSON object with these keys: "
     "supplier_name, supplier_tax_id, number, issue_date (YYYY-MM-DD), due_date "
     "(YYYY-MM-DD), currency, net_total, vat_total, gross_total, and lines (a list "
     "of objects with description, quantity, unit_price, vat_rate, total). Use null "
     "for anything not present. Amounts as decimal strings without currency symbols. "
     "vat_rate as a plain number without a percent sign (e.g. \"23\", not \"23%\"). "
-    "Do not invent values."
+    "Do not invent values. If a digit or field is not clearly legible, return null "
+    "for it rather than guessing a plausible value."
 )
+
+
+def _system(source: str) -> str:
+    return _SYSTEM_HEAD + source + _SYSTEM_TAIL
+
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -45,14 +53,25 @@ class BillParser:
         self._model = model
         self._rule = rule
 
-    def parse(self, pages: list[PageText]) -> Bill:
-        joined = "\n\n".join(f"--- page {p.page} ---\n{p.text}" for p in pages)
-        user = f"{field_hint(self._rule)}\n\nOCR TEXT:\n{joined}"
+    def _complete(self, content: Any, system: str) -> Bill:
         resp = self._client.messages.create(
             model=self._model, max_tokens=2048, temperature=0,
-            system=_SYSTEM,
-            messages=[{"role": "user", "content": user}],
+            system=system,
+            messages=[{"role": "user", "content": content}],
         )
         text = "".join(getattr(c, "text", "") for c in resp.content
                        if getattr(c, "type", None) == "text")
         return Bill.model_validate(_extract_json(text))
+
+    def parse(self, pages: list[PageText]) -> Bill:
+        joined = "\n\n".join(f"--- page {p.page} ---\n{p.text}" for p in pages)
+        user = f"{field_hint(self._rule)}\n\nOCR TEXT:\n{joined}"
+        return self._complete(user, _system(_TEXT_SOURCE))
+
+    def parse_image(self, media_type: str, b64: str) -> Bill:
+        content = [
+            {"type": "image",
+             "source": {"type": "base64", "media_type": media_type, "data": b64}},
+            {"type": "text", "text": field_hint(self._rule)},
+        ]
+        return self._complete(content, _system(_IMAGE_SOURCE))
