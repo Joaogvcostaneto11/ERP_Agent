@@ -4,6 +4,7 @@ import io
 import pytest
 from PIL import Image
 
+from logic.bills.extract import image as image_module
 from logic.bills.extract.image import MAX_EDGE, prepare
 from logic.bills.extract.media import UnsupportedMedia
 
@@ -65,3 +66,14 @@ def test_prepare_reencodes_resized_png_as_jpeg():
 def test_prepare_rejects_undecodable_bytes():
     with pytest.raises(UnsupportedMedia):
         prepare(b"\xff\xd8\xff not really a jpeg", "image/jpeg")
+
+
+def test_prepare_rejects_when_base64_string_length_exceeds_cap(monkeypatch):
+    # Pin the intended semantics: MAX_B64_BYTES bounds len(b64), the base64
+    # *string* length that actually goes over the wire to the API, not the
+    # raw byte count of the image. Monkeypatching the constant down lets a
+    # small, untouched image (well under any real limit) trip the cap
+    # deterministically, without allocating a genuinely 5MB+ image.
+    monkeypatch.setattr(image_module, "MAX_B64_BYTES", 10)
+    with pytest.raises(UnsupportedMedia):
+        prepare(_jpeg((100, 80)), "image/jpeg")
