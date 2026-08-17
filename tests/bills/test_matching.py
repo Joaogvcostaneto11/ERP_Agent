@@ -43,6 +43,39 @@ def test_supplier_matched_by_tax_id():
     assert res.status == "matched" and res.chave == 7
 
 
+def test_tax_id_match_carries_the_supplier_name():
+    # 502267583 and 502667583 are both well-formed NIFs, so one misread digit
+    # can match a DIFFERENT real supplier. The operator only sees a "matched"
+    # badge, so the badge has to name the record it picked.
+    reader = FakeReader(entidades=[
+        {"Chave": 7, "Nome": "ACME LDA", "NCont": "502267583"},
+        {"Chave": 8, "Nome": "SOMEONE ELSE LDA", "NCont": "502667583"}])
+    m = Matcher(reader, _rule())
+    res = m.match_supplier(_bill(supplier_name="ACME", supplier_tax_id="502667583"))
+    assert res.status == "matched" and res.chave == 8
+    assert res.label == "SOMEONE ELSE LDA"
+
+
+def test_name_match_carries_the_supplier_name():
+    reader = FakeReader(entidades=[{"Chave": 7, "Nome": "ACME LDA", "NCont": "x"}])
+    m = Matcher(reader, _rule())
+    assert m.match_supplier(_bill(supplier_name="ACME")).label == "ACME LDA"
+
+
+def test_article_match_carries_the_article_name():
+    reader = FakeReader(artigos=[{"Chave": 42, "Nome": "Widget 10mm"}])
+    m = Matcher(reader, _rule())
+    assert m.match_line(BillLine(description="Widget")).label == "Widget 10mm"
+
+
+def test_new_and_ambiguous_results_carry_no_label():
+    m = Matcher(FakeReader(entidades=[{"Chave": 1, "Nome": "ACME LDA", "NCont": "x"},
+                                      {"Chave": 2, "Nome": "ACME PORTO", "NCont": "y"}]),
+                _rule())
+    assert m.match_supplier(_bill(supplier_name="ACME")).label is None
+    assert m.match_supplier(_bill(supplier_name="Nobody")).label is None
+
+
 def test_supplier_ambiguous_by_name():
     reader = FakeReader(entidades=[{"Chave": 1, "Nome": "ACME LDA", "NCont": "x"},
                                    {"Chave": 2, "Nome": "ACME PORTO", "NCont": "y"}])

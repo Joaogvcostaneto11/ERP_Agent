@@ -27,6 +27,12 @@ async function upload() {
 
 function badge(status) { return `<span class="badge ${status}">${status}</span>`; }
 
+// A "matched" badge alone hides WHICH record was picked — a misread NIF digit
+// can land on a different existing supplier. Show the name the server matched.
+function matchedLabel(m) {
+  return m.label ? ` <span class="matched-name">${esc(m.label)}</span>` : "";
+}
+
 function candidateSelect(cands, attr) {
   const opts = cands.map((c) => `<option value="${esc(c.chave)}">${esc(c.label)}</option>`).join("");
   return `<select class="cell" ${attr}><option value="">— pick —</option>${opts}</select>`;
@@ -37,7 +43,7 @@ function matchCell(m, i) {
     return `${badge(m.status)} <label><input type="checkbox" data-confirm-line="${i}"> create</label>`;
   if (m.status === "ambiguous")
     return `${badge(m.status)} ${candidateSelect(m.candidates, `data-pick-line="${i}"`)}`;
-  return badge(m.status);
+  return badge(m.status) + matchedLabel(m);
 }
 
 function render() {
@@ -55,7 +61,7 @@ function render() {
   }).join("");
   const warnings = (proposal.warnings || []).map((w) => `<li class="warn">${esc(w)}</li>`).join("");
   $("#review").innerHTML = `
-    <h2>Supplier ${badge(proposal.supplier_match.status)}</h2>
+    <h2>Supplier ${badge(proposal.supplier_match.status)}${matchedLabel(proposal.supplier_match)}</h2>
     <table class="summary">
       <colgroup><col class="c-label"><col></colgroup>
       <tbody>

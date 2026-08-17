@@ -7,6 +7,15 @@ from logic.bills.rules.models import PurchaseInvoiceRule
 Reader = Callable[[str, dict], list[dict]]
 
 
+def _label(row: dict) -> str | None:
+    """Name of the record a 'matched' result points at. A misread digit can land
+    on a DIFFERENT existing supplier's NCont — both 502267583 and 502667583 are
+    well-formed NIFs — so the operator has to see WHICH record was chosen, not
+    just that something matched."""
+    name = row.get("Nome")
+    return None if name is None else str(name)
+
+
 def supplier_proposal(bill: Bill) -> dict:
     """Columns for a supplier the operator asks us to create. Single source of
     truth: the service re-derives this from the EDITED bill at stage time, so a
@@ -39,7 +48,8 @@ class Matcher:
                 f"SELECT Chave, Nome, NCont FROM {self._p}{ent} WHERE NCont = :tax_id",
                 {"tax_id": bill.supplier_tax_id})
             if len(rows) == 1:
-                return MatchResult(status="matched", chave=int(rows[0]["Chave"]))
+                return MatchResult(status="matched", chave=int(rows[0]["Chave"]),
+                                   label=_label(rows[0]))
         rows = self._read(
             f"SELECT Chave, Nome FROM {self._p}{ent} WHERE LOWER(Nome) LIKE :name",
             {"name": f"%{bill.supplier_name.lower()}%"})
@@ -55,7 +65,8 @@ class Matcher:
     @staticmethod
     def _resolve(rows: list[dict], proposed_new: dict) -> MatchResult:
         if len(rows) == 1:
-            return MatchResult(status="matched", chave=int(rows[0]["Chave"]))
+            return MatchResult(status="matched", chave=int(rows[0]["Chave"]),
+                               label=_label(rows[0]))
         if len(rows) > 1:
             cands = [Candidate(chave=int(r["Chave"]), label=str(r["Nome"]), score=1.0)
                      for r in rows]

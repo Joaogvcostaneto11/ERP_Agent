@@ -67,6 +67,9 @@ class Candidate(BaseModel):
 class MatchResult(BaseModel):
     status: Literal["matched", "ambiguous", "new"]
     chave: int | None = None
+    # Name of the matched record, so the UI can show WHICH supplier/article a
+    # bare "matched" badge picked. Display only; nothing is written from it.
+    label: str | None = None
     candidates: list[Candidate] = []
     proposed_new: dict | None = None
     confirmed: bool = False
