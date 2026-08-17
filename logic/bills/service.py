@@ -5,7 +5,7 @@ from typing import Any, Callable
 from logic.bills.extract.image import prepare
 from logic.bills.extract.media import sniff
 from logic.bills.extract.parser import BillParser
-from logic.bills.matching import Matcher
+from logic.bills.matching import Matcher, line_proposal, supplier_proposal
 from logic.bills.models import (Bill, BillLine, BillProposal, LinePlan,
                                 MatchResult, WritePlan, arithmetic_warnings)
 from logic.bills.pending import PendingProposalStore
@@ -81,8 +81,27 @@ class BillService:
                 cols[fr.column] = str(val)
         return cols, violations
 
+    @staticmethod
+    def _refresh_proposed_new(proposal: BillProposal) -> None:
+        """Rebuild every 'new' record's columns from the EDITED bill.
+
+        proposed_new is built by the Matcher at upload time, from the values the
+        model extracted. The operator then corrects those values in the UI — a
+        misread NIF, say — but only bill.* is editable, so a stale proposed_new
+        would insert the ORIGINAL wrong value into Entidades. A created supplier
+        is permanent master data and NCont feeds AT/SAF-T reporting, so the
+        edited bill has to win. Re-deriving (rather than patching keys in place)
+        also keeps the column set exactly the one matching.*.create_columns
+        whitelists."""
+        if proposal.supplier_match.status == "new":
+            proposal.supplier_match.proposed_new = supplier_proposal(proposal.bill)
+        for line, lm in zip(proposal.bill.lines, proposal.line_matches):
+            if lm.status == "new":
+                lm.proposed_new = line_proposal(line)
+
     def stage(self, proposal_id: str, edited: dict) -> dict:
         proposal = BillProposal.model_validate(edited)
+        self._refresh_proposed_new(proposal)
         self._pending.put(proposal_id, proposal)  # keep latest edits
         # Any previously-staged plan is now stale — clear it so only a stage()
         # call that ends ok:True can leave a committable plan for commit().

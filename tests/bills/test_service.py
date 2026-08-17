@@ -197,3 +197,63 @@ def test_upload_rejects_unsupported_bytes():
     svc = _service(_reader_no_matches)
     with pytest.raises(UnsupportedMedia):
         svc.upload(b"\x00\x00\x00\x18ftypheic" + b"\x00" * 16)
+
+
+def _confirmed_new_proposal(svc):
+    """Upload against an empty DB (supplier and article both 'new') and confirm
+    both, so stage() gets past the confirmation gate."""
+    proposal = svc.upload(b"%PDF")
+    edited = proposal.model_dump(mode="json")
+    edited["supplier_match"]["confirmed"] = True
+    edited["line_matches"][0]["confirmed"] = True
+    return proposal.proposal_id, edited
+
+
+def test_stage_rebuilds_new_supplier_from_the_edited_bill():
+    # The operator corrects a NIF the model misread by one digit. NCont is
+    # permanent master data feeding AT/SAF-T, so the corrected value — not the
+    # one captured in proposed_new at upload time — must reach the WritePlan.
+    svc = _service(_reader_no_matches)
+    proposal_id, edited = _confirmed_new_proposal(svc)
+    assert edited["supplier_match"]["proposed_new"]["NCont"] == "500100200"
+
+    edited["bill"]["supplier_tax_id"] = "500100299"
+    edited["bill"]["supplier_name"] = "ACME LDA"
+
+    result = svc.stage(proposal_id, edited)
+    assert result["ok"] is True
+    supplier = result["write_plan"]["supplier"]
+    assert supplier["proposed_new"] == {"Nome": "ACME LDA", "NCont": "500100299"}
+
+
+def test_stage_rebuilds_new_article_from_the_edited_line():
+    svc = _service(_reader_no_matches)
+    proposal_id, edited = _confirmed_new_proposal(svc)
+    edited["bill"]["lines"][0]["description"] = "Widget, 10mm"
+
+    result = svc.stage(proposal_id, edited)
+    assert result["ok"] is True
+    assert result["write_plan"]["lines"][0]["article"]["proposed_new"] == {
+        "Nome": "Widget, 10mm"}
+
+
+def test_rebuilt_proposed_new_stays_within_the_rule_whitelist():
+    # The earlier SQL-identifier fix whitelists proposed_new keys against
+    # matching.*.create_columns. Re-deriving must not widen that set.
+    svc = _service(_reader_no_matches)
+    proposal_id, edited = _confirmed_new_proposal(svc)
+    rule = svc._rule
+    result = svc.stage(proposal_id, edited)
+    plan = result["write_plan"]
+    assert set(plan["supplier"]["proposed_new"]) <= set(
+        rule.matching.supplier.create_columns)
+    assert set(plan["lines"][0]["article"]["proposed_new"]) <= set(
+        rule.matching.article.create_columns)
+
+
+def test_stage_leaves_proposed_new_alone_for_matched_records():
+    svc = _service(_reader_supplier_and_article)
+    proposal = svc.upload(b"%PDF")
+    result = svc.stage(proposal.proposal_id, proposal.model_dump(mode="json"))
+    assert result["ok"] is True
+    assert result["write_plan"]["supplier"]["proposed_new"] is None
