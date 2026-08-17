@@ -726,6 +726,136 @@ likely a prompt change, not more code.
 
 ---
 
+---
+
+### Task 7: Disambiguate supplier vs buyer tax ID
+
+Added after Task 6's live run found `supplier_tax_id` correct on only 4 of 6 real invoices:
+on `scanner_forumsi_2.jpeg` the model returned the buyer's NIF (labeled `Nº Contribuinte` in
+the header) instead of the supplier's NIPC printed in the footer, and on
+`scanner_forumsi_1.jpeg` it returned null although the supplier's NIPC was legible in the
+footer. Header fields, dates, totals and arithmetic were correct on all six — this field is
+the only extraction defect. It is load-bearing: supplier matching keys on it.
+
+The fix is a prompt change plus a decoy field. Giving the model an explicit `buyer_tax_id`
+slot forces it to separate the two numbers consciously rather than filling one slot with
+whichever number it noticed first.
+
+**Files:**
+- Modify: `logic/bills/models.py` (the `Bill` model)
+- Modify: `logic/bills/extract/parser.py` (`_SYSTEM_TAIL`, plus a new `_TAX_ID_RULE`)
+- Test: `tests/bills/test_parser.py` (append)
+
+**Interfaces:**
+- Consumes: `BillParser.parse` / `parse_image` from Task 3.
+- Produces: `Bill.buyer_tax_id: str | None`. Nothing writes it — no rule field in
+  `business_rules/bills/purchase_invoice.yaml` maps to it, so it is extraction-only context.
+  `supplier_tax_id` keeps its meaning and remains what `matching.py` keys on.
+
+- [ ] **Step 1: Write the failing test**
+
+Append to `tests/bills/test_parser.py`:
+
+```python
+def test_parse_image_extracts_buyer_tax_id_separately():
+    payload = {"supplier_name": "VODAFONE PORTUGAL", "supplier_tax_id": "502544180",
+               "buyer_tax_id": "514380802", "lines": []}
+    parser = BillParser(_FakeAnthropic(payload), "claude-sonnet-4-6", _rule())
+    bill = parser.parse_image("image/jpeg", "QUJD")
+    assert bill.supplier_tax_id == "502544180"
+    assert bill.buyer_tax_id == "514380802"
+
+
+def test_buyer_tax_id_defaults_to_none_when_absent():
+    parser = BillParser(_FakeAnthropic({"supplier_name": "X", "lines": []}),
+                        "claude-sonnet-4-6", _rule())
+    assert parser.parse_image("image/jpeg", "QUJD").buyer_tax_id is None
+
+
+def test_system_prompt_disambiguates_the_two_tax_ids():
+    client = _FakeAnthropic({"supplier_name": "X", "lines": []})
+    parser = BillParser(client, "claude-sonnet-4-6", _rule())
+    parser.parse_image("image/jpeg", "QUJD")
+    system = client.last_kwargs["system"]
+    assert "buyer_tax_id" in system
+    # The issuer's number is often footer-only on Portuguese invoices.
+    assert "footer" in system.lower()
+    # The label alone is not decisive — both parties can carry "Contribuinte".
+    assert "label" in system.lower()
+
+
+def test_tax_id_rule_reaches_the_text_path_too():
+    client = _FakeAnthropic({"supplier_name": "X", "lines": []})
+    parser = BillParser(client, "claude-sonnet-4-6", _rule())
+    parser.parse([PageText(page=1, text="t")])
+    assert "buyer_tax_id" in client.last_kwargs["system"]
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `C:/Users/joaog/erp_venv/Scripts/python.exe -m pytest tests/bills/test_parser.py -v`
+Expected: the four new tests FAIL — `Bill` has no `buyer_tax_id` attribute and the prompt
+does not mention it. The seven pre-existing parser tests still PASS.
+
+- [ ] **Step 3: Write minimal implementation**
+
+In `logic/bills/models.py`, add one field to `Bill`, directly after `supplier_tax_id`:
+
+```python
+    buyer_tax_id: str | None = None
+```
+
+In `logic/bills/extract/parser.py`, add `buyer_tax_id` to the key list in `_SYSTEM_TAIL` so
+it reads `supplier_name, supplier_tax_id, buyer_tax_id, number, ...`, then add this constant
+after `_SYSTEM_TAIL`:
+
+```python
+_TAX_ID_RULE = (
+    " This invoice was issued BY a supplier TO a buyer, so two tax numbers usually appear "
+    "on the page. supplier_tax_id must be the ISSUER's — the company whose logo and address "
+    "head the document. buyer_tax_id is the recipient's. Decide which number belongs to "
+    "which party by whose address block it sits in, not by its label alone: the same label "
+    "(Contribuinte, NIF, NIPC) appears next to either party depending on the invoice. On "
+    "Portuguese invoices the issuer's number is often printed only in the footer, beside "
+    "NIPC, Contribuinte, IVA, or a commercial-registry line — look there before returning "
+    "null. Never put the buyer's number in supplier_tax_id. If only one tax number is "
+    "visible, decide which party it belongs to and leave the other null."
+)
+```
+
+Then append it in `_system` so both paths receive it:
+
+```python
+def _system(source: str) -> str:
+    return _SYSTEM_HEAD + source + _SYSTEM_TAIL + _TAX_ID_RULE
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `C:/Users/joaog/erp_venv/Scripts/python.exe -m pytest tests/bills/ -v`
+Expected: PASS — full bills suite, 69 pre-existing plus the 4 new.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add logic/bills/models.py logic/bills/extract/parser.py tests/bills/test_parser.py
+git commit -m "fix(bills): separate supplier and buyer tax IDs in extraction"
+```
+
+---
+
+### Task 8: Re-run the live accuracy check
+
+Same method as Task 6, same six files, same script. The measurement that matters is
+`supplier_tax_id`: it was correct on 4 of 6 before Task 7.
+
+- [ ] **Step 1:** Re-run the scratchpad script against all six `bills_examples` files.
+- [ ] **Step 2:** Verify every file field-by-field against the image again — Task 7 changed
+  the shared prompt, so fields that were correct before could have regressed. Do not check
+  only the tax IDs.
+- [ ] **Step 3:** Report a before/after table for `supplier_tax_id` and flag any field that
+  was correct in Task 6 and is now wrong.
+
 ## Definition of Done
 
 - [ ] `C:/Users/joaog/erp_venv/Scripts/python.exe -m pytest tests/bills/ -v` is green, with no pre-existing test removed or weakened.
