@@ -2,6 +2,8 @@ from __future__ import annotations
 import uuid
 from typing import Any, Callable
 
+from pydantic import ValidationError
+
 from logic.bills.extract.image import prepare
 from logic.bills.extract.media import sniff
 from logic.bills.extract.parser import BillParser
@@ -100,7 +102,16 @@ class BillService:
                 lm.proposed_new = line_proposal(line)
 
     def stage(self, proposal_id: str, edited: dict) -> dict:
-        proposal = BillProposal.model_validate(edited)
+        try:
+            proposal = BillProposal.model_validate(edited)
+        except ValidationError as e:
+            # The operator can clear a required field on the review screen (the
+            # UI posts an emptied input as null). Report it in the violations
+            # shape the screen already renders, rather than letting pydantic's
+            # ValidationError — not a RuntimeError — escape app.py as a 500.
+            return {"ok": False, "violations": [
+                {"field": ".".join(str(p) for p in err["loc"]),
+                 "message": err["msg"]} for err in e.errors()]}
         self._refresh_proposed_new(proposal)
         self._pending.put(proposal_id, proposal)  # keep latest edits
         # Any previously-staged plan is now stale — clear it so only a stage()

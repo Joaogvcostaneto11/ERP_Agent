@@ -251,6 +251,20 @@ def test_rebuilt_proposed_new_stays_within_the_rule_whitelist():
         rule.matching.article.create_columns)
 
 
+@pytest.mark.parametrize("name", [None, ""])
+def test_stage_reports_a_cleared_required_field_as_a_violation(name):
+    # Clearing the supplier name in the UI posts null. That fails Bill
+    # validation, and pydantic's ValidationError is not a RuntimeError, so
+    # app.py would return a 500 instead of a reviewable violation.
+    svc = _service(_reader_supplier_and_article)
+    proposal = svc.upload(b"%PDF")
+    edited = proposal.model_dump(mode="json")
+    edited["bill"]["supplier_name"] = name
+    result = svc.stage(proposal.proposal_id, edited)
+    assert result["ok"] is False
+    assert any("supplier_name" in v["field"] for v in result["violations"])
+
+
 def test_stage_leaves_proposed_new_alone_for_matched_records():
     svc = _service(_reader_supplier_and_article)
     proposal = svc.upload(b"%PDF")
