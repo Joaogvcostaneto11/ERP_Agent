@@ -100,3 +100,37 @@ def test_both_paths_describe_their_own_source():
     image_system = client.last_kwargs["system"]
     assert "OCR text" in text_system
     assert "photograph" in image_system
+
+
+def test_parse_image_extracts_buyer_tax_id_separately():
+    payload = {"supplier_name": "VODAFONE PORTUGAL", "supplier_tax_id": "502544180",
+               "buyer_tax_id": "514380802", "lines": []}
+    parser = BillParser(_FakeAnthropic(payload), "claude-sonnet-4-6", _rule())
+    bill = parser.parse_image("image/jpeg", "QUJD")
+    assert bill.supplier_tax_id == "502544180"
+    assert bill.buyer_tax_id == "514380802"
+
+
+def test_buyer_tax_id_defaults_to_none_when_absent():
+    parser = BillParser(_FakeAnthropic({"supplier_name": "X", "lines": []}),
+                        "claude-sonnet-4-6", _rule())
+    assert parser.parse_image("image/jpeg", "QUJD").buyer_tax_id is None
+
+
+def test_system_prompt_disambiguates_the_two_tax_ids():
+    client = _FakeAnthropic({"supplier_name": "X", "lines": []})
+    parser = BillParser(client, "claude-sonnet-4-6", _rule())
+    parser.parse_image("image/jpeg", "QUJD")
+    system = client.last_kwargs["system"]
+    assert "buyer_tax_id" in system
+    # The issuer's number is often footer-only on Portuguese invoices.
+    assert "footer" in system.lower()
+    # The label alone is not decisive — both parties can carry "Contribuinte".
+    assert "label" in system.lower()
+
+
+def test_tax_id_rule_reaches_the_text_path_too():
+    client = _FakeAnthropic({"supplier_name": "X", "lines": []})
+    parser = BillParser(client, "claude-sonnet-4-6", _rule())
+    parser.parse([PageText(page=1, text="t")])
+    assert "buyer_tax_id" in client.last_kwargs["system"]

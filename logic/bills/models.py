@@ -30,6 +30,7 @@ class BillLine(BaseModel):
 class Bill(BaseModel):
     supplier_name: str
     supplier_tax_id: str | None = None
+    buyer_tax_id: str | None = None
     number: str | None = None
     issue_date: date | None = None
     due_date: date | None = None

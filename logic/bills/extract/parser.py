@@ -11,7 +11,7 @@ _TEXT_SOURCE = "You are given the raw OCR text of the invoice pages. "
 _IMAGE_SOURCE = "You are given a photograph or scan of the invoice. "
 _SYSTEM_TAIL = (
     "Return ONLY a JSON object with these keys: "
-    "supplier_name, supplier_tax_id, number, issue_date (YYYY-MM-DD), due_date "
+    "supplier_name, supplier_tax_id, buyer_tax_id, number, issue_date (YYYY-MM-DD), due_date "
     "(YYYY-MM-DD), currency, net_total, vat_total, gross_total, and lines (a list "
     "of objects with description, quantity, unit_price, vat_rate, total). Use null "
     "for anything not present. Amounts as decimal strings without currency symbols. "
@@ -20,9 +20,21 @@ _SYSTEM_TAIL = (
     "for it rather than guessing a plausible value."
 )
 
+_TAX_ID_RULE = (
+    " This invoice was issued BY a supplier TO a buyer, so two tax numbers usually appear "
+    "on the page. supplier_tax_id must be the ISSUER's — the company whose logo and address "
+    "head the document. buyer_tax_id is the recipient's. Decide which number belongs to "
+    "which party by whose address block it sits in, not by its label alone: the same label "
+    "(Contribuinte, NIF, NIPC) appears next to either party depending on the invoice. On "
+    "Portuguese invoices the issuer's number is often printed only in the footer, beside "
+    "NIPC, Contribuinte, IVA, or a commercial-registry line — look there before returning "
+    "null. Never put the buyer's number in supplier_tax_id. If only one tax number is "
+    "visible, decide which party it belongs to and leave the other null."
+)
+
 
 def _system(source: str) -> str:
-    return _SYSTEM_HEAD + source + _SYSTEM_TAIL
+    return _SYSTEM_HEAD + source + _SYSTEM_TAIL + _TAX_ID_RULE
 
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
