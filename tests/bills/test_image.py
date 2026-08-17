@@ -1,11 +1,14 @@
 import base64
 import io
+import struct
+import zlib
 
 import pytest
 from PIL import Image
 
 from logic.bills.extract import image as image_module
-from logic.bills.extract.image import MAX_EDGE, prepare
+from logic.bills.extract.image import (MAX_EDGE, MAX_PIXELS, MAX_UPLOAD_BYTES,
+                                       prepare)
 from logic.bills.extract.media import UnsupportedMedia
 
 
@@ -66,6 +69,69 @@ def test_prepare_reencodes_resized_png_as_jpeg():
 def test_prepare_rejects_undecodable_bytes():
     with pytest.raises(UnsupportedMedia):
         prepare(b"\xff\xd8\xff not really a jpeg", "image/jpeg")
+
+
+def _png_declaring(width: int, height: int) -> bytes:
+    """A tiny PNG whose IHDR *claims* width x height. This is the decompression
+    bomb shape: ~70 bytes on the wire, hundreds of MB once decoded."""
+    data = bytearray(_png_1x1())
+    data[16:20] = width.to_bytes(4, "big")    # IHDR width
+    data[20:24] = height.to_bytes(4, "big")   # IHDR height
+    data[29:33] = zlib.crc32(bytes(data[12:29])).to_bytes(4, "big")
+    return bytes(data)
+
+
+def _png_1x1() -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (1, 1), "white").save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_prepare_rejects_pixel_bomb_below_pillows_own_threshold():
+    # 150M pixels: over MAX_PIXELS but under 2x Image.MAX_IMAGE_PIXELS, where
+    # Pillow only warns and decodes in full (~450MB of RGB once exif_transpose
+    # and resize have each taken a copy). We must reject it from the header.
+    bomb = _png_declaring(20_000, 7_500)
+    assert 20_000 * 7_500 > MAX_PIXELS
+    assert len(bomb) < 1024
+    with pytest.raises(UnsupportedMedia):
+        prepare(bomb, "image/png")
+
+
+def test_prepare_turns_pillow_decompression_bomb_error_into_unsupported_media():
+    # Past 2x Image.MAX_IMAGE_PIXELS Pillow raises DecompressionBombError, which
+    # subclasses plain Exception — not OSError — so it used to escape prepare()
+    # and app.py's `except RuntimeError`, surfacing as a 500 instead of a 400.
+    with pytest.raises(UnsupportedMedia):
+        prepare(_png_declaring(30_000, 10_000), "image/png")
+
+
+def test_prepare_rejects_oversized_upload_before_opening_it(monkeypatch):
+    monkeypatch.setattr(image_module, "MAX_UPLOAD_BYTES", 10)
+
+    def _must_not_open(*a, **kw):
+        raise AssertionError("the byte ceiling must be checked before Image.open")
+
+    monkeypatch.setattr(image_module.Image, "open", _must_not_open)
+    with pytest.raises(UnsupportedMedia):
+        prepare(_jpeg((100, 80)), "image/jpeg")
+
+
+def test_upload_ceiling_leaves_room_for_a_real_phone_photo():
+    # Real scans in bills_examples/ are 75-130KB; a 50MP phone JPEG is ~10-15MB.
+    # The ceiling exists to stop bombs, not to reject genuine uploads.
+    assert MAX_UPLOAD_BYTES >= 20 * 1024 * 1024
+
+
+def test_prepare_survives_a_corrupt_exif_block(monkeypatch):
+    # getexif() used to sit outside the guarded region entirely; struct.error is
+    # not an OSError, so malformed EXIF reached the operator as a 500.
+    def _boom(self):
+        raise struct.error("bad exif")
+
+    monkeypatch.setattr(image_module.Image.Image, "getexif", _boom)
+    with pytest.raises(UnsupportedMedia):
+        prepare(_jpeg((100, 80)), "image/jpeg")
 
 
 def test_prepare_rejects_when_base64_string_length_exceeds_cap(monkeypatch):
