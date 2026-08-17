@@ -25,7 +25,11 @@ def decode(data: bytes) -> str | None:
     which at observed invoice resolutions drops the QR below the roughly two
     pixels per module a decoder needs.
 
-    Imports are function-local so the module loads where the decoder is absent.
+    Imports are function-local so the module loads where the decoder is absent,
+    and live inside the same try/except as the rest of the body: an ABI
+    mismatch on `import cv2` (e.g. a numpy version skew) surfaces as
+    AttributeError or RuntimeError, not ImportError, and must degrade to
+    "no QR" exactly like any other decode failure.
 
     Uses opencv-python-headless (not pyzbar): a spike found pyzbar's bundled
     libzbar-64.dll fails to import on this environment (missing libiconv.dll
@@ -46,10 +50,7 @@ def decode(data: bytes) -> str | None:
         import cv2
         import numpy as np
         from PIL import Image, ImageOps
-    except ImportError:
-        return None
 
-    try:
         img = Image.open(io.BytesIO(data))  # lazy: header only, no pixel decode yet
         width, height = img.size
         if width * height > MAX_PIXELS:
