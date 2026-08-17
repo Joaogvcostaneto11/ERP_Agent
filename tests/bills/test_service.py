@@ -282,13 +282,18 @@ def test_stage_rebuilds_new_supplier_from_the_edited_bill():
     proposal_id, edited = _confirmed_new_proposal(svc)
     assert edited["supplier_match"]["proposed_new"]["NCont"] == "500100209"
 
-    edited["bill"]["supplier_tax_id"] = "500100299"
+    # 500100306 passes the PT NIF check digit and differs from the upload-time
+    # value, so this still proves the rebuild picks up the edited bill (Task
+    # 11 adds a separate check-digit guard, tested below, which would reject
+    # an invalid replacement like the old 500100299 and mask what this test
+    # is actually about).
+    edited["bill"]["supplier_tax_id"] = "500100306"
     edited["bill"]["supplier_name"] = "ACME LDA"
 
     result = svc.stage(proposal_id, edited)
     assert result["ok"] is True
     supplier = result["write_plan"]["supplier"]
-    assert supplier["proposed_new"] == {"Nome": "ACME LDA", "NCont": "500100299"}
+    assert supplier["proposed_new"] == {"Nome": "ACME LDA", "NCont": "500100306"}
 
 
 def test_stage_rebuilds_new_article_from_the_edited_line():
@@ -314,6 +319,40 @@ def test_rebuilt_proposed_new_stays_within_the_rule_whitelist():
         rule.matching.supplier.create_columns)
     assert set(plan["lines"][0]["article"]["proposed_new"]) <= set(
         rule.matching.article.create_columns)
+
+
+def test_stage_rejects_an_invalid_operator_typed_nif():
+    # The upload guard only catches a misread digit the operator hasn't seen
+    # yet. If they then retype the NIF as something that still fails the
+    # check digit, stage() must catch that too (Task 11) instead of writing
+    # it into Entidades.NCont, which feeds AT/SAF-T reporting.
+    svc = _service(_reader_no_matches)
+    proposal_id, edited = _confirmed_new_proposal(svc)
+    edited["bill"]["supplier_tax_id"] = "500100299"  # fails the check digit
+
+    result = svc.stage(proposal_id, edited)
+
+    assert result["ok"] is False
+    assert {"field": "supplier_tax_id",
+            "message": "supplier tax id '500100299' failed the NIF check digit"
+            } in result["violations"]
+    assert svc._pending.pop(proposal_id + ":plan") is None
+
+
+def test_stage_accepts_a_foreign_tax_id_untouched():
+    # pt_nif_is_valid returns None (not False) for a non-PT-shaped value such
+    # as a Spanish NIF, since it isn't PT's to judge. is False must not
+    # misfire as a truthiness check that would also reject None.
+    svc = _service(_reader_no_matches)
+    proposal_id, edited = _confirmed_new_proposal(svc)
+    edited["bill"]["supplier_tax_id"] = "ESB65814709"
+    edited["bill"]["supplier_name"] = "Proveedor SA"
+
+    result = svc.stage(proposal_id, edited)
+
+    assert result["ok"] is True
+    assert result["write_plan"]["supplier"]["proposed_new"] == {
+        "Nome": "Proveedor SA", "NCont": "ESB65814709"}
 
 
 @pytest.mark.parametrize("name", [None, ""])

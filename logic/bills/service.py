@@ -129,6 +129,17 @@ class BillService:
         self._pending.put(proposal_id, proposal)  # keep latest edits
         violations: list[dict] = []
 
+        # The upload-time guard blanks a bad NIF before the operator has seen
+        # it; here they typed it themselves, so it must be reported rather
+        # than silently discarded. is False (not a truthiness check) so a
+        # foreign tax ID, which pt_nif_is_valid reports as None, passes
+        # through untouched.
+        if pt_nif_is_valid(proposal.bill.supplier_tax_id) is False:
+            violations.append({
+                "field": "supplier_tax_id",
+                "message": f"supplier tax id {proposal.bill.supplier_tax_id!r} "
+                           "failed the NIF check digit"})
+
         if len(proposal.bill.lines) != len(proposal.line_matches):
             violations.append({"field": "lines",
                                "message": "line count does not match line_matches count"})
