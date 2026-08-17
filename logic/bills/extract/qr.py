@@ -2,6 +2,17 @@ from __future__ import annotations
 
 import io
 
+from logic.bills.extract.image import MAX_PIXELS
+
+# Above this pixel count, the 2x upscale tier is skipped. A source image this
+# large already has ample pixels per QR module, so upscaling buys nothing.
+# Chosen so the worst case (4x area at scale=2) never exceeds MAX_PIXELS
+# itself — the same ceiling this pipeline already accepts elsewhere
+# (image.py). It still covers a modern phone's default photo with headroom
+# (a default iPhone photo is 4032x3024 = ~12.2MP); only shots already near
+# the 50MP ceiling skip the upscale.
+UPSCALE_MAX_PIXELS = MAX_PIXELS // 4
+
 
 def decode(data: bytes) -> str | None:
     """Return the AT QR payload found in an image, or None.
@@ -22,6 +33,14 @@ def decode(data: bytes) -> str | None:
     wheel with no native packaging risk. Scales are (1, 2) only — the spike
     found 4x upscaling added zero additional decodes over 2x at roughly
     3.5-4x the runtime, which is not worth paying on every upload.
+
+    A legitimate 50MP upload (image.py's own ceiling) can cost ~450MB of
+    buffers here without a guard: the RGB decode, the grayscale copy, the 2x
+    resize (4x area), and the numpy copy of that resize all stack up. Two
+    guards bound that: a hard pixel ceiling (reusing MAX_PIXELS, checked from
+    the lazy header before any pixel decode) rejects anything decode() itself
+    should never need to touch, and the upscale tier is skipped for images
+    already well-resourced enough not to need it.
     """
     try:
         import cv2
@@ -31,9 +50,15 @@ def decode(data: bytes) -> str | None:
         return None
 
     try:
-        img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("L")
+        img = Image.open(io.BytesIO(data))  # lazy: header only, no pixel decode yet
+        width, height = img.size
+        if width * height > MAX_PIXELS:
+            return None
+
+        img = ImageOps.exif_transpose(img).convert("L")
         detector = cv2.QRCodeDetector()
-        for scale in (1, 2):
+        scales = (1, 2) if width * height <= UPSCALE_MAX_PIXELS else (1,)
+        for scale in scales:
             arr = np.array(img if scale == 1 else img.resize(
                 (img.width * scale, img.height * scale), Image.LANCZOS))
             payload, _, _ = detector.detectAndDecode(arr)
