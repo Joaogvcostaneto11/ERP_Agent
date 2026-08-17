@@ -4,9 +4,11 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
+from logic.bills.extract.at_qr import merge as merge_qr, parse as parse_qr
 from logic.bills.extract.image import prepare
 from logic.bills.extract.media import sniff
 from logic.bills.extract.parser import BillParser
+from logic.bills.extract.qr import decode
 from logic.bills.matching import Matcher, line_proposal, supplier_proposal
 from logic.bills.models import (Bill, BillLine, BillProposal, LinePlan,
                                 MatchResult, WritePlan, arithmetic_warnings)
@@ -31,7 +33,7 @@ class BillService:
 
     # ---- upload -----------------------------------------------------------
     def upload(self, data: bytes) -> BillProposal:
-        bill = self._extract(data)
+        bill, qr_warnings = self._extract(data)
         warnings: list[str] = []
         if pt_nif_is_valid(bill.supplier_tax_id) is False:
             # A plausible-but-wrong NIF can match the wrong existing supplier
@@ -46,18 +48,28 @@ class BillService:
         proposal = BillProposal(
             proposal_id="bill_" + uuid.uuid4().hex[:12], bill=bill,
             supplier_match=supplier_match, line_matches=line_matches,
-            warnings=warnings + arithmetic_warnings(bill))
+            warnings=warnings + qr_warnings + arithmetic_warnings(bill))
         self._pending.put(proposal.proposal_id, proposal)
         return proposal
 
-    def _extract(self, data: bytes) -> Bill:
+    def _extract(self, data: bytes) -> tuple[Bill, list[str]]:
         """PDFs go through Tesseract; images go straight to Claude vision, which
         reads skewed phone photos and preserves table layout that flat OCR text
-        would destroy."""
+        would destroy.
+
+        A decoded AT QR then overrides whichever path produced the bill: it comes
+        from certified software and cannot misread a digit."""
         media_type = sniff(data)
         if media_type == "application/pdf":
-            return self._parser.parse(self._ocr(data))
-        return self._parser.parse_image(*prepare(data, media_type))
+            bill = self._parser.parse(self._ocr(data))
+        else:
+            bill = self._parser.parse_image(*prepare(data, media_type))
+
+        # decode() takes the ORIGINAL bytes: prepare() downscales past the point
+        # where a QR this small survives.
+        payload = decode(data)
+        qr = parse_qr(payload) if payload else None
+        return merge_qr(bill, qr) if qr else (bill, [])
 
     # ---- stage ------------------------------------------------------------
     def _bill_value(self, bill: Bill, source: str):

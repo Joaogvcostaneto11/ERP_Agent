@@ -375,3 +375,40 @@ def test_stage_leaves_proposed_new_alone_for_matched_records():
     result = svc.stage(proposal.proposal_id, proposal.model_dump(mode="json"))
     assert result["ok"] is True
     assert result["write_plan"]["supplier"]["proposed_new"] is None
+
+
+from logic.bills.extract import at_qr as at_qr_module
+
+
+def test_upload_prefers_the_qr_supplier_nif_over_the_model(monkeypatch):
+    payload = ("A:500100306*B:514380802*C:PT*D:FT*E:N*F:20260601*G:FT1*"
+               "I7:100.00*I8:23.00*N:23.00*O:123.00")
+    monkeypatch.setattr("logic.bills.service.decode", lambda data: payload)
+    svc = _service(_reader_no_matches)
+    proposal = svc.upload(b"%PDF-fake")
+    assert proposal.bill.supplier_tax_id == "500100306"
+    assert any("QR code reads" in w for w in proposal.warnings)
+
+
+def test_upload_is_unchanged_when_no_qr_is_present(monkeypatch):
+    monkeypatch.setattr("logic.bills.service.decode", lambda data: None)
+    svc = _service(_reader_no_matches)
+    proposal = svc.upload(b"%PDF-fake")
+    # _bill()'s fixture NIF survives untouched.
+    assert proposal.bill.supplier_tax_id == "500100209"
+    assert all("QR code" not in w for w in proposal.warnings)
+
+
+def test_upload_ignores_a_qr_that_is_not_an_at_code(monkeypatch):
+    monkeypatch.setattr("logic.bills.service.decode",
+                        lambda data: "https://example.com/some-other-qr")
+    svc = _service(_reader_no_matches)
+    assert svc.upload(b"%PDF-fake").bill.supplier_tax_id == "500100209"
+
+
+def test_upload_keeps_arithmetic_warnings_alongside_qr_warnings(monkeypatch):
+    payload = ("A:500100209*D:FT*E:A*F:20260601*G:FT1*N:23.00*O:123.00")
+    monkeypatch.setattr("logic.bills.service.decode", lambda data: payload)
+    svc = _service(_reader_no_matches)
+    warnings = svc.upload(b"%PDF-fake").warnings
+    assert any("cancel" in w.lower() for w in warnings)
