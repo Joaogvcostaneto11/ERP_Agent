@@ -47,12 +47,24 @@ def test_stage_then_commit(monkeypatch):
 
 
 def test_upload_accepts_an_image(monkeypatch):
-    client = _client(monkeypatch)
+    class RecordingService(StubService):
+        def __init__(self):
+            super().__init__()
+            self.received_data = None
+        def upload(self, data):
+            self.received_data = data
+            return self._proposal
+
+    recording_stub = RecordingService()
+    monkeypatch.setattr(appmod, "get_service", lambda: recording_stub)
+    client = TestClient(appmod.app)
     client.post("/bills/operator", json={"name": "alice"})
+    image_bytes = b"\xff\xd8\xff\xe0"
     r = client.post("/bills/upload",
-                    files={"file": ("bill.jpeg", b"\xff\xd8\xff\xe0", "image/jpeg")})
+                    files={"file": ("bill.jpeg", image_bytes, "image/jpeg")})
     assert r.status_code == 200
     assert r.json()["proposal_id"] == "bill_x"
+    assert recording_stub.received_data == image_bytes
 
 
 def test_upload_rejects_unsupported_type_with_400(monkeypatch):
