@@ -37,7 +37,7 @@ def _reader_no_matches(sql, params):
 
 
 def _reader_supplier_and_article(sql, params):
-    if "Entidades" in sql and params.get("tax_id") == "500100200":
+    if "Entidades" in sql and params.get("tax_id") == "500100209":
         return [{"Chave": 7, "Nome": "ACME"}]
     if "Artigos" in sql:
         return [{"Chave": 42, "Nome": "Widget"}]
@@ -45,7 +45,9 @@ def _reader_supplier_and_article(sql, params):
 
 
 def _bill():
-    return Bill(supplier_name="ACME", supplier_tax_id="500100200",
+    # 500100209 passes the PT NIF check digit (Task 10); a fixture value that
+    # failed it would get blanked by upload() before matching ever ran it.
+    return Bill(supplier_name="ACME", supplier_tax_id="500100209",
                 number="FT1", issue_date="2026-06-01", net_total=Decimal("100"),
                 vat_total=Decimal("23"), gross_total=Decimal("123"),
                 lines=[BillLine(description="Widget", quantity=Decimal("2"),
@@ -75,6 +77,45 @@ def test_upload_flags_new_supplier_and_article():
     proposal = svc.upload(b"%PDF")
     assert proposal.supplier_match.status == "new"
     assert proposal.line_matches[0].status == "new"
+
+
+def test_upload_blanks_a_supplier_nif_that_fails_the_check_digit():
+    # 502267583 is the real misread from scanner_forumsi_1.jpeg: one digit off
+    # from the correct 502667583. A reader that WOULD match it, if queried,
+    # proves the bad number never reaches the matcher.
+    def reader(sql, params):
+        if "Entidades" in sql and params.get("tax_id") == "502267583":
+            return [{"Chave": 99, "Nome": "WRONG SUPPLIER"}]
+        return []
+
+    bill = Bill(supplier_name="Sage", supplier_tax_id="502267583")
+    svc = _service(reader)
+    svc._parser = FakeParser(bill)
+    proposal = svc.upload(b"%PDF")
+
+    assert proposal.bill.supplier_tax_id is None
+    assert any("502267583" in w for w in proposal.warnings)
+    assert proposal.supplier_match.status != "matched"
+
+
+def test_upload_leaves_a_valid_nif_untouched_and_warning_free():
+    bill = Bill(supplier_name="Sage", supplier_tax_id="502667583")
+    svc = _service(_reader_no_matches)
+    svc._parser = FakeParser(bill)
+    proposal = svc.upload(b"%PDF")
+
+    assert proposal.bill.supplier_tax_id == "502667583"
+    assert proposal.warnings == []
+
+
+def test_upload_leaves_a_spanish_vat_number_untouched():
+    bill = Bill(supplier_name="Jotelulu", supplier_tax_id="ESB65814709")
+    svc = _service(_reader_no_matches)
+    svc._parser = FakeParser(bill)
+    proposal = svc.upload(b"%PDF")
+
+    assert proposal.bill.supplier_tax_id == "ESB65814709"
+    assert proposal.warnings == []
 
 
 def test_stage_rejects_unconfirmed_new_records():
@@ -239,7 +280,7 @@ def test_stage_rebuilds_new_supplier_from_the_edited_bill():
     # one captured in proposed_new at upload time — must reach the WritePlan.
     svc = _service(_reader_no_matches)
     proposal_id, edited = _confirmed_new_proposal(svc)
-    assert edited["supplier_match"]["proposed_new"]["NCont"] == "500100200"
+    assert edited["supplier_match"]["proposed_new"]["NCont"] == "500100209"
 
     edited["bill"]["supplier_tax_id"] = "500100299"
     edited["bill"]["supplier_name"] = "ACME LDA"

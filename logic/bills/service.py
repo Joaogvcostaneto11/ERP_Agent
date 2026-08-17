@@ -12,6 +12,7 @@ from logic.bills.models import (Bill, BillLine, BillProposal, LinePlan,
                                 MatchResult, WritePlan, arithmetic_warnings)
 from logic.bills.pending import PendingProposalStore
 from logic.bills.rules.models import PurchaseInvoiceRule
+from logic.bills.tax_id import pt_nif_is_valid
 
 
 class BillService:
@@ -31,12 +32,21 @@ class BillService:
     # ---- upload -----------------------------------------------------------
     def upload(self, data: bytes) -> BillProposal:
         bill = self._extract(data)
+        warnings: list[str] = []
+        if pt_nif_is_valid(bill.supplier_tax_id) is False:
+            # A plausible-but-wrong NIF can match the wrong existing supplier
+            # or seed a new one with a bad fiscal number, so it must be
+            # blanked BEFORE matching, which keys on this field.
+            warnings.append(
+                f"supplier tax id {bill.supplier_tax_id!r} failed the NIF "
+                "check digit and was cleared; please re-enter it")
+            bill.supplier_tax_id = None
         supplier_match = self._matcher.match_supplier(bill)
         line_matches = [self._matcher.match_line(ln) for ln in bill.lines]
         proposal = BillProposal(
             proposal_id="bill_" + uuid.uuid4().hex[:12], bill=bill,
             supplier_match=supplier_match, line_matches=line_matches,
-            warnings=arithmetic_warnings(bill))
+            warnings=warnings + arithmetic_warnings(bill))
         self._pending.put(proposal.proposal_id, proposal)
         return proposal
 
