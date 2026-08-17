@@ -78,6 +78,30 @@ def test_parse_returns_none_for_an_unparseable_date_but_keeps_the_rest():
     assert qr.number == "FT 1/1"
 
 
+@pytest.mark.parametrize("payload", [
+    "A:502667583*D:FT*E:N*F:20260805*G:FT 1/1*N:23.00*O:nan",
+    "A:502667583*D:FT*E:N*F:20260805*G:FT 1/1*N:23.00*O:Infinity",
+    "A:502667583*D:FT*E:N*F:20260805*G:FT 1/1*N:inf*O:123.00",
+])
+def test_parse_does_not_raise_for_a_non_finite_amount(payload):
+    # Decimal() happily accepts "nan"/"Infinity"/"inf", but pydantic's Decimal
+    # field rejects non-finite values with a ValidationError — which is not a
+    # RuntimeError and would otherwise escape app.py's guard as a 500. A QR
+    # this malformed must degrade to "field absent", never break the upload.
+    qr = parse(payload)
+    assert qr is not None
+
+
+def test_parse_treats_a_non_finite_taxable_base_as_absent_from_net():
+    # I3 is a taxable-base field consumed via _net(), a different code path
+    # from the top-level N/O fields above.
+    payload = "A:502667583*D:FT*E:N*F:20260805*G:FT 1/1*I3:nan*N:23.00*O:123.00"
+    qr = parse(payload)
+    assert qr is not None
+    # the nan base is dropped, so net falls back to gross - vat
+    assert qr.net_total == Decimal("100.00")
+
+
 from logic.bills.extract.at_qr import merge
 from logic.bills.models import Bill, BillLine
 

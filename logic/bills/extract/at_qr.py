@@ -35,9 +35,17 @@ def _decimal(raw: str | None) -> Decimal | None:
     if raw is None:
         return None
     try:
-        return Decimal(raw)
+        d = Decimal(raw)
     except (InvalidOperation, ValueError):
         return None
+    if not d.is_finite():
+        # Decimal() happily accepts "nan", "Infinity" and "snan". Pydantic's
+        # Decimal field then rejects those with a ValidationError, which is not
+        # a RuntimeError and would otherwise escape app.py's guard as a 500 —
+        # the QR must never be able to break an upload that would otherwise
+        # have succeeded.
+        return None
+    return d
 
 
 def _net(fields: dict[str, str], vat: Decimal | None,
