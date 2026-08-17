@@ -856,6 +856,148 @@ Same method as Task 6, same six files, same script. The measurement that matters
 - [ ] **Step 3:** Report a before/after table for `supplier_tax_id` and flag any field that
   was correct in Task 6 and is now wrong.
 
+---
+
+### Task 9: Close out the final-review regression and two weak tests
+
+The final fix wave introduced one Important regression, reproduced end-to-end by the
+re-reviewer, plus two tests that do not protect the code they were written for.
+
+**Files:**
+- Modify: `logic/bills/service.py` (the `stage()` method)
+- Test: `tests/bills/test_service.py`, `tests/bills/test_image.py`
+
+- [ ] **Step 1: Fix the stale-plan regression**
+
+In `stage()`, the `except ValidationError` early return sits ABOVE
+`self._pending.pop(proposal_id + ":plan")`, so a failed stage leaves the previously-staged
+plan committable — `commit()` can then write a document from a plan whose stage call was
+rejected. Move the pop above the `try` so it runs unconditionally. The comment already
+states the invariant ("only a stage() call that ends ok:True can leave a committable plan
+for commit()") — keep it with the moved line.
+
+- [ ] **Step 2: Test that the regression stays fixed**
+
+```python
+def test_failed_stage_clears_a_previously_staged_plan():
+    svc = _service(_reader_supplier_and_article)
+    proposal = svc.upload(b"%PDF-fake")
+    edited = proposal.model_dump(mode="json")
+    assert svc.stage(proposal.proposal_id, edited)["ok"] is True
+
+    # Second stage fails validation: the UI posts a cleared required field as null.
+    edited["bill"]["supplier_name"] = None
+    assert svc.stage(proposal.proposal_id, edited)["ok"] is False
+
+    # The stale plan must not survive a rejected stage.
+    with pytest.raises(RuntimeError):
+        svc.commit(proposal.proposal_id, "alice")
+```
+
+- [ ] **Step 3: Make the two bomb tests honest**
+
+In `tests/bills/test_image.py`, both
+`test_prepare_rejects_oversized_upload_before_opening_it` and
+`test_prepare_rejects_pixel_bomb_below_pillows_own_threshold` currently pass even with their
+guard removed, because `prepare` normalises every exception to `UnsupportedMedia` and the
+crafted PNG fails to decode anyway. Assert on the rejection MESSAGE so each test fails when
+its own guard is deleted — the byte-ceiling test must see the byte-ceiling message, and the
+pixel test must see the "too large to process" message that only the header check produces.
+
+- [ ] **Step 4: Verify each test fails without its fix**
+
+For each of the three tests, temporarily remove the guard it covers, confirm the test FAILS,
+then restore. Record the failure output in the report. A test that passes with its guard
+removed is not done.
+
+- [ ] **Step 5: Run the suite and commit**
+
+Run: `C:/Users/joaog/erp_venv/Scripts/python.exe -m pytest tests/bills/ -v`
+
+```bash
+git add logic/bills/service.py tests/bills/test_service.py tests/bills/test_image.py
+git commit -m "fix(bills): clear a stale write plan when stage() fails"
+```
+
+---
+
+### Task 10: Reject a supplier tax ID that fails the Portuguese NIF check digit
+
+The live run's residual defect: on `scanner_forumsi_1.jpeg` the model returns `502267583`
+where the footer reads `502667583` — one misread digit, and a *wrong* value is worse than the
+`null` it used to return, because supplier matching keys on this field.
+
+Portuguese NIFs carry a check digit, so most single-digit misreads are detectable. A value
+that fails the check is blanked and reported as a warning, rather than written as a plausible
+wrong number.
+
+**Verified against the real data** — all six suppliers' NIFs pass, and both observed misreads
+fail:
+
+| Value | Expected |
+|---|---|
+| `502667583` (Sage, correct) | valid |
+| `502267583` (what the model returned) | **invalid** |
+| `502544180` (Vodafone) | valid |
+| `513989536` (Atlante) | valid |
+| `503448672` (Alves & Catalão) | valid |
+| `PT505939347` (Databox, prefixed) | valid |
+| `514380802` (FORUMSI, the buyer) | valid |
+| `514580802` (the buyer transposition) | **invalid** |
+| `ESB65814709` (Jotelulu, Spanish VAT) | not PT-shaped — untouched |
+
+**Files:**
+- Create: `logic/bills/tax_id.py`
+- Modify: `logic/bills/service.py` (`upload`)
+- Test: `tests/bills/test_tax_id.py`, `tests/bills/test_service.py`
+
+**Interfaces:**
+- Produces: `pt_nif_is_valid(value: str) -> bool | None` — `True`/`False` for a
+  Portuguese-shaped value, and `None` when the value is not PT-shaped and therefore not ours
+  to judge.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/bills/test_tax_id.py` covering: every row of the table above; that a non-PT
+value (`ESB65814709`, `""`, `None`, `"12345"`, `"50266758X"`) returns `None` rather than
+`False`; and that an optional `PT` prefix and surrounding whitespace are tolerated.
+
+- [ ] **Step 2: Run it and confirm it fails** (module does not exist).
+
+- [ ] **Step 3: Implement**
+
+The algorithm: strip whitespace and an optional leading `PT`. If what remains is not exactly
+9 digits, return `None` — foreign tax IDs are not ours to judge. Otherwise weight the first
+eight digits by 9, 8, 7, 6, 5, 4, 3, 2, sum them, take the sum modulo 11. The expected check
+digit is 0 when the remainder is 0 or 1, otherwise 11 minus the remainder. Compare it to the
+ninth digit.
+
+- [ ] **Step 4: Wire it into upload**
+
+In `BillService.upload`, after `_extract` and BEFORE matching (which keys on
+`supplier_tax_id`): if `pt_nif_is_valid(bill.supplier_tax_id)` is `False`, blank the field to
+`None` and add a warning naming the rejected value, so the operator sees what was discarded
+and can type the right one. `None` and `True` both leave the field alone. Merge the warning
+with `arithmetic_warnings(bill)` in the existing `warnings` list — do not invent a second
+warning channel.
+
+Only `supplier_tax_id` is validated. `buyer_tax_id` is extraction-only and nothing downstream
+reads it.
+
+- [ ] **Step 5: Test the wiring**
+
+In `tests/bills/test_service.py`: a bill whose `supplier_tax_id` fails the check comes back
+with the field blanked and a warning present, and the supplier match is NOT made on the bad
+number. A bill with a valid NIF is untouched and warning-free. A bill with a Spanish VAT
+number is untouched.
+
+- [ ] **Step 6: Run the suite and commit**
+
+```bash
+git add logic/bills/tax_id.py logic/bills/service.py tests/bills/test_tax_id.py tests/bills/test_service.py
+git commit -m "feat(bills): blank a supplier NIF that fails its check digit"
+```
+
 ## Definition of Done
 
 - [ ] `C:/Users/joaog/erp_venv/Scripts/python.exe -m pytest tests/bills/ -v` is green, with no pre-existing test removed or weakened.
