@@ -84,3 +84,46 @@ def parse(payload: str) -> AtQr | None:
         vat_total=vat,
         gross_total=gross,
     )
+
+
+from logic.bills.models import Bill
+
+# Fields the QR overrides. Named identically on Bill and AtQr. Line items are
+# absent by design: the QR carries no line detail, so vision remains the only
+# source for them.
+_MERGED = ("supplier_tax_id", "buyer_tax_id", "number", "issue_date",
+           "net_total", "vat_total", "gross_total")
+
+_INVOICE_TYPES = ("FT", "FS", "FR")
+
+
+def merge(bill: Bill, qr: AtQr) -> tuple[Bill, list[str]]:
+    """Overlay QR fields onto a vision-extracted bill.
+
+    The QR is emitted by certified software and cannot misread a digit, so it
+    wins every field it carries. Disagreements are reported rather than silently
+    corrected — the operator should see what the model got wrong.
+    """
+    warnings: list[str] = []
+    updates: dict[str, object] = {}
+
+    for name in _MERGED:
+        new = getattr(qr, name)
+        if new is None:
+            continue
+        old = getattr(bill, name)
+        updates[name] = new
+        if old is not None and old != new:
+            warnings.append(
+                f"{name}: QR code reads {new!r}, extraction read {old!r} — using the QR")
+
+    if qr.status is not None and qr.status != "N":
+        warnings.append(
+            f"QR code reports document status {qr.status!r} — this document may be "
+            f"cancelled; do not post it without checking")
+    if qr.doc_type is not None and qr.doc_type not in _INVOICE_TYPES:
+        warnings.append(
+            f"QR code reports document type {qr.doc_type!r}, which is not a purchase "
+            f"invoice type ({', '.join(_INVOICE_TYPES)})")
+
+    return bill.model_copy(update=updates), warnings

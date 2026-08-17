@@ -76,3 +76,78 @@ def test_parse_returns_none_for_an_unparseable_date_but_keeps_the_rest():
     assert qr is not None
     assert qr.issue_date is None
     assert qr.number == "FT 1/1"
+
+
+from logic.bills.extract.at_qr import merge
+from logic.bills.models import Bill, BillLine
+
+
+def _vision_bill(**over) -> Bill:
+    base = dict(supplier_name="SAGE PORTUGAL", supplier_tax_id="502267583",
+                buyer_tax_id="514380802", number="FCL FCL-P26/029346",
+                issue_date=date(2026, 8, 5), net_total=Decimal("2058.72"),
+                vat_total=Decimal("473.51"), gross_total=Decimal("2532.23"),
+                lines=[BillLine(description="SubA Accountants", total=Decimal("1998.62"))])
+    base.update(over)
+    return Bill(**base)
+
+
+def test_merge_overwrites_the_misread_supplier_nif():
+    # This is the real defect from the previous cycle: vision read 502267583
+    # where the invoice says 502667583.
+    merged, _ = merge(_vision_bill(), parse(SAGE))
+    assert merged.supplier_tax_id == "502667583"
+
+
+def test_merge_warns_when_the_qr_contradicts_the_model():
+    _, warnings = merge(_vision_bill(), parse(SAGE))
+    assert any("502267583" in w and "502667583" in w for w in warnings)
+
+
+def test_merge_is_silent_when_the_model_already_agreed():
+    _, warnings = merge(_vision_bill(supplier_tax_id="502667583"), parse(SAGE))
+    assert warnings == []
+
+
+def test_merge_keeps_line_items_untouched():
+    # The QR carries no line detail, so vision's lines must survive.
+    merged, _ = merge(_vision_bill(), parse(SAGE))
+    assert len(merged.lines) == 1
+    assert merged.lines[0].description == "SubA Accountants"
+
+
+def test_merge_fills_a_field_the_model_left_null_without_warning():
+    merged, warnings = merge(_vision_bill(supplier_tax_id=None), parse(SAGE))
+    assert merged.supplier_tax_id == "502667583"
+    assert warnings == []  # filling a gap is not a disagreement
+
+
+def test_merge_leaves_a_field_alone_when_the_qr_lacks_it():
+    qr = parse("A:502667583*O:2532.23*N:473.51")
+    merged, _ = merge(_vision_bill(), qr)
+    assert merged.number == "FCL FCL-P26/029346"
+
+
+def test_merge_warns_loudly_about_a_cancelled_document():
+    qr = parse(SAGE.replace("*E:N*", "*E:A*"))
+    _, warnings = merge(_vision_bill(), qr)
+    assert any("cancel" in w.lower() for w in warnings)
+
+
+def test_merge_warns_about_a_non_invoice_document_type():
+    qr = parse(SAGE.replace("*D:FT*", "*D:NC*"))
+    _, warnings = merge(_vision_bill(), qr)
+    assert any("NC" in w for w in warnings)
+
+
+def test_merge_does_not_warn_for_ordinary_invoice_types():
+    for doc_type in ("FT", "FS", "FR"):
+        qr = parse(SAGE.replace("*D:FT*", f"*D:{doc_type}*"))
+        _, warnings = merge(_vision_bill(supplier_tax_id="502667583"), qr)
+        assert warnings == [], f"{doc_type} should not warn"
+
+
+def test_merge_does_not_mutate_the_original_bill():
+    original = _vision_bill()
+    merge(original, parse(SAGE))
+    assert original.supplier_tax_id == "502267583"
