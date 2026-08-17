@@ -125,6 +125,30 @@ def test_failing_restage_clears_prior_valid_plan():
     assert executor.calls == []
 
 
+def test_failed_stage_clears_a_previously_staged_plan():
+    # A ValidationError (not the in-stage violations list) previously returned
+    # early, above the plan pop, so a rejected stage left a stale, previously
+    # valid plan committable. Distinct from test_failing_restage_clears_
+    # prior_valid_plan above: that one fails via the violations list (gross_total
+    # is Optional, so model_validate succeeds and the pop already ran); this one
+    # fails via BillProposal.model_validate itself raising, the path where the
+    # pop used to be skipped.
+    executor = FakeExecutor()
+    svc = _service(_reader_supplier_and_article, executor=executor)
+    proposal = svc.upload(b"%PDF-fake")
+    edited = proposal.model_dump(mode="json")
+    assert svc.stage(proposal.proposal_id, edited)["ok"] is True
+
+    # Second stage fails validation: the UI posts a cleared required field as null.
+    edited["bill"]["supplier_name"] = None
+    assert svc.stage(proposal.proposal_id, edited)["ok"] is False
+
+    # The stale plan must not survive a rejected stage.
+    out = svc.commit(proposal.proposal_id, operator="alice")
+    assert out["status"] == "error"
+    assert executor.calls == []
+
+
 def test_stage_rejects_ambiguous_supplier_without_choice():
     svc = _service(_reader_supplier_and_article)
     proposal = svc.upload(b"%PDF")

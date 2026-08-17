@@ -94,8 +94,13 @@ def test_prepare_rejects_pixel_bomb_below_pillows_own_threshold():
     bomb = _png_declaring(20_000, 7_500)
     assert 20_000 * 7_500 > MAX_PIXELS
     assert len(bomb) < 1024
-    with pytest.raises(UnsupportedMedia):
+    with pytest.raises(UnsupportedMedia) as exc_info:
         prepare(bomb, "image/png")
+    # Only the header check produces this message; if it's skipped, Pillow's
+    # img.load() chokes on the corrupt/short IDAT stream and prepare()'s
+    # catch-all normalizes that into a different "could not read the image:
+    # ..." message instead.
+    assert str(exc_info.value) == "image is too large to process (20000x7500 pixels)"
 
 
 def test_prepare_turns_pillow_decompression_bomb_error_into_unsupported_media():
@@ -113,8 +118,12 @@ def test_prepare_rejects_oversized_upload_before_opening_it(monkeypatch):
         raise AssertionError("the byte ceiling must be checked before Image.open")
 
     monkeypatch.setattr(image_module.Image, "open", _must_not_open)
-    with pytest.raises(UnsupportedMedia):
+    with pytest.raises(UnsupportedMedia) as exc_info:
         prepare(_jpeg((100, 80)), "image/jpeg")
+    # Only the byte-ceiling guard produces this message; if it's skipped, the
+    # AssertionError from the patched Image.open gets normalized by prepare()'s
+    # catch-all into a different "could not read the image: ..." message instead.
+    assert str(exc_info.value) == "image file is too large — send a smaller photo"
 
 
 def test_upload_ceiling_leaves_room_for_a_real_phone_photo():

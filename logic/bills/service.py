@@ -102,6 +102,9 @@ class BillService:
                 lm.proposed_new = line_proposal(line)
 
     def stage(self, proposal_id: str, edited: dict) -> dict:
+        # Any previously-staged plan is now stale — clear it so only a stage()
+        # call that ends ok:True can leave a committable plan for commit().
+        self._pending.pop(proposal_id + ":plan")
         try:
             proposal = BillProposal.model_validate(edited)
         except ValidationError as e:
@@ -114,9 +117,6 @@ class BillService:
                  "message": err["msg"]} for err in e.errors()]}
         self._refresh_proposed_new(proposal)
         self._pending.put(proposal_id, proposal)  # keep latest edits
-        # Any previously-staged plan is now stale — clear it so only a stage()
-        # call that ends ok:True can leave a committable plan for commit().
-        self._pending.pop(proposal_id + ":plan")
         violations: list[dict] = []
 
         if len(proposal.bill.lines) != len(proposal.line_matches):
