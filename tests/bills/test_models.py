@@ -1,4 +1,8 @@
 from decimal import Decimal
+
+import pytest
+from pydantic import ValidationError
+
 from logic.bills.models import Bill, BillLine, arithmetic_warnings
 
 
@@ -31,6 +35,18 @@ def test_missing_totals_produce_no_arithmetic_warning():
     b = _bill(net_total=None, vat_total=None, gross_total=None,
               lines=[BillLine(description="X")])
     assert arithmetic_warnings(b) == []
+
+
+@pytest.mark.parametrize("blank", ["", "   ", "\n\t"])
+def test_blank_supplier_name_is_rejected_like_a_missing_one(blank):
+    # A blank name would reach Matcher.match_supplier as LIKE '%%', returning
+    # every supplier in the database as an "ambiguous" candidate.
+    with pytest.raises(ValidationError):
+        _bill(supplier_name=blank)
+
+
+def test_supplier_name_is_stripped():
+    assert _bill(supplier_name="  ACME LDA  ").supplier_name == "ACME LDA"
 
 
 def test_vat_rate_strips_percent_sign():

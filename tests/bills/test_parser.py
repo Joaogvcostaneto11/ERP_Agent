@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
-from logic.bills.extract.parser import BillParser, field_hint
+
+import pytest
+
+from logic.bills.extract.parser import BillNotExtractable, BillParser, field_hint
 from logic.bills.models import PageText
 from logic.bills.rules.loader import RuleLoader
 
@@ -127,6 +130,33 @@ def test_system_prompt_disambiguates_the_two_tax_ids():
     assert "footer" in system.lower()
     # The label alone is not decisive — both parties can carry "Contribuinte".
     assert "label" in system.lower()
+
+
+@pytest.mark.parametrize("name", [None, "", "   "])
+def test_illegible_supplier_name_raises_a_runtime_error_not_validation_error(name):
+    # The prompt tells the model to return null rather than guess, and an
+    # illegible letterhead on a desk photo is exactly that case. pydantic's
+    # ValidationError is not a RuntimeError, so app.py would miss it and the
+    # operator would get a bare 500 instead of a readable 400.
+    parser = BillParser(_FakeAnthropic({"supplier_name": name, "lines": []}),
+                        "claude-sonnet-4-6", _rule())
+    with pytest.raises(BillNotExtractable) as exc:
+        parser.parse_image("image/jpeg", "QUJD")
+    assert isinstance(exc.value, RuntimeError)
+    assert "supplier_name" in str(exc.value)
+
+
+def test_illegible_supplier_name_fails_the_text_path_the_same_way():
+    parser = BillParser(_FakeAnthropic({"supplier_name": None, "lines": []}),
+                        "claude-sonnet-4-6", _rule())
+    with pytest.raises(BillNotExtractable):
+        parser.parse([PageText(page=1, text="t")])
+
+
+def test_supplier_name_is_stripped():
+    parser = BillParser(_FakeAnthropic({"supplier_name": "  ACME LDA \n", "lines": []}),
+                        "claude-sonnet-4-6", _rule())
+    assert parser.parse_image("image/jpeg", "QUJD").supplier_name == "ACME LDA"
 
 
 def test_tax_id_rule_reaches_the_text_path_too():

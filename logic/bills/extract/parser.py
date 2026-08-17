@@ -3,8 +3,17 @@ import json
 import re
 from typing import Any
 
+from pydantic import ValidationError
+
 from logic.bills.models import Bill, PageText
 from logic.bills.rules.models import PurchaseInvoiceRule
+
+
+class BillNotExtractable(RuntimeError):
+    """The model read the page but could not produce a usable Bill — typically
+    an illegible letterhead, where the prompt's null-over-guess instruction
+    correctly returns null for a required field. A RuntimeError so app.py turns
+    it into a 400 the operator can act on, not a bare 500."""
 
 _SYSTEM_HEAD = "You extract structured data from a supplier invoice. "
 _TEXT_SOURCE = "You are given the raw OCR text of the invoice pages. "
@@ -73,7 +82,14 @@ class BillParser:
         )
         text = "".join(getattr(c, "text", "") for c in resp.content
                        if getattr(c, "type", None) == "text")
-        return Bill.model_validate(_extract_json(text))
+        try:
+            return Bill.model_validate(_extract_json(text))
+        except ValidationError as e:
+            fields = ", ".join(sorted({".".join(str(p) for p in err["loc"])
+                                       for err in e.errors()}))
+            raise BillNotExtractable(
+                f"could not read these fields from the invoice: {fields} — "
+                "retake the photo or enter them manually") from e
 
     def parse(self, pages: list[PageText]) -> Bill:
         joined = "\n\n".join(f"--- page {p.page} ---\n{p.text}" for p in pages)

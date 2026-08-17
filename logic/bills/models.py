@@ -30,6 +30,9 @@ class BillLine(BaseModel):
 class Bill(BaseModel):
     supplier_name: str
     supplier_tax_id: str | None = None
+    # Extraction-only: kept so the model has somewhere to put the OTHER tax
+    # number on the page and stops mistaking it for the issuer's. Deliberately
+    # not mapped in the rule document and not shown in the UI.
     buyer_tax_id: str | None = None
     number: str | None = None
     issue_date: date | None = None
@@ -40,6 +43,19 @@ class Bill(BaseModel):
     gross_total: Decimal | None = None
     lines: list[BillLine] = []
     confidence: dict[str, float] = {}
+
+    @field_validator("supplier_name", mode="before")
+    @classmethod
+    def _reject_blank_name(cls, v):
+        # An illegible letterhead comes back as null or as "" / "   ". Both mean
+        # the same thing, so both must fail the required-field contract: a blank
+        # name would otherwise reach Matcher as a LIKE '%%' pattern that returns
+        # every supplier in the database as an "ambiguous" candidate.
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                raise ValueError("supplier_name is blank")
+        return v
 
 
 class Candidate(BaseModel):
