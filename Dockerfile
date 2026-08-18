@@ -10,13 +10,16 @@ FROM python:3.12-slim
 # libgssapi-krb5-2 is installed explicitly: the driver .so links against
 # libgssapi_krb5.so.2 but msodbcsql18 does not pull it, so on the slim base the
 # driver fails to load ("file not found" from unixODBC) without it.
+# libglib2.0-0 is for opencv-python-headless (AT QR decoding in the bills
+# module): the headless wheel drops the GUI libs, but cv2 still links against
+# libgthread-2.0.so.0, which python:3.12-slim does not ship.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && echo "deb [trusted=yes] https://packages.microsoft.com/debian/12/prod bookworm main" \
        > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
-       msodbcsql18 unixodbc-dev libgssapi-krb5-2 \
+       msodbcsql18 unixodbc-dev libgssapi-krb5-2 libglib2.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
