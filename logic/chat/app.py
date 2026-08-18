@@ -1,5 +1,4 @@
 from __future__ import annotations
-import base64
 import hashlib
 import html as _html
 import json as _json
@@ -21,6 +20,7 @@ from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService
 from logic.chat.sql_executor import SqlExecutor
+from logic.common.password_gate import install_password_gate
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -81,28 +81,9 @@ def reset_service() -> None:
 app = FastAPI(title="ERP Chat")
 
 
-# Shared-password gate for public deployment. If APP_PASSWORD is unset (e.g.
-# local dev), the gate is disabled and every request passes through unchanged.
-_APP_PASSWORD = os.environ.get("APP_PASSWORD")
-
-
-@app.middleware("http")
-async def _basic_auth(request: Request, call_next):
-    if _APP_PASSWORD and request.url.path != "/healthz":
-        header = request.headers.get("Authorization", "")
-        ok = False
-        if header.startswith("Basic "):
-            try:
-                _, _, pw = base64.b64decode(header[6:]).decode("utf-8").partition(":")
-                ok = secrets.compare_digest(pw, _APP_PASSWORD)
-            except Exception:
-                ok = False
-        if not ok:
-            return Response(
-                status_code=401,
-                headers={"WWW-Authenticate": 'Basic realm="ERP Chat"'},
-            )
-    return await call_next(request)
+# Shared-password gate for public deployment. Unset APP_PASSWORD (local dev)
+# installs no gate at all.
+install_password_gate(app, os.environ.get("APP_PASSWORD"), realm="ERP Chat")
 
 
 @app.get("/healthz", include_in_schema=False)
