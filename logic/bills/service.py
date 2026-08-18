@@ -9,7 +9,7 @@ from logic.bills.extract.image import prepare
 from logic.bills.extract.media import sniff
 from logic.bills.extract.parser import BillParser
 from logic.bills.extract.qr import decode
-from logic.bills.matching import Matcher, line_proposal, supplier_proposal
+from logic.bills.matching import Matcher
 from logic.bills.models import (Bill, BillLine, BillProposal, LinePlan,
                                 MatchResult, WritePlan, arithmetic_warnings)
 from logic.bills.pending import PendingProposalStore
@@ -105,23 +105,41 @@ class BillService:
                 cols[fr.column] = str(val)
         return cols, violations
 
-    @staticmethod
-    def _refresh_proposed_new(proposal: BillProposal) -> None:
-        """Rebuild every 'new' record's columns from the EDITED bill.
+    def _rematch(self, proposal: BillProposal) -> None:
+        """Recompute 'new' match decisions against the EDITED bill.
 
-        proposed_new is built by the Matcher at upload time, from the values the
-        model extracted. The operator then corrects those values in the UI — a
-        misread NIF, say — but only bill.* is editable, so a stale proposed_new
-        would insert the ORIGINAL wrong value into Entidades. A created supplier
-        is permanent master data and NCont feeds AT/SAF-T reporting, so the
-        edited bill has to win. Re-deriving (rather than patching keys in place)
-        also keeps the column set exactly the one matching.*.create_columns
-        whitelists."""
-        if proposal.supplier_match.status == "new":
-            proposal.supplier_match.proposed_new = supplier_proposal(proposal.bill)
-        for line, lm in zip(proposal.bill.lines, proposal.line_matches):
+        The match is decided at upload from the values the model extracted, but
+        the operator then edits the very fields it keys on. Correcting a misread
+        NIF to one that already exists in Entidades has to turn a 'new' supplier
+        into a 'matched' one — otherwise the executor inserts a second row for a
+        company we already have, as permanent master data whose NCont feeds
+        AT/SAF-T.
+
+        Only 'new' results are recomputed. 'matched' and 'ambiguous' may carry a
+        candidate the operator deliberately picked on the review screen, and
+        re-running the match would silently discard that choice.
+
+        This also refreshes proposed_new, because the Matcher derives it from the
+        bill it is handed — so a supplier that still matches nothing is created
+        with the edited values, never the upload-time ones."""
+        sm = proposal.supplier_match
+        if sm.status == "new":
+            proposal.supplier_match = self._keep_confirmation(
+                sm, self._matcher.match_supplier(proposal.bill))
+        for i, (line, lm) in enumerate(zip(proposal.bill.lines, proposal.line_matches)):
             if lm.status == "new":
-                lm.proposed_new = line_proposal(line)
+                proposal.line_matches[i] = self._keep_confirmation(
+                    lm, self._matcher.match_line(line))
+
+    @staticmethod
+    def _keep_confirmation(old: MatchResult, fresh: MatchResult) -> MatchResult:
+        """A freshly computed MatchResult always has confirmed=False. When the
+        record is still 'new', carry the operator's tick across: otherwise
+        stage() would demand confirmation again on every call and they could
+        never get past the gate."""
+        if fresh.status == "new":
+            fresh.confirmed = old.confirmed
+        return fresh
 
     def stage(self, proposal_id: str, edited: dict) -> dict:
         # Any previously-staged plan is now stale — clear it so only a stage()
@@ -137,7 +155,7 @@ class BillService:
             return {"ok": False, "violations": [
                 {"field": ".".join(str(p) for p in err["loc"]),
                  "message": err["msg"]} for err in e.errors()]}
-        self._refresh_proposed_new(proposal)
+        self._rematch(proposal)
         self._pending.put(proposal_id, proposal)  # keep latest edits
         violations: list[dict] = []
 

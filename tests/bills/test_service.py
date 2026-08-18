@@ -412,3 +412,87 @@ def test_upload_keeps_arithmetic_warnings_alongside_qr_warnings(monkeypatch):
     svc = _service(_reader_no_matches)
     warnings = svc.upload(b"%PDF-fake").warnings
     assert any("cancel" in w.lower() for w in warnings)
+
+
+def _reader_only_known_nif(sql, params):
+    """Only 500100209 exists in Entidades. 500100306 does not."""
+    if "Entidades" in sql and params.get("tax_id") == "500100209":
+        return [{"Chave": 7, "Nome": "ACME"}]
+    return []
+
+
+def _staged_edit(proposal, **bill_over):
+    edited = proposal.model_dump(mode="json")
+    edited["bill"].update(bill_over)
+    edited["supplier_match"]["confirmed"] = True
+    for lm in edited["line_matches"]:
+        lm["confirmed"] = True
+    return edited
+
+
+def test_stage_rematches_a_corrected_nif_instead_of_creating_a_duplicate():
+    """The operator fixes a misread NIF to one that already exists in Entidades.
+
+    The match was decided at upload from the model's wrong value, so it says
+    'new'. If stage() does not recompute it, the executor inserts a second
+    supplier row for a company we already have — permanent master data, and
+    NCont feeds AT/SAF-T.
+    """
+    svc = _service(_reader_only_known_nif)
+    svc._parser = FakeParser(_bill().model_copy(update={"supplier_tax_id": "500100306"}))
+    proposal = svc.upload(b"%PDF-fake")
+    assert proposal.supplier_match.status == "new"  # nothing matched the misread NIF
+
+    out = svc.stage(proposal.proposal_id, _staged_edit(proposal, supplier_tax_id="500100209"))
+
+    assert out["ok"] is True, out
+    supplier = out["write_plan"]["supplier"]
+    assert supplier["status"] == "matched"
+    assert supplier["chave"] == 7
+    assert supplier["proposed_new"] is None
+
+
+def test_stage_still_creates_when_the_corrected_nif_matches_nothing():
+    """Re-matching must not break the ordinary create path."""
+    svc = _service(_reader_only_known_nif)
+    svc._parser = FakeParser(_bill().model_copy(update={"supplier_tax_id": "500100306"}))
+    proposal = svc.upload(b"%PDF-fake")
+
+    out = svc.stage(proposal.proposal_id, _staged_edit(proposal, supplier_tax_id="500100403"))
+
+    assert out["ok"] is True, out
+    supplier = out["write_plan"]["supplier"]
+    assert supplier["status"] == "new"
+    # proposed_new carries the EDITED value, not the upload-time one
+    assert supplier["proposed_new"]["NCont"] == "500100403"
+    # the operator's confirmation survives the re-match, or they would be told
+    # to confirm again on every stage
+    assert supplier["confirmed"] is True
+
+
+def _reader_ambiguous_supplier(sql, params):
+    if "Entidades" in sql and "LIKE" in sql:
+        return [{"Chave": 5, "Nome": "ACME LDA"}, {"Chave": 6, "Nome": "ACME SA"}]
+    if "Artigos" in sql:
+        return [{"Chave": 42, "Nome": "Widget"}]
+    return []
+
+
+def test_stage_does_not_rematch_a_candidate_the_operator_picked():
+    """'ambiguous' carries a deliberate choice made on the review screen.
+
+    Re-running the match would recompute it from scratch and silently discard
+    which of the candidates the operator selected, so only 'new' is recomputed.
+    """
+    svc = _service(_reader_ambiguous_supplier)
+    svc._parser = FakeParser(_bill().model_copy(update={"supplier_tax_id": None}))
+    proposal = svc.upload(b"%PDF-fake")
+    assert proposal.supplier_match.status == "ambiguous"
+
+    edited = proposal.model_dump(mode="json")
+    edited["supplier_match"]["chave"] = 6          # operator picks ACME SA
+    out = svc.stage(proposal.proposal_id, edited)
+
+    assert out["ok"] is True, out
+    assert out["write_plan"]["supplier"]["status"] == "ambiguous"
+    assert out["write_plan"]["supplier"]["chave"] == 6
