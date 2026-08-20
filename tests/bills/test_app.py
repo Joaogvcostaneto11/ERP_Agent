@@ -81,3 +81,33 @@ def test_upload_rejects_unsupported_type_with_400(monkeypatch):
                                     "image/heic")})
     assert r.status_code == 400
     assert "unsupported file type" in r.json()["detail"]
+
+
+def test_healthz_answers_without_credentials(monkeypatch):
+    client = _client(monkeypatch)
+    r = client.get("/healthz")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
+def test_bills_app_is_gated_when_the_password_is_set(monkeypatch):
+    """The service that writes to ForumSI must not be open to the internet.
+
+    The gate is installed at import time from the environment, so the module is
+    reloaded with the variable set, then reloaded again afterwards to keep a
+    gated app from leaking into the other tests in this file.
+    """
+    import importlib
+
+    monkeypatch.setenv("BILLS_APP_PASSWORD", "s3cret")
+    gated = importlib.reload(appmod)
+    try:
+        client = TestClient(gated.app)
+        # The health check stays open, or Render never marks the service live.
+        assert client.get("/healthz").status_code == 200
+        r = client.post("/bills/operator", json={"name": "alice"})
+        assert r.status_code == 401
+        assert r.headers["WWW-Authenticate"] == 'Basic realm="Bill Ingestion"'
+    finally:
+        monkeypatch.delenv("BILLS_APP_PASSWORD", raising=False)
+        importlib.reload(gated)

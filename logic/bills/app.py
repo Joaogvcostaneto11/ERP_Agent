@@ -18,6 +18,7 @@ from logic.bills.pending import PendingProposalStore
 from logic.bills.rules.loader import RuleLoader
 from logic.bills.service import BillService
 from logic.bills.write_executor import BillWriteExecutor
+from logic.common.password_gate import install_password_gate
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_REPO_ROOT / ".env")
@@ -30,6 +31,21 @@ _OPERATOR_COOKIE = "bills_operator"
 _TABLE_PREFIX = os.environ.get("BILLS_TABLE_PREFIX", "ForumSI.dbo.")
 
 app = FastAPI(title="Bill Ingestion")
+
+# This service writes to the ForumSI database, so it is gated whenever
+# BILLS_APP_PASSWORD is set. Unset (local dev) installs no gate at all. The
+# secret is deliberately separate from the chat service's APP_PASSWORD: leaking
+# the read-only service must not hand over the one that writes.
+install_password_gate(app, os.environ.get("BILLS_APP_PASSWORD"),
+                      realm="Bill Ingestion")
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict:
+    """Render's health check. Declared here, above the StaticFiles mount at "/",
+    because that mount answers anything not already routed — and exempt from the
+    gate, or the check gets a 401 and the service never goes live."""
+    return {"status": "ok"}
 
 _service: BillService | None = None
 _pending = PendingProposalStore()
