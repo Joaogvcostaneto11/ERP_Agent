@@ -21,15 +21,22 @@ class FakeParser:
 
 class FakeExecutor:
     def __init__(self): self.calls = []
-    def execute(self, plan, rule):
+    def execute(self, plan, rule, *, operator=None, audit=None):
         self.calls.append(plan)
-        return {"document_chave": 99, "supplier_chave": 7, "line_chaves": [1],
-                "created_supplier": False, "created_articles": []}
+        result = {"document_chave": 99, "supplier_chave": 7, "line_chaves": [1],
+                  "created_supplier": False, "created_articles": []}
+        # Mirror the real executor: it writes the audit row inside its own
+        # transaction, so the service no longer audits the success path itself.
+        if audit is not None:
+            audit.insert(None, operator=operator, plan=plan, result=result,
+                         status="ok")
+        return result
 
 
 class FakeAudit:
     def __init__(self): self.records = []
-    def record(self, **kw): self.records.append(kw)
+    def insert(self, session, **kw): self.records.append(kw)
+    def record_failure(self, **kw): self.records.append(kw)
 
 
 def _reader_no_matches(sql, params):

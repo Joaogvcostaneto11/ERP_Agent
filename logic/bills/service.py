@@ -221,11 +221,13 @@ class BillService:
         if plan is None:
             return {"status": "error", "message": "no staged plan; stage first"}
         try:
-            result = self._executor.execute(plan, self._rule)
-            self._audit.record(operator=operator, plan=plan, result=result, status="ok")
+            # The executor writes the audit row inside the document's own
+            # transaction, so a failed audit rolls the document back.
+            result = self._executor.execute(plan, self._rule, operator=operator,
+                                            audit=self._audit)
             self._pending.pop(proposal_id)
             return {"status": "ok", **result}
         except Exception as e:  # noqa: BLE001
-            self._audit.record(operator=operator, plan=plan,
-                               result={}, status="error")
+            self._audit.record_failure(operator=operator, plan=plan,
+                                       result={}, status="error")
             return {"status": "error", "message": str(e)[:500]}

@@ -59,7 +59,8 @@ class BillWriteExecutor:
             f"cannot write {table}: match not resolvable "
             f"(status={match.status!r}, confirmed={match.confirmed})")
 
-    def execute(self, plan: WritePlan, rule: PurchaseInvoiceRule) -> dict[str, Any]:
+    def execute(self, plan: WritePlan, rule: PurchaseInvoiceRule, *,
+                operator: str, audit) -> dict[str, Any]:
         # Whitelist caller columns against the rule's declared fields BEFORE any write.
         allowed_header = {fr.column for fr in rule.header.fields.values()}
         allowed_line = {fr.column for fr in rule.lines.fields.values()}
@@ -116,6 +117,11 @@ class BillWriteExecutor:
                 self._insert(session, rule.lines.table, row)
                 line_chaves.append(line_pk)
 
-            return {"document_chave": doc_pk, "supplier_chave": supplier_chave,
-                    "line_chaves": line_chaves, "created_supplier": created_supplier,
-                    "created_articles": created_articles}
+            result = {"document_chave": doc_pk, "supplier_chave": supplier_chave,
+                      "line_chaves": line_chaves, "created_supplier": created_supplier,
+                      "created_articles": created_articles}
+            # Last statement inside the transaction: the audit row commits with
+            # the document or rolls back with it. If this raises, nothing lands.
+            audit.insert(session, operator=operator, plan=plan, result=result,
+                         status="ok")
+            return result

@@ -74,7 +74,9 @@ def get_service() -> BillService:
             anthropic_client=_build_anthropic(), ocr_fn=pdf_to_text, rule=rule,
             reader=_read, pending=_pending,
             executor=BillWriteExecutor(get_bills_write_session, table_prefix=_TABLE_PREFIX),
-            audit=BillAuditWriter(AuditLog(_WRITE_LOG_PATH)),
+            audit=BillAuditWriter(AuditLog(_WRITE_LOG_PATH),
+                                  session_factory=get_bills_write_session,
+                                  table_prefix=_TABLE_PREFIX),
             model="claude-sonnet-4-6", table_prefix=_TABLE_PREFIX)
     return _service
 

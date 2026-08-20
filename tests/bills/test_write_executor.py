@@ -69,7 +69,7 @@ def test_commit_matched_supplier_and_article(session_factory):
     factory, eng = session_factory
     with eng.begin() as c:
         c.execute(text("INSERT INTO Artigos (Chave, Nome) VALUES (42, 'Widget')"))
-    result = _ex(factory).execute(_plan_matched_supplier(), _rule())
+    result = _ex(factory).execute(_plan_matched_supplier(), _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         doc = c.execute(text("SELECT * FROM Doc001")).fetchone()
         line = c.execute(text("SELECT * FROM LinDoc001")).fetchone()
@@ -92,7 +92,7 @@ def test_commit_creates_new_supplier_and_article(session_factory):
                         columns={"Descricao": "New Item", "Quantidade": "1",
                                  "Punit": "10", "Iva": "23", "Valor": "10"})],
         rule_doc="purchase_invoice", rule_version=1)
-    result = _ex(factory).execute(plan, _rule())
+    result = _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         sup = c.execute(text("SELECT Chave, Nome, NCont, Tipo FROM Entidades WHERE Nome='New Co'")).fetchone()
         art = c.execute(text("SELECT Chave, Nome FROM Artigos WHERE Nome='New Item'")).fetchone()
@@ -108,7 +108,7 @@ def test_unconfirmed_new_supplier_is_rejected_and_nothing_written(session_factor
     plan.supplier = MatchResult(status="new", confirmed=False,
                                 proposed_new={"Nome": "X"})
     with pytest.raises(ValueError, match="not resolvable"):
-        _ex(factory).execute(plan, _rule())
+        _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
 
@@ -118,7 +118,7 @@ def test_unknown_header_column_is_rejected_and_nothing_written(session_factory):
     plan = _plan_matched_supplier()
     plan.header["Bogus"] = "x"
     with pytest.raises(ValueError, match="Bogus"):
-        _ex(factory).execute(plan, _rule())
+        _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
 
@@ -141,7 +141,7 @@ def test_two_new_articles_get_distinct_keys(session_factory):
                               "Punit": "10", "Iva": "23", "Valor": "10"}),
         ],
         rule_doc="purchase_invoice", rule_version=1)
-    result = _ex(factory).execute(plan, _rule())
+    result = _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     assert len(set(result["created_articles"])) == 2
     with eng.begin() as c:
         chaves = [r[0] for r in c.execute(text("SELECT Chave FROM Artigos")).fetchall()]
@@ -154,7 +154,7 @@ def test_unconfirmed_new_article_rolls_back_header(session_factory):
     plan.lines[0].article = MatchResult(status="new", confirmed=False,
                                         proposed_new={"Nome": "X"})
     with pytest.raises(ValueError, match="not resolvable"):
-        _ex(factory).execute(plan, _rule())
+        _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
         assert c.execute(text("SELECT COUNT(*) FROM LinDoc001")).scalar() == 0
@@ -175,7 +175,57 @@ def test_rogue_proposed_new_key_is_rejected_and_nothing_written(session_factory)
                                  "Iva": "23", "Valor": "1"})],
         rule_doc="purchase_invoice", rule_version=1)
     with pytest.raises(ValueError, match="Hist"):
-        _ex(factory).execute(plan, _rule())
+        _ex(factory).execute(plan, _rule(), operator="test", audit=NullAudit())
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
         assert c.execute(text("SELECT COUNT(*) FROM Entidades WHERE Nome='Evil'")).scalar() == 0
+
+
+class RecordingAudit:
+    """Captures whether the session was inside a transaction at call time."""
+    def __init__(self):
+        self.calls = []
+
+    def insert(self, session, *, operator, plan, result, status):
+        self.calls.append({"in_transaction": session.in_transaction(),
+                           "operator": operator, "result": result, "status": status})
+
+
+class ExplodingAudit:
+    def insert(self, session, **kw):
+        raise RuntimeError("audit unavailable")
+
+
+class NullAudit:
+    def insert(self, session, **kw):
+        pass
+
+
+def test_audit_is_written_inside_the_document_transaction(session_factory):
+    factory, eng = session_factory
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO Artigos (Chave, Nome) VALUES (42, 'Widget')"))
+    audit = RecordingAudit()
+    result = _ex(factory).execute(_plan_matched_supplier(), _rule(),
+                                  operator="alice", audit=audit)
+    assert len(audit.calls) == 1
+    call = audit.calls[0]
+    assert call["in_transaction"] is True
+    assert call["operator"] == "alice"
+    assert call["status"] == "ok"
+    assert call["result"]["document_chave"] == result["document_chave"]
+
+
+def test_a_failed_audit_rolls_the_document_back(session_factory):
+    """The atomic guarantee stated as a test: if the audit row cannot be
+    written, no document may survive. This is the whole point of putting the
+    insert inside the transaction rather than after it."""
+    factory, eng = session_factory
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO Artigos (Chave, Nome) VALUES (42, 'Widget')"))
+    with pytest.raises(RuntimeError):
+        _ex(factory).execute(_plan_matched_supplier(), _rule(),
+                             operator="alice", audit=ExplodingAudit())
+    with eng.begin() as c:
+        assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
+        assert c.execute(text("SELECT COUNT(*) FROM LinDoc001")).scalar() == 0
