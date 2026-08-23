@@ -28,11 +28,15 @@ _WRITE_LOG_PATH = Path(os.environ.get(
     "BILLS_WRITE_LOG_PATH", str(_REPO_ROOT / "logs" / "bills_writes.jsonl")))
 _UI_DIR = _REPO_ROOT / "ui" / "bills"
 _OPERATOR_COOKIE = "bills_operator"
-_TABLE_PREFIX = os.environ.get("BILLS_TABLE_PREFIX", "ForumSI.dbo.")
+# Writes land in whatever database BILLS_WRITE_DATABASE_URL points at (DevDB).
+# Deliberately not a second, independent statement of the target: when the
+# prefix named a database of its own, it drifted from the connection and the
+# audit table was created somewhere the inserts never looked.
+_TABLE_PREFIX = os.environ.get("BILLS_TABLE_PREFIX", "dbo.")
 
 app = FastAPI(title="Bill Ingestion")
 
-# This service writes to the ForumSI database, so it is gated whenever
+# This service writes to the ERP database, so it is gated whenever
 # BILLS_APP_PASSWORD is set. Unset (local dev) installs no gate at all. The
 # secret is deliberately separate from the chat service's APP_PASSWORD: leaking
 # the read-only service must not hand over the one that writes.

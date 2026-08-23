@@ -20,7 +20,7 @@ class BillWriteExecutor:
     (computed) columns are applied last so a caller cannot override them."""
 
     def __init__(self, session_factory: Callable, *,
-                 table_prefix: str = "ForumSI.dbo.",
+                 table_prefix: str = "dbo.",
                  now: Callable[[], str] = _now_iso, operator_key: int = 0) -> None:
         self._factory = session_factory
         self._p = table_prefix

@@ -229,3 +229,16 @@ def test_a_failed_audit_rolls_the_document_back(session_factory):
     with eng.begin() as c:
         assert c.execute(text("SELECT COUNT(*) FROM Doc001")).scalar() == 0
         assert c.execute(text("SELECT COUNT(*) FROM LinDoc001")).scalar() == 0
+
+
+def test_default_table_prefix_follows_the_connection_database():
+    """No hardcoded database name: the target is whatever
+    BILLS_WRITE_DATABASE_URL connects to.
+
+    Two independent statements of the target drift apart — that is exactly how
+    the audit table once ended up in a different database from the documents,
+    which would have failed every commit on a missing object.
+    """
+    ex = BillWriteExecutor(lambda: None)
+    assert ex._p == "dbo."
+    assert "ForumSI" not in ex._p

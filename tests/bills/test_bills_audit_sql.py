@@ -65,3 +65,11 @@ def test_entry_keys_never_reach_the_statement_text():
     insert_audit(s, {**ENTRY, "Payload); DROP TABLE x--": "evil"})
     sql, _ = s.calls[0]
     assert "DROP TABLE" not in sql
+
+
+def test_insert_defaults_to_the_connection_database():
+    s = FakeSession()
+    insert_audit(s, ENTRY)
+    sql, _ = s.calls[0]
+    assert f"INSERT INTO {TABLE}" in sql
+    assert "ForumSI" not in sql
