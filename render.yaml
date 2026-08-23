@@ -36,7 +36,7 @@ services:
         sync: false
       - key: DATABASE_URL           # read-only, for supplier/article lookups
         sync: false
-      - key: BILLS_WRITE_DATABASE_URL   # writable ForumSI login
+      - key: BILLS_WRITE_DATABASE_URL   # writable ERP login (DevDB)
         sync: false
       # Deliberately not APP_PASSWORD: this service writes to the database, so
       # leaking the read-only chat credential must not hand it over.

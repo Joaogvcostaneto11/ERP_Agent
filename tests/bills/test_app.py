@@ -91,7 +91,7 @@ def test_healthz_answers_without_credentials(monkeypatch):
 
 
 def test_bills_app_is_gated_when_the_password_is_set(monkeypatch):
-    """The service that writes to ForumSI must not be open to the internet.
+    """The service that writes to the ERP database must not be open to the internet.
 
     The gate is installed at import time from the environment, so the module is
     reloaded with the variable set, then reloaded again afterwards to keep a
