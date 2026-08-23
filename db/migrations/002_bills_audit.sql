@@ -1,16 +1,12 @@
 -- Audit trail for bill ingestion writes.
 --
 -- WHERE THIS LIVES, AND WHY IT MATTERS
--- The row is inserted inside the same transaction as the document it records,
--- so it must sit in the same database as the documents. The application writes
--- through BILLS_TABLE_PREFIX (default "ForumSI.dbo."), so the connection's
--- default database is NOT where this belongs -- BILLS_WRITE_DATABASE_URL points
--- at DevDB while Doc001 and friends live in ForumSI. Creating the table in the
--- connection's default database would leave every audit INSERT failing on a
--- missing object, and because the insert deliberately does not swallow, every
--- commit would roll back.
---
--- If BILLS_TABLE_PREFIX is overridden, change the USE below to match it.
+-- Run this against the database BILLS_WRITE_DATABASE_URL points at — the same
+-- one the application writes documents to. It deliberately does NOT name a
+-- database: the audit row is inserted inside the document's own transaction, so
+-- it has to sit beside Doc001, and the only way to guarantee that is to let both
+-- follow the same connection. When the two named their targets separately they
+-- drifted, and every audit INSERT would have failed on a missing object.
 --
 -- Payload holds the whole audit entry as JSON, so adding a field later needs no
 -- migration; the promoted columns exist only to make the common queries cheap.
@@ -21,9 +17,6 @@
 -- conversion in between.
 --
 -- Re-running this script is harmless.
-
-USE ForumSI;
-GO
 
 IF OBJECT_ID('dbo.ERPAgent_BillAudit', 'U') IS NULL
 BEGIN
