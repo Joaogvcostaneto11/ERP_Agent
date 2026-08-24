@@ -554,7 +554,7 @@ def apply(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/bills/test_rule_proposal.py -v`
-Expected: PASS — 15 passed (the protected-column case is parametrized four ways)
+Expected: PASS — 16 passed (12 test functions; the protected-column case is parametrized four ways)
 
 - [ ] **Step 5: Commit**
 
