@@ -7,8 +7,12 @@ from logic.bills.rules.proposal import (
 from logic.bills.rules.schema_probe import SchemaProbe
 
 REAL_COLUMNS = {
-    "Doc001": ["Chave", "Entidade", "Data", "Iliquido", "Total", "Obs", "DC", "OC", "Estado"],
-    "LinDoc001": ["Documento", "ChaveProd", "Descricao", "Quantidade", "Punit", "CodigoForn"],
+    # Chave and TipoDoc included because write_executor.py writes both
+    # (write_executor.py:93-94, :114) — a fake schema missing them would let a
+    # protected-column test pass vacuously via "does not exist" instead of
+    # actually exercising the protected-column check.
+    "Doc001": ["Chave", "Entidade", "Data", "Iliquido", "Total", "Obs", "DC", "OC", "Estado", "TipoDoc"],
+    "LinDoc001": ["Chave", "Documento", "ChaveProd", "Descricao", "Quantidade", "Punit", "CodigoForn"],
     "Entidades": ["Chave", "Nome", "NCont", "Tipo", "Listar"],
     "Artigos": ["Chave", "Nome", "Codigo"],
 }
@@ -98,11 +102,42 @@ def test_unknown_source_is_rejected(rule):
     assert len(v) == 1 and "not a known source" in v[0].reason
 
 
-@pytest.mark.parametrize("column", ["Chave", "DC", "OC", "Estado"])
-def test_protected_columns_are_rejected(rule, column):
-    # Chave = primary_key, DC/OC = audit_columns values, Estado = draft_defaults key
-    p = _proposal(FieldChange(action="set", section="header", name="x",
-                              column=column, source="bill.number"))
+PROTECTED_COLUMNS = ["Chave", "DC", "OC", "Estado", "ATCUD", "CodigoAT", "Certificacao"]
+
+
+def _protected_change(section, column):
+    # header/lines are mapped sections and need name+source; the two *_create
+    # sections take a bare column.
+    if section == "header":
+        return FieldChange(action="set", section=section, name="x",
+                           column=column, source="bill.number")
+    if section == "lines":
+        return FieldChange(action="set", section=section, name="x",
+                           column=column, source="line.description")
+    return FieldChange(action="set", section=section, column=column)
+
+
+@pytest.mark.parametrize("section", ["header", "lines", "supplier_create", "article_create"])
+@pytest.mark.parametrize("column", PROTECTED_COLUMNS)
+def test_protected_columns_are_rejected_in_every_section(rule, column, section):
+    # Chave = primary_key, DC/OC = audit_columns values, Estado/ATCUD/CodigoAT/
+    # Certificacao = draft_defaults keys.
+    # Regression for C1: the protected-column check must not be gated to the
+    # header section. write_executor's _resolve_entity() computes Chave/DC/OC
+    # last for a new supplier or article row too (write_executor.py:53-56), not
+    # just for Doc001, so a proposal targeting *_create must be blocked the
+    # same way.
+    p = _proposal(_protected_change(section, column))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "protected" in v[0].reason
+
+
+def test_supplier_create_defaults_are_protected(rule):
+    # Regression for C1's second half: create_defaults keys (Tipo, Listar for
+    # supplier_create) must also be protected. _resolve_entity() seeds
+    # create_defaults into the new row before splicing in proposed_new
+    # (write_executor.py:54); a mappable Tipo would let a proposal override it.
+    p = _proposal(FieldChange(action="set", section="supplier_create", column="Tipo"))
     v = validate(p, rule, _schema())
     assert len(v) == 1 and "protected" in v[0].reason
 
@@ -111,7 +146,8 @@ def test_create_column_change_is_validated_against_the_entity_table(rule):
     ok = _proposal(FieldChange(action="set", section="supplier_create", column="Nome"))
     assert validate(ok, rule, _schema()) == []
     bad = _proposal(FieldChange(action="set", section="supplier_create", column="Descricao"))
-    assert len(validate(bad, rule, _schema())) == 1
+    v = validate(bad, rule, _schema())
+    assert len(v) == 1 and "does not exist" in v[0].reason
 
 
 def test_apply_adds_and_removes_create_columns(rule):
@@ -144,3 +180,57 @@ def test_violations_report_every_bad_change_not_just_the_first(rule):
     )
     v = validate(p, rule, _schema())
     assert [x.change_index for x in v] == [0, 1]
+
+
+def test_remove_with_an_injection_shaped_column_is_rejected(rule):
+    # Regression for I1 (first half): the remove branch used to `continue`
+    # after a presence check only, skipping the identifier check. That let an
+    # injection-shaped column through validate() and made apply() raise
+    # AssertionError instead of validate() reporting a violation.
+    evil = "Codigo); DROP TABLE Artigos; --"
+    p = _proposal(FieldChange(action="remove", section="article_create", column=evil))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "not a valid identifier" in v[0].reason
+
+
+def test_structural_header_field_cannot_be_removed(rule):
+    # Regression for I1 (second half): removing header.supplier would drop the
+    # mapping write_executor.py:94 depends on (`rule.header.fields["supplier"]`),
+    # raising KeyError on every subsequent write.
+    p = _proposal(FieldChange(action="remove", section="header", name="supplier"))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "protected" in v[0].reason
+
+
+def test_structural_lines_field_cannot_be_removed(rule):
+    # Same as above for write_executor.py:116 (`rule.lines.fields["article"]`).
+    p = _proposal(FieldChange(action="remove", section="lines", name="article"))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "protected" in v[0].reason
+
+
+def test_structural_field_cannot_be_retargeted(rule):
+    # Regression for I1 (second half): retargeting header.supplier to Obs would
+    # reroute the supplier FK into the notes column instead of just dropping it.
+    p = _proposal(FieldChange(action="set", section="header", name="supplier",
+                              column="Obs", source="bill.number"))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "protected" in v[0].reason
+
+
+def test_trailing_newline_identifier_is_rejected(rule):
+    # Regression for I2: `_IDENT_RE.match()` let "Descricao\n" through because
+    # `$` matches just before a trailing newline. Use a schema double that
+    # would approve any column, so only the regex determines the outcome —
+    # this is the case the regex exists for: the schema lookup cannot be
+    # trusted to catch what the regex misses.
+    class YesProbe:
+        def resolve(self, table, column):
+            return column
+        def columns(self, table):
+            return {}
+
+    p = _proposal(FieldChange(action="set", section="lines", name="x",
+                              column="Descricao\n", source="line.description"))
+    v = validate(p, rule, YesProbe())
+    assert len(v) == 1 and "not a valid identifier" in v[0].reason

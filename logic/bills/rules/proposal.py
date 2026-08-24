@@ -71,12 +71,27 @@ def table_for(section: str, rule: PurchaseInvoiceRule) -> str:
     }[section]
 
 
-def _protected(rule: PurchaseInvoiceRule) -> set[str]:
-    """Columns the executor computes for itself. It applies them last precisely
-    so a caller cannot override them; admin remapping would undo that."""
+# Logical field keys the executor computes for itself (write_executor.py sets
+# the supplier FK and article FK last, after caller columns). Retargeting or
+# removing these would let a proposal redirect or drop a structural join, so
+# they are protected per-section like the column-level set below.
+_PROTECTED_FIELD_KEYS = {"header": "supplier", "lines": "article"}
+
+
+def _protected(rule: PurchaseInvoiceRule, section: str) -> set[str]:
+    """Columns the executor computes for itself and applies last, so a caller
+    cannot override them. This applies to every section, not just `header`:
+    the same primary-key/audit/draft-default columns are also written by
+    `_resolve_entity()` when creating a new supplier or article row. Create
+    sections additionally protect their own `create_defaults` keys, which
+    `_resolve_entity()` seeds before splicing in the caller's `proposed_new`."""
     out = {rule.header.primary_key.lower()}
     out |= {c.lower() for c in rule.header.audit_columns.values()}
     out |= {c.lower() for c in rule.header.draft_defaults}
+    if section == "supplier_create":
+        out |= {c.lower() for c in rule.matching.supplier.create_defaults}
+    elif section == "article_create":
+        out |= {c.lower() for c in rule.matching.article.create_defaults}
     return out
 
 
@@ -85,23 +100,31 @@ def validate(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
     """Every reason `proposal` cannot be applied. Empty list means applicable."""
     out: list[Violation] = []
     sources = valid_sources()
-    protected = _protected(rule)
 
     for i, ch in enumerate(proposal.changes):
         def bad(reason: str) -> None:
             out.append(Violation(change_index=i, reason=reason))
 
+        protected_key = _PROTECTED_FIELD_KEYS.get(ch.section)
+
         if ch.section in _MAPPED and ch.action == "remove":
             if not ch.name:
                 bad("name is required to remove a mapped field")
+            elif ch.name == protected_key:
+                bad(f"{ch.name!r} is a protected field and cannot be removed")
             continue
         if ch.section in _CREATE and ch.action == "remove":
             if not ch.column:
                 bad("column is required to remove a create column")
+            elif not _IDENT_RE.fullmatch(ch.column):
+                bad(f"{ch.column!r} is not a valid identifier")
             continue
 
         if ch.section in _MAPPED and not ch.name:
             bad("name is required for a mapped field")
+            continue
+        if ch.section in _MAPPED and ch.name == protected_key:
+            bad(f"{ch.name!r} is a protected field and cannot be retargeted")
             continue
         if not ch.column:
             bad("column is required")
@@ -110,10 +133,10 @@ def validate(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
             bad("source is required for a mapped field")
             continue
 
-        if not _IDENT_RE.match(ch.column):
+        if not _IDENT_RE.fullmatch(ch.column):
             bad(f"{ch.column!r} is not a valid identifier")
             continue
-        if ch.column.lower() in protected and ch.section == "header":
+        if ch.column.lower() in _protected(rule, ch.section):
             bad(f"{ch.column!r} is protected and cannot be mapped")
             continue
 
