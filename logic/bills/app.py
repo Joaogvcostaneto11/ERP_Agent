@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 import os
 import secrets
 from pathlib import Path
@@ -309,5 +310,32 @@ def _favicon() -> Response:
     return Response(status_code=204)
 
 
+def _asset_version() -> str:
+    """Short token over the bills UI's JS/CSS; changes whenever any of them
+    change, so the version-stamped URLs below always defeat a stale cache."""
+    h = hashlib.md5()
+    for p in sorted(_UI_DIR.rglob("*.js")) + sorted(_UI_DIR.rglob("*.css")):
+        st = p.stat()
+        h.update(f"{p.relative_to(_UI_DIR).as_posix()}:{st.st_mtime_ns}:{st.st_size}".encode())
+    return h.hexdigest()[:8]
+
+
+def _index() -> Response:
+    """Serve index.html with version-stamped asset URLs. Without this the
+    browser keeps a cached admin.js/bills.css after a deploy — which is not
+    hypothetical: a stale stylesheet made a fixed panel look unfixed during
+    manual testing. Mirrors the same mechanism in logic/chat/app.py."""
+    html = (_UI_DIR / "index.html").read_text(encoding="utf-8")
+    v = _asset_version()
+    html = html.replace('href="/bills.css"', f'href="/bills.css?v={v}"')
+    html = html.replace('src="/app.js"', f'src="/app.js?v={v}"')
+    html = html.replace('src="./admin.js"', f'src="./admin.js?v={v}"')
+    return Response(content=html, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
 if _UI_DIR.exists():
+    # Register the index routes BEFORE the catch-all mount so they win.
+    app.add_api_route("/", _index, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/index.html", _index, methods=["GET"], include_in_schema=False)
     app.mount("/", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")

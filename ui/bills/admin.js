@@ -1,10 +1,18 @@
 // Admin panel: draft a mapping change in prose, review the diff, apply it.
-// Hidden unless the server reports the feature on AND a token is stored —
-// the same two-part gate ui/chat/app.js uses for Teach/Fix.
+//
+// sessionStorage, not localStorage: an admin token is a privileged credential
+// and must not outlive the browser session. With localStorage, entering it once
+// left every later visit to this origin showing the admin surface — including a
+// brand-new session, and including an operator sitting down at the same
+// machine. Re-entering it per session is the correct cost for a secret that
+// authorises rewriting how invoices are written to the database.
 const TOKEN_KEY = "bills_admin_token";
 
 const panel = document.getElementById("admin-panel");
 const panelBody = document.getElementById("admin-body");
+const tokenRow = document.getElementById("admin-token-row");
+const signedInRow = document.getElementById("admin-signed-in");
+const signOutBtn = document.getElementById("admin-signout");
 const tokenInput = document.getElementById("admin-token");
 const proseInput = document.getElementById("admin-prose");
 const draftBtn = document.getElementById("admin-draft");
@@ -16,31 +24,58 @@ const historyEl = document.getElementById("admin-history");
 let current = null;     // { version, rule, schema, history }
 let proposal = null;
 
-const token = () => localStorage.getItem(TOKEN_KEY) || "";
+const token = () => sessionStorage.getItem(TOKEN_KEY) || "";
 const headers = () => ({ "Content-Type": "application/json", "X-Admin-Token": token() });
 
-// Both halves of the gate must hold before an operator sees anything: the
-// feature is on AND this browser holds a token. `?admin=1` is the escape hatch
-// for an admin on a fresh browser — it reveals the token field only, and the
-// panel body stays hidden until a token is actually stored.
-const escapeHatch = () => new URLSearchParams(location.search).get("admin") === "1";
+// `/` is the operator view and must never show the admin surface, whatever this
+// browser happens to be holding. `/?admin=1` is the admin view. This is UI
+// hygiene, not a security boundary — the server's token gate is that.
+const adminView = () => new URLSearchParams(location.search).get("admin") === "1";
+
+// Signed in: the token field is replaced by a sign-out control, so the secret
+// is not left sitting in a form field for the rest of the session.
+function setSignedIn(on) {
+  tokenRow.hidden = on;
+  signedInRow.hidden = !on;
+  panelBody.hidden = !on;
+}
 
 async function init() {
+  // One-time migration: this panel used to keep the token in localStorage, so
+  // anyone who signed in before the switch still has an admin credential
+  // sitting in persistent storage. Nothing reads it any more — purge it rather
+  // than leave it there.
+  localStorage.removeItem(TOKEN_KEY);
+  if (!adminView()) return;
   const r = await fetch("/admin/rules/enabled");
   if (!(await r.json()).enabled) return;
-  if (!token() && !escapeHatch()) return;
   panel.hidden = false;
-  tokenInput.value = token();
-  panelBody.hidden = !token();
+  tokenInput.value = "";        // never repopulate the secret into the DOM
+  setSignedIn(!!token());
   if (token()) await refresh();
 }
 
 tokenInput.addEventListener("change", async () => {
   const v = tokenInput.value.trim();
-  if (v) localStorage.setItem(TOKEN_KEY, v);
-  else localStorage.removeItem(TOKEN_KEY);
-  panelBody.hidden = !v;
-  if (v) await refresh();
+  if (!v) return;
+  sessionStorage.setItem(TOKEN_KEY, v);
+  tokenInput.value = "";
+  setSignedIn(true);
+  await refresh();
+});
+
+signOutBtn.addEventListener("click", () => {
+  sessionStorage.removeItem(TOKEN_KEY);
+  // Drop every trace of the session: a later admin on this machine must not
+  // inherit the previous one's mapping, diff, or history.
+  current = null;
+  proposal = null;
+  out.textContent = "";
+  versionEl.textContent = "";
+  historyEl.replaceChildren();
+  proseInput.value = "";
+  applyBtn.hidden = true;
+  setSignedIn(false);
 });
 
 async function refresh() {

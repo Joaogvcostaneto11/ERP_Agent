@@ -22,7 +22,11 @@
   <script src="/app.js"></script>
   <section id="admin-panel" hidden class="admin">
     <h2>Write mapping <span id="admin-version"></span></h2>
-    <label>Admin token <input id="admin-token" type="password" autocomplete="off"></label>
+    <label id="admin-token-row">Admin token <input id="admin-token" type="password" autocomplete="off"></label>
+    <div id="admin-signed-in" class="admin-signed-in" hidden>
+      <span>Signed in as admin</span>
+      <button id="admin-signout" type="button">Sign out</button>
+    </div>
     <div id="admin-body" hidden>
       <textarea id="admin-prose" rows="3"
         placeholder="e.g. the supplier's own article code belongs in LinDoc001.CodigoForn"></textarea>
