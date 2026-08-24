@@ -18,6 +18,7 @@ const proseInput = document.getElementById("admin-prose");
 const draftBtn = document.getElementById("admin-draft");
 const applyBtn = document.getElementById("admin-apply");
 const out = document.getElementById("admin-output");
+const mappingEl = document.getElementById("admin-mapping");
 const versionEl = document.getElementById("admin-version");
 const historyEl = document.getElementById("admin-history");
 
@@ -71,6 +72,7 @@ signOutBtn.addEventListener("click", () => {
   current = null;
   proposal = null;
   out.textContent = "";
+  mappingEl.textContent = "";
   versionEl.textContent = "";
   historyEl.replaceChildren();
   proseInput.value = "";
@@ -78,7 +80,12 @@ signOutBtn.addEventListener("click", () => {
   setSignedIn(false);
 });
 
-async function refresh() {
+// `message` is what the output box should say afterwards. The box reports the
+// result of an action and nothing else — it used to be seeded with the current
+// mapping on load, which made it look like a draft had already been produced
+// before the admin had clicked anything. The mapping now lives in its own
+// collapsed panel, so it is still available without pretending to be output.
+async function refresh(message = "") {
   const r = await fetch("/admin/rules/current", { headers: headers() });
   if (!r.ok) { out.textContent = `Cannot load rules (${r.status})`; return; }
   current = await r.json();
@@ -90,6 +97,8 @@ async function refresh() {
     return b;
   }));
   renderMapping();
+  out.textContent = message;
+  applyBtn.hidden = true;
 }
 
 function renderMapping() {
@@ -98,8 +107,7 @@ function renderMapping() {
     rows.push(`header.${k}: ${f.column} <- ${f.source}`);
   for (const [k, f] of Object.entries(current.rule.lines.fields))
     rows.push(`lines.${k}: ${f.column} <- ${f.source}`);
-  out.textContent = rows.join("\n");
-  applyBtn.hidden = true;
+  mappingEl.textContent = rows.join("\n");
 }
 
 // Drafting calls Claude and takes seconds. Without a pending state the box
@@ -166,9 +174,7 @@ applyBtn.addEventListener("click", () => withPending(applyBtn, "Applying", async
   });
   const reply = await readBody(r);
   if (r.status === 409) {
-    // refresh() repaints the box, so state the conflict after it, not before.
-    await refresh();
-    out.textContent = reply.detail || "The rule changed underneath you; re-draft.";
+    await refresh(reply.detail || "The rule changed underneath you; re-draft.");
     return;
   }
   if (!r.ok) {
@@ -180,14 +186,16 @@ applyBtn.addEventListener("click", () => withPending(applyBtn, "Applying", async
     return;
   }
   proseInput.value = "";
-  await refresh();
-  out.textContent = `Applied. Now at v${reply.version}.\n\n${out.textContent}`;
+  await refresh(`Applied. Now at v${reply.version}.`);
 }));
 
 async function revert(v) {
   const r = await fetch(`/admin/rules/revert/${v}`, { method: "POST", headers: headers() });
   if (!r.ok) { out.textContent = `Revert failed (${r.status})`; return; }
-  await refresh();
+  const reply = await readBody(r);
+  // History is append-only: reverting to v3 writes a NEW version carrying v3's
+  // content rather than rewinding, so say both numbers or the jump looks wrong.
+  await refresh(`Reverted to v${v}. Now at v${reply.version}.`);
 }
 
 init();

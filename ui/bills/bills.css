@@ -41,3 +41,5 @@ textarea.cell { width: 100%; border: none; background: transparent; resize: none
    more specific than the UA stylesheet's `[hidden] { display: none }`, so
    without this the panel's toggled rows stay on screen with .hidden set. */
 .admin [hidden] { display: none; }
+.admin-mapping { margin-bottom: .5rem; font-size: .85rem; }
+.admin-mapping summary { cursor: pointer; }
