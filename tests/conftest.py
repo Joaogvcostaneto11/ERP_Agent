@@ -13,5 +13,6 @@ import os
 # Empty string rather than del: load_dotenv(override=False) skips keys already
 # present in os.environ, so an empty value stays empty, whereas a deleted key
 # gets refilled from .env on the very next import.
-for _var in ("APP_PASSWORD", "BILLS_APP_PASSWORD", "CHAT_FEEDBACK_TOKEN"):
+for _var in ("APP_PASSWORD", "BILLS_APP_PASSWORD", "BILLS_ADMIN_TOKEN",
+             "CHAT_FEEDBACK_TOKEN"):
     os.environ[_var] = ""
