@@ -32,3 +32,6 @@ dist/
 Thumbs.db
 
 logs/
+
+# Real supplier invoices used for manual OCR checks — never commit
+bills_examples/
