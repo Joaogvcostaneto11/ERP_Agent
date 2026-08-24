@@ -4,6 +4,7 @@
 const TOKEN_KEY = "bills_admin_token";
 
 const panel = document.getElementById("admin-panel");
+const panelBody = document.getElementById("admin-body");
 const tokenInput = document.getElementById("admin-token");
 const proseInput = document.getElementById("admin-prose");
 const draftBtn = document.getElementById("admin-draft");
@@ -18,11 +19,19 @@ let proposal = null;
 const token = () => localStorage.getItem(TOKEN_KEY) || "";
 const headers = () => ({ "Content-Type": "application/json", "X-Admin-Token": token() });
 
+// Both halves of the gate must hold before an operator sees anything: the
+// feature is on AND this browser holds a token. `?admin=1` is the escape hatch
+// for an admin on a fresh browser — it reveals the token field only, and the
+// panel body stays hidden until a token is actually stored.
+const escapeHatch = () => new URLSearchParams(location.search).get("admin") === "1";
+
 async function init() {
   const r = await fetch("/admin/rules/enabled");
   if (!(await r.json()).enabled) return;
+  if (!token() && !escapeHatch()) return;
   panel.hidden = false;
   tokenInput.value = token();
+  panelBody.hidden = !token();
   if (token()) await refresh();
 }
 
@@ -30,7 +39,8 @@ tokenInput.addEventListener("change", async () => {
   const v = tokenInput.value.trim();
   if (v) localStorage.setItem(TOKEN_KEY, v);
   else localStorage.removeItem(TOKEN_KEY);
-  await refresh();
+  panelBody.hidden = !v;
+  if (v) await refresh();
 });
 
 async function refresh() {
@@ -82,14 +92,18 @@ draftBtn.addEventListener("click", async () => {
 applyBtn.addEventListener("click", async () => {
   const r = await fetch("/admin/rules/apply", {
     method: "POST", headers: headers(),
-    body: JSON.stringify({ proposal, base_version: current.version }),
+    body: JSON.stringify({
+      proposal, base_version: current.version, prose: proseInput.value,
+    }),
   });
-  const body = await r.json();
-  if (r.status === 409) { out.textContent = body.detail; await refresh(); return; }
+  const reply = await r.json();
+  if (r.status === 409) { out.textContent = reply.detail; await refresh(); return; }
   if (!r.ok) {
-    out.textContent = body.violations
-      ? body.violations.map(v => `change ${v.change_index}: ${v.reason}`).join("\n")
-      : (body.detail || `Apply failed (${r.status})`);
+    out.textContent = reply.violations
+      ? reply.violations.map(v => `change ${v.change_index}: ${v.reason}`).join("\n")
+      : (reply.detail || `Apply failed (${r.status})`);
+    // Re-clicking would fail identically; the admin must re-draft.
+    applyBtn.hidden = true;
     return;
   }
   proseInput.value = "";
