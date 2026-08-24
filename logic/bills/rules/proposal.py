@@ -105,6 +105,21 @@ def validate(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
         def bad(reason: str) -> None:
             out.append(Violation(change_index=i, reason=reason))
 
+        if ch.section in _CREATE:
+            # create_columns is only a whitelist the executor checks the payload
+            # against (write_executor._check_columns); the payload itself is
+            # hardcoded in matching.supplier_proposal/line_proposal. So adding a
+            # column here does nothing, and removing one makes _check_columns
+            # raise on every bill with an unmatched supplier or article. Until
+            # the payload is derived from the whitelist, refuse the whole
+            # section rather than ship an inert-or-breaking control. The
+            # protected-column checks below stay in place as defence in depth.
+            bad(f"editing {ch.section} is not supported yet: the new-entity "
+                "payload is hardcoded in matching.py rather than derived from "
+                "create_columns, so adding a column has no effect and removing "
+                "one breaks every bill that needs a new record")
+            continue
+
         protected_key = _PROTECTED_FIELD_KEYS.get(ch.section)
 
         if ch.section in _MAPPED and ch.action == "remove":
@@ -163,7 +178,11 @@ def apply(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
     for ch in proposal.changes:
         table = table_for(ch.section, rule)
         column = None
-        if ch.column is not None:
+        # Only a `set` needs the schema's spelling. A `remove` on a mapped
+        # section is keyed by `name` and validate() never inspects its `column`,
+        # so resolving it here would assert on an unchecked value; a create
+        # remove matches case-insensitively against the existing list.
+        if ch.column is not None and ch.action != "remove":
             column = schema.resolve(table, ch.column)
             assert column is not None, f"unvalidated column {ch.column!r} on {table}"
 

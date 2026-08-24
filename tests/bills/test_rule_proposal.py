@@ -2,7 +2,7 @@ import pytest
 
 from logic.bills.rules.loader import RuleLoader
 from logic.bills.rules.proposal import (
-    FieldChange, RuleChangeProposal, apply, valid_sources, validate,
+    FieldChange, RuleChangeProposal, _protected, apply, valid_sources, validate,
 )
 from logic.bills.rules.schema_probe import SchemaProbe
 
@@ -117,19 +117,28 @@ def _protected_change(section, column):
     return FieldChange(action="set", section=section, column=column)
 
 
-@pytest.mark.parametrize("section", ["header", "lines", "supplier_create", "article_create"])
+@pytest.mark.parametrize("section", ["header", "lines"])
 @pytest.mark.parametrize("column", PROTECTED_COLUMNS)
-def test_protected_columns_are_rejected_in_every_section(rule, column, section):
+def test_protected_columns_are_rejected_in_every_mapped_section(rule, column, section):
     # Chave = primary_key, DC/OC = audit_columns values, Estado/ATCUD/CodigoAT/
     # Certificacao = draft_defaults keys.
     # Regression for C1: the protected-column check must not be gated to the
-    # header section. write_executor's _resolve_entity() computes Chave/DC/OC
-    # last for a new supplier or article row too (write_executor.py:53-56), not
-    # just for Doc001, so a proposal targeting *_create must be blocked the
-    # same way.
+    # header section. The two *_create sections used to be covered here too;
+    # they are now refused wholesale before this check runs (see
+    # test_create_section_* below), so their share of C1 is asserted through
+    # _protected() directly instead.
     p = _proposal(_protected_change(section, column))
     v = validate(p, rule, _schema())
     assert len(v) == 1 and "protected" in v[0].reason
+
+
+@pytest.mark.parametrize("section", ["supplier_create", "article_create"])
+@pytest.mark.parametrize("column", PROTECTED_COLUMNS)
+def test_create_sections_still_compute_their_protected_columns(rule, column, section):
+    # Defence in depth for C1 behind I1's blanket refusal: if create-section
+    # editing is ever wired up, _protected() must still cover the columns
+    # _resolve_entity() computes for itself (write_executor.py:53-56).
+    assert column.lower() in _protected(rule, section)
 
 
 def test_supplier_create_defaults_are_protected(rule):
@@ -137,17 +146,25 @@ def test_supplier_create_defaults_are_protected(rule):
     # supplier_create) must also be protected. _resolve_entity() seeds
     # create_defaults into the new row before splicing in proposed_new
     # (write_executor.py:54); a mappable Tipo would let a proposal override it.
-    p = _proposal(FieldChange(action="set", section="supplier_create", column="Tipo"))
+    assert {"tipo", "listar"} <= _protected(rule, "supplier_create")
+
+
+def test_create_section_add_is_rejected(rule):
+    # Regression for I1: create_columns is only the whitelist write_executor
+    # checks the hardcoded matching.py payload against, so adding a column here
+    # is inert. Refuse it rather than let an admin believe it took effect.
+    p = _proposal(FieldChange(action="set", section="supplier_create", column="Nome"))
     v = validate(p, rule, _schema())
-    assert len(v) == 1 and "protected" in v[0].reason
+    assert len(v) == 1 and "not supported yet" in v[0].reason
 
 
-def test_create_column_change_is_validated_against_the_entity_table(rule):
-    ok = _proposal(FieldChange(action="set", section="supplier_create", column="Nome"))
-    assert validate(ok, rule, _schema()) == []
-    bad = _proposal(FieldChange(action="set", section="supplier_create", column="Descricao"))
-    v = validate(bad, rule, _schema())
-    assert len(v) == 1 and "does not exist" in v[0].reason
+def test_create_section_remove_is_rejected(rule):
+    # The dangerous half of I1: dropping Nome from the whitelist makes
+    # _check_columns raise ValueError on every bill with an unmatched supplier,
+    # and /bills/commit only catches RuntimeError — HTTP 500 until reverted.
+    p = _proposal(FieldChange(action="remove", section="supplier_create", column="Nome"))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1 and "not supported yet" in v[0].reason
 
 
 def test_apply_adds_and_removes_create_columns(rule):
@@ -183,14 +200,26 @@ def test_violations_report_every_bad_change_not_just_the_first(rule):
 
 
 def test_remove_with_an_injection_shaped_column_is_rejected(rule):
-    # Regression for I1 (first half): the remove branch used to `continue`
-    # after a presence check only, skipping the identifier check. That let an
-    # injection-shaped column through validate() and made apply() raise
-    # AssertionError instead of validate() reporting a violation.
+    # Originally a regression for the create-section remove branch, which used
+    # to `continue` after a presence check only and let an injection-shaped
+    # column through validate(). I1's blanket refusal of create sections now
+    # catches it first; what matters is that it is still rejected.
     evil = "Codigo); DROP TABLE Artigos; --"
     p = _proposal(FieldChange(action="remove", section="article_create", column=evil))
     v = validate(p, rule, _schema())
-    assert len(v) == 1 and "not a valid identifier" in v[0].reason
+    assert len(v) == 1 and "not supported yet" in v[0].reason
+
+
+def test_mapped_remove_with_a_stray_column_does_not_crash_apply(rule):
+    # Regression for I2: validate() `continue`s on a mapped remove without
+    # inspecting ch.column, but apply() used to resolve ch.column whenever it
+    # was set — so a remove carrying a column for another table validated
+    # clean and then blew up with AssertionError (HTTP 500) inside apply().
+    p = _proposal(FieldChange(action="remove", section="lines", name="vat_rate",
+                              column="Obs"))
+    assert validate(p, rule, _schema()) == []
+    merged = apply(p, rule, _schema())
+    assert "vat_rate" not in merged.lines.fields
 
 
 def test_structural_header_field_cannot_be_removed(rule):

@@ -12,16 +12,21 @@ from logic.bills.rules.proposal import (
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
-_SECTIONS = ("header", "lines", "supplier_create", "article_create")
+_SECTIONS = ("header", "lines")
 
 _SYSTEM = (
     "You translate an administrator's description of a business rule into a "
     "structured change to a purchase-invoice write mapping. "
     "Return ONLY a JSON object with keys: rationale (string), base_version "
     "(integer), and changes (a list). Each change has: action (\"set\" or "
-    "\"remove\"), section (one of {sections}), name (the logical field key, for "
-    "header and lines only), column (the database column), source (the extracted "
-    "field, for header and lines only), and required (boolean).\n\n"
+    "\"remove\"), section (one of {sections}), name (the logical field key), "
+    "column (the database column), source (the extracted field), and required "
+    "(boolean).\n\n"
+    "The sections \"supplier_create\" and \"article_create\" are NOT available: "
+    "the columns written when a new supplier or article record is created are "
+    "not editable through this interface. Never propose a change to either "
+    "section; if that is what was asked for, return an empty changes list and "
+    "say so in rationale.\n\n"
     "You may ONLY use columns and sources from the lists below. If the request "
     "cannot be expressed with them, return an empty changes list and explain why "
     "in rationale. Never invent a column name.\n\n"
@@ -50,8 +55,10 @@ class RuleProposer:
         mapping = "\n".join(
             [f"  header.{k}: {v.column} <- {v.source}" for k, v in rule.header.fields.items()]
             + [f"  lines.{k}: {v.column} <- {v.source}" for k, v in rule.lines.fields.items()]
-            + [f"  supplier_create: {', '.join(rule.matching.supplier.create_columns)}",
-               f"  article_create: {', '.join(rule.matching.article.create_columns)}"]
+            + [f"  supplier_create (read-only): "
+               f"{', '.join(rule.matching.supplier.create_columns)}",
+               f"  article_create (read-only): "
+               f"{', '.join(rule.matching.article.create_columns)}"]
         )
         return _SYSTEM.format(
             sections=", ".join(_SECTIONS), version=rule.version,
