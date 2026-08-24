@@ -96,6 +96,23 @@ identifiers exist; nothing else may vouch for a column name.
 `RuleChangeProposal` is a pydantic model describing a patch: fields to add, retarget, or remove
 across `header.fields`, `lines.fields`, and the two `create_columns` lists.
 
+> **Amended 2026-08-24 after the final review — the two `create_columns` lists are NOT
+> admin-editable.** `validate()` rejects every change whose section is `supplier_create` or
+> `article_create`, and the drafting prompt does not offer them.
+>
+> The reason is that `create_columns` is only a *whitelist*, not a source. `logic/bills/matching.py`
+> hardcodes the new-entity payload (`Nome`, `NCont` for a supplier; `Nome` for an article) and
+> `write_executor._check_columns` merely checks that payload against the list. So *adding* a
+> create column changed nothing that is ever written, and *removing* one made `_check_columns`
+> raise `ValueError` — which `/bills/commit` does not catch, since it catches `RuntimeError`.
+> Every bill with an unmatched supplier would have returned HTTP 500 until an admin reverted.
+> An admin working entirely inside the panel could break ingestion with an opaque error.
+>
+> Making them genuinely editable requires deriving the payload from `create_columns` in
+> `matching.py`, which needs a source mapping per create column. That is a design change, not a
+> fix, and is deliberately left for a follow-up. The protected-column logic underneath remains
+> in place as defence in depth.
+
 - `draft(prose, current_rule, schema, sources) -> RuleChangeProposal` — Claude is asked for
   **structured JSON matching this model**, with the current mapping, the real column list, and
   the available sources supplied as context. It is not asked for SQL, YAML, or prose.
@@ -221,6 +238,9 @@ that behavior must not change.
 - **Conditional mappings** ("when VAT rate is 6, write X"). The current model is
   `{column, source, required}`; conditionals need new executor logic per form, not just new YAML.
   Deferred until the concrete cases are known.
+- **Editing the `create_columns` whitelists** — closed after the final review; see the amendment
+  under `proposal.py` above. Needs `matching.py` to derive its new-entity payload from the list
+  before it can be reopened.
 - Computed or derived values, expressions, and arithmetic in mappings
 - Documents other than `purchase_invoice` (DevCare's rules stay developer-owned)
 - Editing `table`, `parent_fk`, or `tipo_doc` — structural identity, not mapping
