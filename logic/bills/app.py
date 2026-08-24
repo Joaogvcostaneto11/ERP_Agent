@@ -131,7 +131,13 @@ def _require_admin(request: Request) -> None:
     token = _admin_token()
     if not token:
         raise HTTPException(status_code=404, detail="admin rules disabled")
-    if not secrets.compare_digest(request.headers.get("X-Admin-Token", ""), token):
+    try:
+        ok = secrets.compare_digest(request.headers.get("X-Admin-Token", ""), token)
+    except TypeError:
+        # compare_digest on str rejects non-ASCII outright. A typo'd paste is a
+        # wrong token, not a server fault.
+        ok = False
+    if not ok:
         raise HTTPException(status_code=403, detail="invalid admin token")
 
 
@@ -220,6 +226,9 @@ async def admin_rules_draft(request: Request) -> Response:
         proposal = get_proposer().draft(prose, rule, probe)
     except RuleDraftError as e:
         return JSONResponse({"detail": str(e)}, status_code=422)
+    # base_version is whatever the model wrote; the 409 check in /apply is only
+    # meaningful against the version actually on disk, so stamp it here.
+    proposal.base_version = rule.version
     return JSONResponse({
         "proposal": proposal.model_dump(mode="json"),
         "violations": [v.model_dump() for v in validate(proposal, rule, probe)],
@@ -262,6 +271,10 @@ async def admin_rules_apply(request: Request) -> Response:
     _rule_audit().append({
         "ts": AuditLog.now_iso(), "kind": "rule_change", "action": "apply",
         "from_version": rule.version, "to_version": merged.version,
+        # The admin's own words are the audit record; `rationale` is Claude's
+        # paraphrase and cannot stand in for them. Older clients that send no
+        # prose record an empty string rather than failing the apply.
+        "prose": str(body.get("prose") or "").strip(),
         "rationale": proposal.rationale,
         "changes": [c.model_dump() for c in proposal.changes],
         "operator": _operator(request),

@@ -61,6 +61,17 @@ def test_wrong_token_is_403(client):
     assert client.get("/admin/rules/current", headers=_h("nope")).status_code == 403
 
 
+def test_a_non_ascii_token_is_403_not_500(client):
+    # m4: secrets.compare_digest raises TypeError on non-ASCII str, which is
+    # reachable from a typo'd paste. A bad token is a 403, not a server fault.
+    # Sent as bytes because httpx refuses to encode a non-ASCII str header;
+    # a browser sends the same bytes, and starlette decodes them latin-1 into
+    # the non-ASCII str that compare_digest chokes on.
+    r = client.get("/admin/rules/current",
+                   headers={"X-Admin-Token": "s3crét".encode("utf-8")})
+    assert r.status_code == 403
+
+
 def test_current_reports_version_schema_and_history(client):
     body = client.get("/admin/rules/current", headers=_h()).json()
     assert body["version"] == 1
@@ -88,6 +99,33 @@ def test_apply_bumps_the_version_and_audits(client, tmp_path):
     assert changes[0]["from_version"] == 1 and changes[0]["to_version"] == 2
 
 
+def _rule_change_rows(tmp_path):
+    return [json.loads(l) for l
+            in (tmp_path / "bills_writes.jsonl").read_text(encoding="utf-8").splitlines()
+            if json.loads(l).get("kind") == "rule_change"]
+
+
+def test_the_audit_row_keeps_the_admins_own_prose(client, tmp_path):
+    # I4: `rationale` is Claude's paraphrase. The audit trail is
+    # non-negotiable and the human author's actual words are what it must not
+    # lose, so the prose is recorded as a field of its own.
+    client.post("/admin/rules/apply", headers=_h(), json={
+        "proposal": PATCH, "base_version": 1,
+        "prose": "  put the supplier's own code in CodigoForn  ",
+    })
+    row = _rule_change_rows(tmp_path)[0]
+    assert row["prose"] == "put the supplier's own code in CodigoForn"
+    assert row["rationale"] == PATCH["rationale"]
+
+
+def test_an_apply_without_prose_still_succeeds_and_records_empty(client, tmp_path):
+    # Older clients send no prose; that must not fail the request.
+    r = client.post("/admin/rules/apply", headers=_h(),
+                    json={"proposal": PATCH, "base_version": 1})
+    assert r.status_code == 200
+    assert _rule_change_rows(tmp_path)[0]["prose"] == ""
+
+
 def test_apply_with_a_stale_base_version_is_409_and_changes_nothing(client):
     client.post("/admin/rules/apply", headers=_h(),
                 json={"proposal": PATCH, "base_version": 1})
@@ -113,6 +151,9 @@ def test_apply_reloads_the_service_so_the_new_mapping_is_live(client):
     rule = RuleStore(appmod._RULES_DIR).current()
     assert rule.lines.fields["supplier_code"].column == "CodigoForn"
     assert appmod._service is None      # reset; rebuilt lazily on next request
+    # m1: the probe caches column lists per table, so it must be dropped too —
+    # asserted here rather than relying on a later test to notice.
+    assert appmod._schema_probe is None
 
 
 def test_revert_walks_forward_to_a_new_version(client):
@@ -134,3 +175,37 @@ def test_a_schema_outage_is_503_not_a_silent_rejection(client, monkeypatch):
     appmod.reset_service()          # drop the cached probe
     r = client.get("/admin/rules/current", headers=_h())
     assert r.status_code == 503
+
+
+def test_a_schema_outage_inside_drafting_is_503_not_a_422(client, monkeypatch):
+    # I3: /admin/rules/draft must catch RuleDraftError and nothing wider.
+    # SchemaUnavailable is a sibling RuntimeError, so widening that except to
+    # RuntimeError would turn a database outage into "could not draft your
+    # change" — a 422 blaming the admin's prose. The outage has to originate
+    # inside draft() for the route's except to be the thing under test; the
+    # current() call above it reads only the YAML on disk.
+    def broken(sql, params):
+        raise OSError("connection reset")
+    monkeypatch.setattr(appmod, "_read", broken)
+
+    class ProbingProposer:
+        def draft(self, prose, rule, schema):
+            schema.columns(rule.lines.table)        # raises SchemaUnavailable
+            raise AssertionError("unreachable")
+    monkeypatch.setattr(appmod, "get_proposer", lambda: ProbingProposer())
+
+    appmod.reset_service()          # drop the cached probe
+    r = client.post("/admin/rules/draft", headers=_h(), json={"prose": "x"})
+    assert r.status_code == 503
+
+
+def test_draft_stamps_the_real_base_version_over_the_models_guess(client):
+    # m11: RuleChangeProposal.base_version is whatever Claude wrote. The 409
+    # concurrency check in /apply compares it against the version on disk, so
+    # it is only meaningful if the server stamps it.
+    client.post("/admin/rules/apply", headers=_h(),
+                json={"proposal": PATCH, "base_version": 1})   # disk is now v2
+    assert PATCH["base_version"] == 1                          # model still says 1
+    r = client.post("/admin/rules/draft", headers=_h(), json={"prose": "x"})
+    assert r.status_code == 200
+    assert r.json()["proposal"]["base_version"] == 2
