@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from logic.bills.rules.loader import RuleLoader
@@ -165,6 +167,35 @@ def test_create_section_remove_is_rejected(rule):
     p = _proposal(FieldChange(action="remove", section="supplier_create", column="Nome"))
     v = validate(p, rule, _schema())
     assert len(v) == 1 and "not supported yet" in v[0].reason
+
+
+@pytest.mark.parametrize("section,column", [
+    ("supplier_create", "Chave"),
+    ("article_create", "Chave"),
+])
+def test_c1_net_protected_column_is_rejected_in_create_sections(rule, section, column):
+    # C1 regression net. validate() must reject a protected column (the
+    # primary key, here) smuggled into a create section's payload, no matter
+    # which gate does the rejecting: today it's the I1 blanket refusal of
+    # supplier_create/article_create ("not supported yet"); if that gate is
+    # ever lifted for create-section editing, the protected-column check
+    # itself must still catch it ("protected"). This is the test that must
+    # go red if someone re-gates the protected check to `ch.section in
+    # _MAPPED` while also lifting the I1 gate — the same C1 bug, respelled.
+    p = _proposal(_protected_change(section, column))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1
+    assert re.search(r"protected|not supported", v[0].reason)
+
+
+def test_c1_net_create_defaults_key_is_rejected_in_supplier_create(rule):
+    # Second half of C1: create_defaults keys (Tipo, seeded by
+    # _resolve_entity() before splicing in proposed_new) must also be
+    # unreachable through a create-section proposal.
+    p = _proposal(_protected_change("supplier_create", "Tipo"))
+    v = validate(p, rule, _schema())
+    assert len(v) == 1
+    assert re.search(r"protected|not supported", v[0].reason)
 
 
 def test_apply_adds_and_removes_create_columns(rule):
