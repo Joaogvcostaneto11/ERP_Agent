@@ -13,9 +13,10 @@
 ## Global Constraints
 
 - **Model output never reaches SQL.** Claude produces a candidate patch only. Every column that survives to the YAML must have been resolved through `SchemaProbe.resolve()`.
-- **Identifier regex is mandatory and independent:** `^[A-Za-z_][A-Za-z0-9_]*$`, applied even when the schema check passes. It is defence in depth, not a substitute.
+- **Identifier regex is mandatory and independent:** `[A-Za-z_][A-Za-z0-9_]*` via `re.fullmatch`, applied even when the schema check passes, and on `remove` as well as `set`. It is defence in depth, not a substitute. Use `fullmatch`, not `^...$` with `.match()` — the latter admits a trailing newline, and this regex exists precisely for the case where the schema lookup cannot be trusted.
 - **Persisted column spelling comes from the schema**, never from the admin's or the model's casing.
-- **Protected columns are never admin-targetable:** the header `primary_key`, every *value* in `header.audit_columns`, and every *key* in `header.draft_defaults`.
+- **Protected columns are never admin-targetable, in EVERY section:** the header `primary_key`, every *value* in `header.audit_columns`, every *key* in `header.draft_defaults`, and — for the two create sections — every *key* in that section's `create_defaults`. Do not gate this check on the section: `write_executor.py:54` splices `**proposed_new` into the new-entity row after `Chave`, and `proposed_new` is whitelisted only against `create_columns`, so a protected column reachable through `supplier_create` overrides the computed primary key.
+- **Protected field keys are never removable or retargetable:** `supplier` in the header section, `article` in the lines section. `write_executor.py:94` and `:116` dereference them by name on every write.
 - **`write_executor.py` is not modified by this plan.** Its `_check_columns` whitelist behavior must keep passing its existing tests unchanged.
 - **Operator path is untouched.** `/bills/upload`, `/bills/stage`, `/bills/commit` and their tests must not change.
 - Admin gate env var: `BILLS_ADMIN_TOKEN`, header `X-Admin-Token`. Unset → 404 on every `/admin/rules*` route. Wrong → 403.
@@ -208,6 +209,13 @@ git commit -m "feat(bills): schema probe as the sole authority on column identif
 ### Task 2: Proposal model, validation, and merge
 
 This is the security core. Test it adversarially.
+
+> **Correction applied 2026-08-24 after review.** The code originally given below gated the
+> protected-column check on `ch.section == "header"`, gave `remove` a free pass on the
+> identifier check, protected columns but not the field keys the executor dereferences by
+> name, and used `^...$` with `.match()`. All four were defects in this plan, not in the
+> implementation of it. The Global Constraints above state the corrected rules and are
+> authoritative where the snippets below have not been updated to match.
 
 **Files:**
 - Create: `logic/bills/rules/proposal.py`
