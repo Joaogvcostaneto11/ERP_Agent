@@ -19,3 +19,26 @@ services:
         sync: false
       - key: CHAT_FEEDBACK_TOKEN
         sync: false
+
+  # Bill ingestion. Same image as erp-chat — only the entrypoint differs, so the
+  # ODBC driver setup stays in one Dockerfile rather than drifting across two.
+  - type: web
+    name: erp-bills
+    runtime: docker
+    plan: free
+    region: frankfurt        # same region as erp-chat
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn logic.bills.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL           # read-only, for supplier/article lookups
+        sync: false
+      - key: BILLS_WRITE_DATABASE_URL   # writable ERP login (DevDB)
+        sync: false
+      # Deliberately not APP_PASSWORD: this service writes to the database, so
+      # leaking the read-only chat credential must not hand it over.
+      - key: BILLS_APP_PASSWORD
+        sync: false

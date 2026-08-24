@@ -66,6 +66,9 @@ class ChatService:
         transcript = self._history.get_transcript(conversation_id, session_id)
         is_first_turn = not transcript
         transcript.append({"role": "user", "content": user_message})
+        # Everything appended past here belongs to this turn, so a turn that
+        # fails can be rolled back to the question without losing the history.
+        turn_start = len(transcript)
         emitted_blocks: list[dict] = []
         emitted_citations: list[dict] = []
         emitted_steps: list[dict] = []
@@ -100,10 +103,46 @@ class ChatService:
                             "input": c.input,
                         })
 
+                # A reply cut off at max_tokens leaves half-written JSON, which
+                # would otherwise surface as an unhelpful envelope parse error.
+                if getattr(response, "stop_reason", None) == "max_tokens":
+                    status = "error"
+                    _log.warning("reply truncated at max_tokens (turn %s)", turn_id)
+                    # Hitting the cap mid tool round means no answer was written
+                    # at all, so "the answer was too large" would be misleading.
+                    message = (
+                        "Claude ran out of room while working on this and stopped "
+                        "before answering. Try breaking the question into smaller parts."
+                    ) if tool_uses else (
+                        "The answer was too large and got cut off. Ask for a "
+                        "narrower period, fewer columns, or a top-N instead."
+                    )
+                    yield _event(EventType.ERROR, {
+                        "code": ErrorCode.ANSWER_TRUNCATED.value,
+                        "message": message,
+                    })
+                    # Keep the question and the steps that did run — a reload would
+                    # otherwise lose both, including the SQL that already executed.
+                    # The truncated reply is rolled off: half-written JSON in the
+                    # transcript would only poison the next turn.
+                    self._history.append_turn(
+                        conversation_id, session_id, user_message,
+                        emitted_blocks, emitted_citations, emitted_steps,
+                        transcript[:turn_start],
+                    )
+                    yield _event(EventType.DONE, {})
+                    return
+
                 if not tool_uses:
                     raw = "".join(b["text"] for b in assistant_blocks if b["type"] == "text").strip()
                     transcript.append({"role": "assistant", "content": raw})
+                    # A reply that fails to parse is emitted as an error event but
+                    # the turn still completes, so the summary must not say "ok" —
+                    # otherwise failed answers are invisible in queries.jsonl.
+                    parsed_ok = True
                     async for ev in self._emit_envelope(raw, emitted_blocks, emitted_citations):
+                        if ev["type"] == EventType.ERROR.value:
+                            parsed_ok = False
                         yield ev
                     self._history.append_turn(
                         conversation_id, session_id, user_message,
@@ -115,7 +154,7 @@ class ChatService:
                         ))
                         self._bg_tasks.add(t)
                         t.add_done_callback(self._bg_tasks.discard)
-                    status = "ok"
+                    status = "ok" if parsed_ok else "error"
                     yield _event(EventType.DONE, {})
                     return
 
@@ -197,7 +236,7 @@ class ChatService:
             status = "error"
             yield _event(EventType.ERROR, {
                 "code": ErrorCode.INTERNAL.value,
-                "message": str(e)[:500],
+                "message": _error_message(e),
             })
             return
         finally:
@@ -239,7 +278,7 @@ class ChatService:
             system_blocks = system_blocks + [knowledge_block]
         kwargs = dict(
             model=self._model,
-            max_tokens=4096,
+            max_tokens=16384,
             system=system_blocks,
             tools=[RUN_QUERY_TOOL],
             messages=_compress_past_turns_for_claude(transcript),
@@ -372,6 +411,22 @@ def _assistant_preview(blocks: list[dict]) -> str:
 
 def _event(event_type: EventType, payload: dict) -> dict:
     return {"type": event_type.value, "payload": payload}
+
+
+def _error_message(e: Exception) -> str:
+    """Anthropic capacity errors stringify as a raw JSON dict, which is noise in
+    the UI. Mid-stream ones carry no status_code, so match on the body text too."""
+    status = getattr(e, "status_code", None)
+    text = str(e)
+    if status == 529 or "overloaded_error" in text:
+        return "Claude is temporarily overloaded. Please send the message again."
+    if status == 429 or "rate_limit_error" in text:
+        return "Claude's rate limit was hit. Please wait a moment and send the message again."
+    if status == 413 or "request_too_large" in text:
+        return "The conversation is too large to send. Start a new conversation, or ask a narrower question."
+    if isinstance(status, int) and status >= 500:
+        return f"Claude API error ({status}). Please try again."
+    return text[:500]
 
 
 def _usage_step(response: Any, model: str) -> dict | None:

@@ -167,3 +167,35 @@ def test_chat_missing_api_key_streams_config_error(tmp_path: Path, monkeypatch):
             body = b"".join(r.iter_bytes()).decode("utf-8")
     assert "event: error" in body
     assert "ANTHROPIC_API_KEY" in body
+
+
+@pytest.mark.asyncio
+async def test_keepalive_emitted_while_turn_is_silent(monkeypatch):
+    """A turn that blocks (a slow Claude call, or retry backoff) must keep the
+    SSE connection warm, or a proxy's idle-read timeout kills it before the
+    error event arrives."""
+    import asyncio
+
+    monkeypatch.setattr(app_module, "_KEEPALIVE_SECONDS", 0.01)
+
+    async def slow():
+        await asyncio.sleep(0.05)
+        yield b"event: done\ndata: {}\n\n"
+
+    chunks = [c async for c in app_module._with_keepalive(slow())]
+    assert chunks[-1] == b"event: done\ndata: {}\n\n"
+    assert chunks.count(app_module._KEEPALIVE) >= 1
+    # Only comments are injected — no extra data frames the client would render
+    assert [c for c in chunks if c != app_module._KEEPALIVE] == [chunks[-1]]
+
+
+@pytest.mark.asyncio
+async def test_keepalive_passes_events_through_unchanged(monkeypatch):
+    """With no stall the wrapper is transparent."""
+    monkeypatch.setattr(app_module, "_KEEPALIVE_SECONDS", 30.0)
+
+    async def fast():
+        yield b"a"
+        yield b"b"
+
+    assert [c async for c in app_module._with_keepalive(fast())] == [b"a", b"b"]

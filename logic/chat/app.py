@@ -1,10 +1,11 @@
 from __future__ import annotations
-import base64
+import asyncio
 import hashlib
 import html as _html
 import json as _json
 import os
 import secrets
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService
 from logic.chat.sql_executor import SqlExecutor
+from logic.common.password_gate import install_password_gate
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -40,7 +42,7 @@ def _build_anthropic_client():
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is not set")
     import anthropic
-    return anthropic.AsyncAnthropic(api_key=api_key)
+    return anthropic.AsyncAnthropic(api_key=api_key, max_retries=5)
 
 
 _service: ChatService | None = None
@@ -81,28 +83,9 @@ def reset_service() -> None:
 app = FastAPI(title="ERP Chat")
 
 
-# Shared-password gate for public deployment. If APP_PASSWORD is unset (e.g.
-# local dev), the gate is disabled and every request passes through unchanged.
-_APP_PASSWORD = os.environ.get("APP_PASSWORD")
-
-
-@app.middleware("http")
-async def _basic_auth(request: Request, call_next):
-    if _APP_PASSWORD and request.url.path != "/healthz":
-        header = request.headers.get("Authorization", "")
-        ok = False
-        if header.startswith("Basic "):
-            try:
-                _, _, pw = base64.b64decode(header[6:]).decode("utf-8").partition(":")
-                ok = secrets.compare_digest(pw, _APP_PASSWORD)
-            except Exception:
-                ok = False
-        if not ok:
-            return Response(
-                status_code=401,
-                headers={"WWW-Authenticate": 'Basic realm="ERP Chat"'},
-            )
-    return await call_next(request)
+# Shared-password gate for public deployment. Unset APP_PASSWORD (local dev)
+# installs no gate at all.
+install_password_gate(app, os.environ.get("APP_PASSWORD"), realm="ERP Chat")
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -203,6 +186,42 @@ def _format_sse(event: dict) -> bytes:
     return f"event: {name}\ndata: {data}\n\n".encode("utf-8")
 
 
+_KEEPALIVE_SECONDS = 15.0
+_KEEPALIVE = b": keepalive\n\n"
+
+
+async def _with_keepalive(events: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
+    """Emit an SSE comment whenever the turn goes quiet for _KEEPALIVE_SECONDS.
+
+    A turn can block for a long time with nothing to send — a slow Claude call,
+    or the SDK's exponential backoff after a 429/529. An idle-read timeout at a
+    proxy (Render's included) then kills the connection and the browser sees a
+    network error instead of the message the retry was about to produce.
+    Comment chunks carry no data field, so ui/chat/sse.js drops them.
+    """
+    it = events.__aiter__()
+    nxt: asyncio.Future | None = None
+    try:
+        while True:
+            nxt = asyncio.ensure_future(it.__anext__())
+            while True:
+                done, _ = await asyncio.wait({nxt}, timeout=_KEEPALIVE_SECONDS)
+                if done:
+                    break
+                yield _KEEPALIVE
+            try:
+                chunk = nxt.result()
+            except StopAsyncIteration:
+                return
+            yield chunk
+    finally:
+        # On client disconnect GeneratorExit lands at a yield above, leaving the
+        # in-flight __anext__ pending; cancelling it closes stream_turn so its
+        # finally still writes the turn summary.
+        if nxt is not None:
+            nxt.cancel()
+
+
 @app.post("/chat")
 async def post_chat(request: Request) -> StreamingResponse:
     body = await request.json()
@@ -227,7 +246,7 @@ async def post_chat(request: Request) -> StreamingResponse:
             yield done
 
     sid = request.cookies.get(_SESSION_COOKIE) or ("s_" + secrets.token_hex(12))
-    resp = StreamingResponse(body_gen(sid), media_type="text/event-stream")
+    resp = StreamingResponse(_with_keepalive(body_gen(sid)), media_type="text/event-stream")
     resp.set_cookie(
         _SESSION_COOKIE, sid,
         httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,

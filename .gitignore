@@ -32,3 +32,9 @@ dist/
 Thumbs.db
 
 logs/
+
+# Real supplier invoices used for manual OCR checks — never commit
+bills_examples/
+
+# Personal permission grants; shared settings live in .claude/settings.json
+.claude/settings.local.json
