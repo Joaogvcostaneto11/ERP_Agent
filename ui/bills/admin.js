@@ -67,37 +67,75 @@ function renderMapping() {
   applyBtn.hidden = true;
 }
 
-draftBtn.addEventListener("click", async () => {
+// Drafting calls Claude and takes seconds. Without a pending state the box
+// keeps showing the previous content, so a request in flight is
+// indistinguishable from a dead button — and an exception in here would
+// otherwise reject silently and show nothing at all.
+async function withPending(button, label, fn) {
+  const previous = button.textContent;
+  button.disabled = true;
+  button.textContent = label;
+  out.textContent = `${label}…`;
+  try {
+    await fn();
+  } catch (e) {
+    out.textContent = `${label} failed: ${e.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = previous;
+  }
+}
+
+async function readBody(r) {
+  const text = await r.text();
+  try { return JSON.parse(text); } catch { return { detail: text.slice(0, 500) }; }
+}
+
+draftBtn.addEventListener("click", () => withPending(draftBtn, "Drafting", async () => {
+  if (!proseInput.value.trim()) { out.textContent = "Describe the change first."; return; }
   const r = await fetch("/admin/rules/draft", {
     method: "POST", headers: headers(),
     body: JSON.stringify({ prose: proseInput.value }),
   });
-  const body = await r.json();
+  const body = await readBody(r);
   if (!r.ok) { out.textContent = body.detail || `Draft failed (${r.status})`; return; }
   proposal = body.proposal;
-  const lines = body.proposal.changes.map(c => c.action === "remove"
-    ? `- remove ${c.section}.${c.name ?? c.column}`
-    : `+ ${c.section}.${c.name ?? c.column} -> ${c.column}` +
-      (c.source ? ` <- ${c.source}` : ""));
+  const changes = body.proposal?.changes ?? [];
   if (body.violations.length) {
     out.textContent = "Rejected:\n" +
       body.violations.map(v => `  change ${v.change_index}: ${v.reason}`).join("\n");
     applyBtn.hidden = true;
     return;
   }
+  if (!changes.length) {
+    // The model is instructed to return an empty change list, with its reason
+    // in rationale, when the request cannot be expressed against the schema.
+    out.textContent = `No change proposed.\n\n${body.proposal?.rationale ?? ""}`;
+    applyBtn.hidden = true;
+    return;
+  }
+  const lines = changes.map(c => c.action === "remove"
+    ? `- remove ${c.section}.${c.name ?? c.column}`
+    : `+ ${c.section}.${c.name ?? c.column} -> ${c.column}` +
+      (c.source ? ` <- ${c.source}` : ""));
   out.textContent = `${body.proposal.rationale}\n\n${lines.join("\n")}`;
   applyBtn.hidden = false;
-});
+}));
 
-applyBtn.addEventListener("click", async () => {
+applyBtn.addEventListener("click", () => withPending(applyBtn, "Applying", async () => {
   const r = await fetch("/admin/rules/apply", {
     method: "POST", headers: headers(),
     body: JSON.stringify({
       proposal, base_version: current.version, prose: proseInput.value,
     }),
   });
-  const reply = await r.json();
-  if (r.status === 409) { out.textContent = reply.detail; await refresh(); return; }
+  const reply = await readBody(r);
+  if (r.status === 409) {
+    // refresh() repaints the box, so state the conflict after it, not before.
+    await refresh();
+    out.textContent = reply.detail || "The rule changed underneath you; re-draft.";
+    return;
+  }
   if (!r.ok) {
     out.textContent = reply.violations
       ? reply.violations.map(v => `change ${v.change_index}: ${v.reason}`).join("\n")
@@ -108,7 +146,8 @@ applyBtn.addEventListener("click", async () => {
   }
   proseInput.value = "";
   await refresh();
-});
+  out.textContent = `Applied. Now at v${reply.version}.\n\n${out.textContent}`;
+}));
 
 async function revert(v) {
   const r = await fetch(`/admin/rules/revert/${v}`, { method: "POST", headers: headers() });
