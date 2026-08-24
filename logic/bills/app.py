@@ -1,10 +1,12 @@
 from __future__ import annotations
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from sqlalchemy import text
 
 from dotenv import load_dotenv
@@ -16,6 +18,10 @@ from logic.bills.audit_writer import BillAuditWriter
 from logic.bills.extract.ocr import pdf_to_text
 from logic.bills.pending import PendingProposalStore
 from logic.bills.rules.loader import RuleLoader
+from logic.bills.rules.proposal import RuleChangeProposal, apply as apply_patch, validate
+from logic.bills.rules.proposer import RuleDraftError, RuleProposer
+from logic.bills.rules.schema_probe import SchemaProbe, SchemaUnavailable
+from logic.bills.rules.store import RuleStore
 from logic.bills.service import BillService
 from logic.bills.write_executor import BillWriteExecutor
 from logic.common.password_gate import install_password_gate
@@ -42,6 +48,11 @@ app = FastAPI(title="Bill Ingestion")
 # the read-only service must not hand over the one that writes.
 install_password_gate(app, os.environ.get("BILLS_APP_PASSWORD"),
                       realm="Bill Ingestion")
+
+
+@app.exception_handler(SchemaUnavailable)
+async def _schema_unavailable(_request: Request, exc: SchemaUnavailable) -> Response:
+    return JSONResponse({"detail": str(exc)}, status_code=503)
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -83,6 +94,49 @@ def get_service() -> BillService:
                                   table_prefix=_TABLE_PREFIX),
             model="claude-sonnet-4-6", table_prefix=_TABLE_PREFIX)
     return _service
+
+
+def reset_service() -> None:
+    """Drop the memoised service so the next request rebuilds it from the rule
+    document on disk. RuleLoader parses that document once in __init__, so an
+    applied rule change is invisible until this runs."""
+    global _service, _schema_probe
+    _service = None
+    _schema_probe = None
+
+
+_schema_probe: SchemaProbe | None = None
+
+
+def get_schema_probe() -> SchemaProbe:
+    global _schema_probe
+    if _schema_probe is None:
+        _schema_probe = SchemaProbe(_read)
+    return _schema_probe
+
+
+def get_rule_store() -> RuleStore:
+    return RuleStore(_RULES_DIR)
+
+
+def get_proposer() -> RuleProposer:
+    return RuleProposer(_build_anthropic(), "claude-sonnet-4-6")
+
+
+def _admin_token() -> str | None:
+    return os.environ.get("BILLS_ADMIN_TOKEN") or None
+
+
+def _require_admin(request: Request) -> None:
+    token = _admin_token()
+    if not token:
+        raise HTTPException(status_code=404, detail="admin rules disabled")
+    if not secrets.compare_digest(request.headers.get("X-Admin-Token", ""), token):
+        raise HTTPException(status_code=403, detail="invalid admin token")
+
+
+def _rule_audit() -> AuditLog:
+    return AuditLog(_WRITE_LOG_PATH)
 
 
 def _operator(request: Request) -> str | None:
@@ -131,6 +185,108 @@ def commit(proposal_id: str, request: Request) -> Response:
         return JSONResponse(get_service().commit(proposal_id, operator))
     except RuntimeError as e:
         return JSONResponse({"detail": str(e)}, status_code=400)
+
+
+@app.get("/admin/rules/enabled")
+def admin_rules_enabled() -> dict:
+    return {"enabled": _admin_token() is not None}
+
+
+@app.get("/admin/rules/current")
+def admin_rules_current(request: Request) -> dict:
+    _require_admin(request)
+    store = get_rule_store()
+    rule = store.current()
+    probe = get_schema_probe()
+    tables = [rule.header.table, rule.lines.table,
+              rule.matching.supplier.table, rule.matching.article.table]
+    return {
+        "version": rule.version,
+        "rule": rule.model_dump(mode="json"),
+        "schema": {t: sorted(c.name for c in probe.columns(t).values()) for t in tables},
+        "history": store.versions(),
+    }
+
+
+@app.post("/admin/rules/draft")
+async def admin_rules_draft(request: Request) -> Response:
+    _require_admin(request)
+    prose = (await request.json()).get("prose", "").strip()
+    if not prose:
+        return JSONResponse({"detail": "prose required"}, status_code=400)
+    rule = get_rule_store().current()
+    probe = get_schema_probe()
+    try:
+        proposal = get_proposer().draft(prose, rule, probe)
+    except RuleDraftError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+    return JSONResponse({
+        "proposal": proposal.model_dump(mode="json"),
+        "violations": [v.model_dump() for v in validate(proposal, rule, probe)],
+    })
+
+
+@app.post("/admin/rules/apply")
+async def admin_rules_apply(request: Request) -> Response:
+    _require_admin(request)
+    body = await request.json()
+    store = get_rule_store()
+    rule = store.current()
+
+    if body.get("base_version") != rule.version:
+        return JSONResponse(
+            {"detail": f"rule is at version {rule.version}; re-draft your change"},
+            status_code=409)
+
+    try:
+        proposal = RuleChangeProposal.model_validate(body.get("proposal") or {})
+    except ValidationError as e:
+        return JSONResponse({"detail": str(e)}, status_code=422)
+
+    probe = get_schema_probe()
+    violations = validate(proposal, rule, probe)
+    if violations:
+        return JSONResponse({"violations": [v.model_dump() for v in violations]},
+                            status_code=422)
+
+    try:
+        merged = apply_patch(proposal, rule, probe)
+    except ValidationError as e:
+        # The merge produced a document PurchaseInvoiceRule rejects — extra="forbid"
+        # catching something structural the per-change checks did not model.
+        # The YAML on disk is untouched; save() has not been reached.
+        return JSONResponse({"detail": f"merged rule is invalid: {e}"},
+                            status_code=422)
+
+    store.save(merged)
+    _rule_audit().append({
+        "ts": AuditLog.now_iso(), "kind": "rule_change", "action": "apply",
+        "from_version": rule.version, "to_version": merged.version,
+        "rationale": proposal.rationale,
+        "changes": [c.model_dump() for c in proposal.changes],
+        "operator": _operator(request),
+    })
+    reset_service()
+    return JSONResponse({"version": merged.version})
+
+
+@app.post("/admin/rules/revert/{version}")
+def admin_rules_revert(version: int, request: Request) -> Response:
+    _require_admin(request)
+    store = get_rule_store()
+    previous = store.current().version
+    try:
+        reverted = store.revert(version)
+    except FileNotFoundError:
+        return JSONResponse({"detail": f"no archived rule for version {version}"},
+                            status_code=404)
+    _rule_audit().append({
+        "ts": AuditLog.now_iso(), "kind": "rule_change", "action": "revert",
+        "from_version": previous, "to_version": reverted.version,
+        "reverted_to": version, "operator": _operator(request),
+    })
+    reset_service()
+    return JSONResponse({"version": reverted.version})
 
 
 @app.get("/favicon.ico", include_in_schema=False)
