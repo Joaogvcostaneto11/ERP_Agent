@@ -131,12 +131,14 @@ def _require_admin(request: Request) -> None:
     token = _admin_token()
     if not token:
         raise HTTPException(status_code=404, detail="admin rules disabled")
-    try:
-        ok = secrets.compare_digest(request.headers.get("X-Admin-Token", ""), token)
-    except TypeError:
-        # compare_digest on str rejects non-ASCII outright. A typo'd paste is a
-        # wrong token, not a server fault.
-        ok = False
+    # Compare UTF-8 bytes rather than str: compare_digest on str rejects
+    # non-ASCII outright, which would turn a non-ASCII *configured*
+    # BILLS_ADMIN_TOKEN into a silent permanent lockout (every request 403s
+    # with nothing indicating the configuration is at fault). Comparing bytes
+    # handles both the non-ASCII header case (a typo'd paste) and the
+    # non-ASCII configured-token case correctly.
+    provided = request.headers.get("X-Admin-Token", "")
+    ok = secrets.compare_digest(provided.encode("utf-8"), token.encode("utf-8"))
     if not ok:
         raise HTTPException(status_code=403, detail="invalid admin token")
 

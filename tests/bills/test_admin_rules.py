@@ -72,6 +72,27 @@ def test_a_non_ascii_token_is_403_not_500(client):
     assert r.status_code == 403
 
 
+def test_a_non_ascii_configured_token_authenticates_when_matched(monkeypatch):
+    # A non-ASCII BILLS_ADMIN_TOKEN must not be a silent permanent lockout:
+    # comparing UTF-8 bytes lets a correctly-supplied non-ASCII configured
+    # token authenticate, not just fail loudly. Exercised directly against
+    # _require_admin rather than through TestClient/httpx: that stack forces
+    # non-ASCII header bytes through str round-trips with mixed encodings
+    # (utf-8 then latin-1) that can never reproduce a byte-exact non-ASCII
+    # header, so it cannot be used to observe the fixed comparison succeed.
+    monkeypatch.setenv("BILLS_ADMIN_TOKEN", "s3crét")
+
+    class _FakeHeaders(dict):
+        def get(self, key, default=None):
+            return dict.get(self, key, default)
+
+    class _FakeRequest:
+        def __init__(self, headers):
+            self.headers = _FakeHeaders(headers)
+
+    appmod._require_admin(_FakeRequest({"X-Admin-Token": "s3crét"}))  # no raise
+
+
 def test_current_reports_version_schema_and_history(client):
     body = client.get("/admin/rules/current", headers=_h()).json()
     assert body["version"] == 1
