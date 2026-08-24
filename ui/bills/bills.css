@@ -28,3 +28,11 @@ table.lines td { vertical-align: top; }
 col.c-num { width: 78px; }
 textarea.cell { width: 100%; border: none; background: transparent; resize: none;
   font: inherit; line-height: 1.35; padding: 0; overflow: hidden; }
+
+.admin { margin-top: 2rem; padding: 1rem; border: 1px solid #d0d0d0; border-radius: 6px; }
+.admin h2 { margin: 0 0 .5rem; font-size: 1rem; }
+.admin label { display: block; margin-bottom: .5rem; font-size: .85rem; }
+.admin textarea { width: 100%; box-sizing: border-box; }
+.admin-actions { margin: .5rem 0; display: flex; gap: .5rem; }
+.admin pre { white-space: pre-wrap; background: #f6f6f6; padding: .75rem; border-radius: 4px; }
+.admin-history { display: flex; gap: .5rem; flex-wrap: wrap; }
