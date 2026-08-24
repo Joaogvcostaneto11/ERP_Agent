@@ -27,6 +27,29 @@ def _schema():
     return SchemaProbe(read)
 
 
+# Mirrors the real Doc001/LinDoc001 shape, where 79 of 164 columns are integer
+# types — the family a Decimal source must never reach.
+TYPED_COLUMNS = {
+    "Doc001": {"Obs": "varchar", "Data": "smalldatetime", "Iliquido": "decimal",
+               "Total": "decimal", "Volumes": "bigint", "Entidade": "bigint",
+               "Chave": "bigint", "DC": "smalldatetime", "OC": "bigint",
+               "Estado": "tinyint", "TipoDoc": "bigint"},
+    "LinDoc001": {"Descricao": "varchar", "Quantidade": "decimal",
+                  "Punit": "decimal", "Armazem": "bigint", "ChaveProd": "bigint",
+                  "Chave": "bigint", "Documento": "bigint"},
+    "Entidades": {"Chave": "bigint", "Nome": "varchar", "NCont": "varchar"},
+    "Artigos": {"Chave": "bigint", "Nome": "varchar", "Codigo": "varchar"},
+}
+
+
+def _typed_schema():
+    def read(sql, params):
+        return [{"COLUMN_NAME": c, "DATA_TYPE": t, "IS_NULLABLE": "NO",
+                 "CHARACTER_MAXIMUM_LENGTH": 50 if t == "varchar" else None}
+                for c, t in TYPED_COLUMNS.get(params["table"], {}).items()]
+    return SchemaProbe(read)
+
+
 @pytest.fixture
 def rule():
     from pathlib import Path
@@ -294,3 +317,87 @@ def test_trailing_newline_identifier_is_rejected(rule):
                               column="Descricao\n", source="line.description"))
     v = validate(p, rule, YesProbe())
     assert len(v) == 1 and "not a valid identifier" in v[0].reason
+
+
+# --- column type compatibility -------------------------------------------
+
+def test_source_type_is_derived_from_the_extraction_models():
+    from datetime import date
+    from decimal import Decimal
+
+    from logic.bills.rules.proposal import source_type
+
+    assert source_type("bill.gross_total") is Decimal   # unwraps Decimal | None
+    assert source_type("bill.issue_date") is date
+    assert source_type("bill.supplier_name") is str     # bare str, not Optional
+    assert source_type("line.quantity") is Decimal
+    assert source_type("supplier.match") is int         # entity key sentinel
+    assert source_type("line.match") is int
+    assert source_type("bill.not_a_field") is None
+
+
+def test_a_decimal_source_cannot_be_written_to_an_integer_column(rule):
+    """The silent one. SQL Server converts decimal->bigint implicitly and drops
+    the fractional part, so 1234.56 is written as 1234 with no error."""
+    p = _proposal(FieldChange(action="set", section="header", name="x",
+                              column="Volumes", source="bill.gross_total"))
+    v = validate(p, rule, _typed_schema())
+    assert len(v) == 1
+    assert "cannot be written" in v[0].reason and "bigint" in v[0].reason
+
+
+def test_a_text_source_cannot_be_written_to_a_numeric_or_date_column(rule):
+    numeric = _proposal(FieldChange(action="set", section="header", name="x",
+                                    column="Iliquido", source="bill.supplier_name"))
+    assert len(validate(numeric, rule, _typed_schema())) == 1
+    temporal = _proposal(FieldChange(action="set", section="header", name="x",
+                                     column="Data", source="bill.supplier_name"))
+    assert len(validate(temporal, rule, _typed_schema())) == 1
+
+
+def test_a_date_source_cannot_be_written_to_a_numeric_column(rule):
+    p = _proposal(FieldChange(action="set", section="header", name="x",
+                              column="Iliquido", source="bill.issue_date"))
+    assert len(validate(p, rule, _typed_schema())) == 1
+
+
+def test_compatible_mappings_are_accepted(rule):
+    ok = [
+        ("header", "Iliquido", "bill.net_total"),      # Decimal -> decimal
+        ("header", "Data", "bill.issue_date"),         # date    -> smalldatetime
+        ("header", "Obs", "bill.number"),              # str     -> varchar
+        ("lines", "Descricao", "line.description"),    # str     -> varchar
+        ("lines", "Quantidade", "line.quantity"),      # Decimal -> decimal
+    ]
+    for section, column, source in ok:
+        p = _proposal(FieldChange(action="set", section=section, name="x",
+                                  column=column, source=source))
+        assert validate(p, rule, _typed_schema()) == [], f"{source} -> {column}"
+
+
+def test_text_columns_accept_any_source_because_the_conversion_is_lossless(rule):
+    for source in ("bill.gross_total", "bill.issue_date", "bill.supplier_name"):
+        p = _proposal(FieldChange(action="set", section="header", name="x",
+                                  column="Obs", source=source))
+        assert validate(p, rule, _typed_schema()) == [], source
+
+
+def test_an_entity_key_source_must_go_to_an_integer_column(rule):
+    ok = _proposal(FieldChange(action="set", section="header", name="x",
+                               column="Entidade", source="supplier.match"))
+    assert validate(ok, rule, _typed_schema()) == []
+    bad = _proposal(FieldChange(action="set", section="header", name="x",
+                                column="Obs", source="supplier.match"))
+    assert len(validate(bad, rule, _typed_schema())) == 1
+
+
+def test_type_checking_is_skipped_when_the_probe_cannot_describe_the_column(rule):
+    """A stub probe that resolves names but exposes no column metadata must not
+    make every mapping fail — existence and identifier checks still apply."""
+    class NameOnlyProbe:
+        def resolve(self, table, column): return column
+        def columns(self, table): return {}
+
+    p = _proposal(FieldChange(action="set", section="header", name="x",
+                              column="Obs", source="bill.gross_total"))
+    assert validate(p, rule, NameOnlyProbe()) == []

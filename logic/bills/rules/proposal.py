@@ -1,6 +1,8 @@
 from __future__ import annotations
 import re
-from typing import Literal
+from datetime import date
+from decimal import Decimal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict
 
@@ -46,6 +48,47 @@ class Violation(BaseModel):
 # issuer's. Mapping it would undo a deliberate decision; widening this set is a
 # one-line change if that decision is ever revisited.
 _UNMAPPABLE_BILL_FIELDS = frozenset({"lines", "confidence", "buyer_tax_id"})
+
+# SQL Server type families, as INFORMATION_SCHEMA.DATA_TYPE spells them.
+_TEXT = frozenset({"varchar", "nvarchar", "char", "nchar", "text", "ntext"})
+_INTEGER = frozenset({"bigint", "int", "smallint", "tinyint"})
+_NUMERIC = frozenset({"decimal", "numeric", "money", "smallmoney", "float", "real"})
+_TEMPORAL = frozenset({"date", "datetime", "datetime2", "smalldatetime",
+                       "datetimeoffset"})
+
+# Which column families each source type may be written to.
+#
+# Text is a permitted sink for every type: SQL Server converts cleanly and
+# nothing is lost. What this table exists to stop is the LOSSY conversions,
+# and one in particular — a Decimal into an integer column. SQL Server performs
+# that implicitly and silently truncates, so mapping gross_total onto a bigint
+# turns 1234.56 into 1234 and writes the document without an error. Wrong money,
+# no warning. On Doc001/LinDoc001 79 of 164 columns are integer types, so this
+# is not a hypothetical mismapping.
+_COMPATIBLE: dict[type, frozenset[str]] = {
+    str: _TEXT,
+    Decimal: _NUMERIC | _TEXT,
+    date: _TEMPORAL | _TEXT,
+    int: _INTEGER,          # the .match sentinels resolve to an entity key
+}
+
+
+def source_type(source: str) -> type | None:
+    """The Python type a source yields, or None if it cannot be determined.
+
+    Derived from the extraction models' own annotations so the two cannot drift,
+    the same way valid_sources() is.
+    """
+    if source in ("supplier.match", "line.match"):
+        return int
+    prefix, _, field = source.partition(".")
+    model = {"bill": Bill, "line": BillLine}.get(prefix)
+    if model is None or field not in model.model_fields:
+        return None
+    annotation = model.model_fields[field].annotation
+    # Unwrap Optional[X] / X | None, which is how most extracted fields are typed.
+    args = [a for a in get_args(annotation) if a is not type(None)]
+    return args[0] if args else annotation
 
 
 def valid_sources() -> set[str]:
@@ -162,6 +205,22 @@ def validate(proposal: RuleChangeProposal, rule: PurchaseInvoiceRule,
         if ch.source is not None and ch.source not in sources:
             bad(f"{ch.source!r} is not a known source")
             continue
+
+        # Type compatibility. Skipped when the probe cannot describe the column
+        # (a stub in tests) or the source type is unknown — the checks above
+        # already established the column exists and the source is real.
+        if ch.source is not None:
+            info = schema.columns(table).get(ch.column.lower())
+            st = source_type(ch.source)
+            allowed = _COMPATIBLE.get(st) if st is not None else None
+            if info is not None and allowed is not None \
+                    and info.data_type.lower() not in allowed:
+                # Plain ASCII: a violation reason can reach a Windows console,
+                # where cp1252 cannot encode an em dash.
+                bad(f"{ch.source} yields {st.__name__}, which cannot be written "
+                    f"to {table}.{info.name} of type {info.data_type}: "
+                    "the conversion would lose data")
+                continue
 
     return out
 

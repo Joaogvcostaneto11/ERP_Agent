@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from logic.bills.rules.models import PurchaseInvoiceRule
 from logic.bills.rules.proposal import (
-    RuleChangeProposal, table_for, valid_sources,
+    RuleChangeProposal, source_type, table_for, valid_sources,
 )
 
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -30,6 +30,12 @@ _SYSTEM = (
     "You may ONLY use columns and sources from the lists below. If the request "
     "cannot be expressed with them, return an empty changes list and explain why "
     "in rationale. Never invent a column name.\n\n"
+    "Each column is listed as Name[sql_type] and each source as name[python_type]. "
+    "The types must be compatible or the change will be rejected. Text columns "
+    "accept anything; a decimal source must NOT go to an integer column "
+    "(bigint, int, smallint, tinyint), because the conversion silently discards "
+    "the fractional part; a text source must go to a text column; a date source "
+    "must go to a date or text column.\n\n"
     "Current mapping (version {version}):\n{mapping}\n\n"
     "Columns that exist, by table:\n{columns}\n\n"
     "Sources that exist:\n{sources}\n"
@@ -49,7 +55,8 @@ class RuleProposer:
     def _system(self, rule: PurchaseInvoiceRule, schema) -> str:
         columns = "\n".join(
             f"  {table_for(s, rule)}: "
-            + ", ".join(sorted(c.name for c in schema.columns(table_for(s, rule)).values()))
+            + ", ".join(sorted(f"{c.name}[{c.data_type}]"
+                               for c in schema.columns(table_for(s, rule)).values()))
             for s in _SECTIONS
         )
         mapping = "\n".join(
@@ -63,7 +70,10 @@ class RuleProposer:
         return _SYSTEM.format(
             sections=", ".join(_SECTIONS), version=rule.version,
             mapping=mapping, columns=columns,
-            sources=", ".join(sorted(valid_sources())),
+            sources=", ".join(
+                f"{s}[{t.__name__}]" if (t := source_type(s)) else s
+                for s in sorted(valid_sources())
+            ),
         )
 
     def draft(self, prose: str, rule: PurchaseInvoiceRule,

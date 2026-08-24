@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 _SQL = (
-    "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE "
+    "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH "
     "FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = :table"
 )
 
@@ -13,6 +13,8 @@ class ColumnInfo:
     name: str
     data_type: str
     nullable: bool
+    # None for non-character columns, and -1 for varchar(max).
+    max_length: int | None = None
 
 
 class SchemaUnavailable(RuntimeError):
@@ -47,6 +49,7 @@ class SchemaProbe:
                     name=r["COLUMN_NAME"],
                     data_type=r["DATA_TYPE"],
                     nullable=r["IS_NULLABLE"] == "YES",
+                    max_length=r.get("CHARACTER_MAXIMUM_LENGTH"),
                 )
                 for r in rows
             }
