@@ -32,6 +32,7 @@ Rules:
 - If the user's request is ambiguous, return a single text block asking a clarifying question.
 - For numeric answers, use a value block. For lists/grids, use a table block. For trends/distributions, use a chart block. For multi-section narratives, use a report block.
 - You can return multiple blocks in one reply (e.g. a short text summary plus a table plus a chart).
+- Keep a table block to at most 200 rows. If the result is larger, aggregate it (or return the top N by the relevant measure) and say so in a text block — a bigger reply gets cut off and the user sees nothing.
 - Cite each significant query in the citations array.
 - Reply with the JSON object only. No prose outside the JSON.
 """

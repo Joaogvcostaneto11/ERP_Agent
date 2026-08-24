@@ -9,12 +9,14 @@ from typing import Any, Iterator
 import pytest
 
 from logic.chat.audit import AuditLog
+from logic.chat.events import ErrorCode
 from logic.chat.knowledge_store import KnowledgeStore
 from logic.chat.report_store import ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import (
     ChatService,
     _compress_past_turns_for_claude,
+    _error_message,
     _strip_heavy_blocks_from_envelope,
 )
 from logic.chat.sql_executor import SqlExecutor
@@ -477,6 +479,30 @@ async def test_turn_summary_records_error_status(
 
 
 @pytest.mark.asyncio
+async def test_turn_summary_records_error_when_envelope_unparseable(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """A reply that isn't the JSON envelope shows the operator a red error, so
+    the summary must not record status='ok' — otherwise failed answers cannot
+    be counted from queries.jsonl."""
+    client = FakeAnthropicClient([
+        _Response([_ContentText("Sure! Here is what I found.")], stop_reason="end_turn"),
+    ])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "hi")]
+
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["payload"]["code"] == ErrorCode.ENVELOPE_PARSE.value
+    assert events[-1]["type"] == "done"
+
+    lines = audit._path.read_text(encoding="utf-8").splitlines()
+    summaries = [json.loads(l) for l in lines if json.loads(l).get("kind") == "turn_summary"]
+    assert len(summaries) == 1
+    assert summaries[0]["status"] == "error"
+
+
+@pytest.mark.asyncio
 async def test_turn_summary_records_aborted_on_early_close(
     schema_ctx, audit, report_store, sql_executor, history
 ):
@@ -605,3 +631,93 @@ def test_compress_strips_heavy_blocks_from_past_envelope():
     # Original 500 rows are gone — file should be much smaller than the input
     assert len(past_answer) < 500
     assert len(past_answer) < len(past_env)
+
+
+@pytest.mark.asyncio
+async def test_truncated_reply_reports_answer_too_large(schema_ctx, audit, report_store, sql_executor, history):
+    """A reply cut off at max_tokens leaves unparseable JSON. The operator must
+    be told the answer was too large, not that the reply was malformed."""
+    truncated = '{"blocks": [{"kind": "table", "columns": ["Cliente", "Segmento"], "rows": [["ACME", "Retalho'
+    client = FakeAnthropicClient([_Response([_ContentText(truncated)], stop_reason="max_tokens")])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "faturacao por clientes e segmentos")]
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["payload"]["code"] == ErrorCode.ANSWER_TRUNCATED.value
+    assert "could not parse" not in errors[0]["payload"]["message"]
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_truncated_tool_round_does_not_blame_the_answer_size(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """Hitting the cap while Claude is still writing a query means no answer was
+    produced, so telling the operator the answer was too large is wrong."""
+    client = FakeAnthropicClient([
+        _Response([_ContentToolUse("t1", "run_query", "SELECT 42 AS n")], stop_reason="max_tokens"),
+    ])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    events = [e async for e in svc.stream_turn(CONV, SESSION, "tudo sobre tudo")]
+
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["payload"]["code"] == ErrorCode.ANSWER_TRUNCATED.value
+    assert "answer was too large" not in errors[0]["payload"]["message"]
+    assert "stopped before answering" in errors[0]["payload"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_truncated_reply_still_persists_question_and_steps(
+    schema_ctx, audit, report_store, sql_executor, history
+):
+    """A truncated turn must survive a page reload: the operator keeps their
+    question and the steps showing which SQL already ran. The half-written reply
+    is rolled off the transcript so it cannot poison the next turn."""
+    client = FakeAnthropicClient([
+        _Response([_ContentToolUse("t1", "run_query", "SELECT 42 AS n")], stop_reason="tool_use"),
+        _Response([_ContentText('{"blocks": [{"kind": "table", "rows": [["a"')],
+                  stop_reason="max_tokens"),
+    ])
+    svc = _make_service(client, schema_ctx, audit, report_store, sql_executor, history)
+    [_ async for _ in svc.stream_turn(CONV, SESSION, "faturacao por cliente")]
+
+    detail = history.get_conversation(CONV, SESSION)
+    assert len(detail.turns) == 1
+    turn = detail.turns[0]
+    assert turn.user_message == "faturacao por cliente"
+    assert turn.blocks == []
+    assert [s["sql"] for s in turn.steps if s["type"] == "query"] == ["SELECT 42 AS n"]
+
+    # The transcript replayed next turn ends at the question — no truncated JSON
+    persisted = history.get_transcript(CONV, SESSION)
+    assert persisted[-1] == {"role": "user", "content": "faturacao por cliente"}
+
+
+class _ApiError(Exception):
+    """Stands in for anthropic.APIStatusError, which carries a status_code and
+    stringifies to the raw JSON body."""
+
+    def __init__(self, status_code: int | None, body_type: str) -> None:
+        super().__init__(
+            f"Error code: {status_code} - {{'type': 'error', 'error': {{'type': '{body_type}'}}}}"
+        )
+        self.status_code = status_code
+
+
+def test_error_message_maps_capacity_and_rate_limit_errors():
+    """529 and 429 must not reach the operator as a raw JSON dict. Mid-stream
+    errors carry no status_code, so the body text has to match too."""
+    for status in (529, None):
+        assert "overloaded" in _error_message(_ApiError(status, "overloaded_error")).lower()
+    for status in (429, None):
+        assert "rate limit" in _error_message(_ApiError(status, "rate_limit_error")).lower()
+    for status in (413, None):
+        assert "too large" in _error_message(_ApiError(status, "request_too_large")).lower()
+    assert _error_message(_ApiError(503, "api_error")) == "Claude API error (503). Please try again."
+
+
+def test_error_message_passes_through_other_errors():
+    """Non-API failures keep their own text so real bugs stay diagnosable."""
+    assert _error_message(ValueError("no such column: Foo")) == "no such column: Foo"
+    assert len(_error_message(RuntimeError("x" * 900))) == 500

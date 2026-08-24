@@ -18,6 +18,7 @@ class Phase(str, Enum):
 
 class ErrorCode(str, Enum):
     ENVELOPE_PARSE = "envelope_parse"
+    ANSWER_TRUNCATED = "answer_truncated"
     INTERNAL = "internal"
     CONFIG = "config"
     UNAUTHORIZED = "unauthorized"
