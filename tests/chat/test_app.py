@@ -199,3 +199,58 @@ async def test_keepalive_passes_events_through_unchanged(monkeypatch):
         yield b"b"
 
     assert [c async for c in app_module._with_keepalive(fast())] == [b"a", b"b"]
+
+
+# Report HTML is written by the model, so the print view must treat it exactly
+# as the browser renderer does (ui/chat/renderers/report.js runs it through
+# DOMPurify) rather than trusting it because it arrived server-side.
+@pytest.mark.parametrize("html,gone", [
+    ("<p>ok</p><script>alert(1)</script>", "alert(1)"),
+    ('<img src=x onerror="alert(1)">', "onerror"),
+    ('<a href="javascript:alert(1)">x</a>', "javascript:"),
+    ('<iframe src="https://evil.example"></iframe>', "iframe"),
+    ('<p onclick="alert(1)">x</p>', "onclick"),
+])
+def test_report_view_strips_active_content(client, html, gone):
+    svc = app_module.get_service()
+    rid = svc._reports.register(html, "R")
+    body = client.get(f"/report/{rid}/view").text
+    assert gone not in body
+
+
+def test_report_view_keeps_report_markup(client):
+    svc = app_module.get_service()
+    rid = svc._reports.register(
+        '<h2>Totals</h2><table class="t"><tr><td>1</td></tr></table>', "R")
+    body = client.get(f"/report/{rid}/view").text
+    assert "<h2>Totals</h2>" in body
+    assert "<td>1</td>" in body
+
+
+def test_report_view_forbids_scripting_via_csp(client):
+    svc = app_module.get_service()
+    rid = svc._reports.register("<p>ok</p>", "R")
+    csp = client.get(f"/report/{rid}/view").headers.get("content-security-policy", "")
+    assert "script-src 'none'" in csp
+
+
+def test_session_cookie_is_marked_secure_behind_tls(client):
+    # The gate and this cookie are all that separate one operator's
+    # conversations from another's, so it must not travel in clear.
+    r = client.post("/conversations", headers={"X-Forwarded-Proto": "https"})
+    assert "Secure" in r.headers["set-cookie"]
+
+
+def test_security_headers_on_chat(client):
+    h = client.get("/conversations").headers
+    assert h["X-Content-Type-Options"] == "nosniff"
+    assert "frame-ancestors 'none'" in h["Content-Security-Policy"]
+    # The CDN scripts in ui/chat/index.html have to stay loadable.
+    assert "https://cdn.jsdelivr.net" in h["Content-Security-Policy"]
+
+
+def test_report_view_keeps_its_stricter_csp(client):
+    svc = app_module.get_service()
+    rid = svc._reports.register("<p>ok</p>", "R")
+    csp = client.get(f"/report/{rid}/view").headers["Content-Security-Policy"]
+    assert "script-src 'none'" in csp, "app baseline must not relax the report view"

@@ -18,6 +18,9 @@ from logic.chat.history import HistoryStore
 from logic.devcare.audit_writer import AuditWriter
 from logic.devcare.pending import PendingChangeStore
 from logic.devcare.rules.loader import RuleLoader
+from logic.common.cookies import secure_cookie
+from logic.common.password_gate import install_password_gate
+from logic.common.security_headers import install_security_headers
 from logic.devcare.service import DevCareService
 from logic.devcare.validator import ChangeValidator
 from logic.devcare.write_executor import WriteExecutor
@@ -36,6 +39,29 @@ _SESSION_COOKIE = "devcare_session"
 _OPERATOR_COOKIE = "devcare_operator"
 
 app = FastAPI(title="DevCare Operations")
+
+
+# DevCare writes to the ERP database, so it is gated whenever
+# DEVCARE_APP_PASSWORD is set. Unset (local dev) installs no gate at all. A
+# third secret, separate from APP_PASSWORD and BILLS_APP_PASSWORD: leaking a
+# read-only service must not hand over one that writes.
+install_password_gate(app, os.environ.get("DEVCARE_APP_PASSWORD"),
+                      realm="DevCare Operations")
+
+# This UI ships all of its own scripts, so nothing off-origin may load at all.
+_CSP = ("default-src 'self'; script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+        "connect-src 'self'; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'none'")
+install_security_headers(app, csp=_CSP)
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict:
+    """Declared above the StaticFiles mount at "/", which answers anything not
+    already routed — and exempt from the gate, or the check gets a 401 and the
+    service never goes live."""
+    return {"status": "ok"}
 
 
 @app.middleware("http")
@@ -102,6 +128,7 @@ def _session_id(request: Request, response: Response) -> str:
     if not sid:
         sid = "s_" + secrets.token_hex(12)
         response.set_cookie(_SESSION_COOKIE, sid, httponly=True, samesite="lax",
+                            secure=secure_cookie(request),
                             max_age=60 * 60 * 24 * 7)
     return sid
 
@@ -117,6 +144,7 @@ def set_operator(request: Request, response: Response, body: dict) -> dict:
         raise HTTPException(status_code=400, detail="name required")
     _session_id(request, response)
     response.set_cookie(_OPERATOR_COOKIE, name, httponly=True, samesite="lax",
+                        secure=secure_cookie(request),
                         max_age=60 * 60 * 24 * 7)
     return {"operator": name}
 
@@ -165,6 +193,7 @@ async def post_operations(request: Request) -> Response:
             yield _format_sse({"type": EventType.DONE.value, "payload": {}})
     resp = StreamingResponse(gen(), media_type="text/event-stream")
     resp.set_cookie(_SESSION_COOKIE, sid, httponly=True, samesite="lax",
+                    secure=secure_cookie(request),
                     max_age=60 * 60 * 24 * 7)
     return resp
 

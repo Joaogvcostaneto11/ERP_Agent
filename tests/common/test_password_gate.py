@@ -75,3 +75,17 @@ def test_exempt_paths_are_configurable():
 def test_malformed_authorization_headers_are_rejected_without_raising(header):
     r = _app("s3cret").get("/private", headers={"Authorization": header})
     assert r.status_code == 401
+
+
+# secrets.compare_digest refuses non-ASCII str outright (TypeError), so a
+# non-ASCII password on either side has to be compared as UTF-8 bytes. The
+# same reasoning as logic/bills/app.py's _require_admin.
+def test_non_ascii_supplied_password_is_rejected_not_a_server_error():
+    r = _app("s3cret").get("/private", headers=_auth("someone", "sénha"))
+    assert r.status_code == 401
+
+
+def test_non_ascii_configured_password_still_authenticates():
+    # Otherwise a non-ASCII BILLS_APP_PASSWORD/APP_PASSWORD is a silent lockout.
+    r = _app("sénha-forte").get("/private", headers=_auth("someone", "sénha-forte"))
+    assert r.status_code == 200

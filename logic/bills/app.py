@@ -16,6 +16,7 @@ from db.connection import get_session as _read_session
 from db.bills_connection import get_bills_write_session
 from logic.chat.audit import AuditLog
 from logic.bills.audit_writer import BillAuditWriter
+from logic.bills.extract.media import MAX_UPLOAD_BYTES
 from logic.bills.extract.ocr import pdf_to_text
 from logic.bills.pending import PendingProposalStore
 from logic.bills.rules.loader import RuleLoader
@@ -25,7 +26,9 @@ from logic.bills.rules.schema_probe import SchemaProbe, SchemaUnavailable
 from logic.bills.rules.store import RuleStore
 from logic.bills.service import BillService
 from logic.bills.write_executor import BillWriteExecutor
+from logic.common.cookies import secure_cookie
 from logic.common.password_gate import install_password_gate
+from logic.common.security_headers import install_security_headers
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(_REPO_ROOT / ".env")
@@ -49,6 +52,10 @@ app = FastAPI(title="Bill Ingestion")
 # the read-only service must not hand over the one that writes.
 install_password_gate(app, os.environ.get("BILLS_APP_PASSWORD"),
                       realm="Bill Ingestion")
+
+# This UI ships all of its own scripts, so nothing off-origin may load at all.
+_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+install_security_headers(app, csp=_CSP)
 
 
 @app.exception_handler(SchemaUnavailable)
@@ -153,11 +160,12 @@ def _operator(request: Request) -> str | None:
 
 
 @app.post("/bills/operator")
-def set_operator(response: Response, body: dict) -> dict:
+def set_operator(request: Request, response: Response, body: dict) -> dict:
     name = (body or {}).get("name", "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="name required")
     response.set_cookie(_OPERATOR_COOKIE, name, httponly=True, samesite="lax",
+                        secure=secure_cookie(request),
                         max_age=60 * 60 * 24 * 7)
     return {"operator": name}
 
@@ -166,7 +174,11 @@ def set_operator(response: Response, body: dict) -> dict:
 async def upload(request: Request, file: UploadFile = File(...)) -> Response:
     if not _operator(request):
         return JSONResponse({"detail": "operator not set"}, status_code=400)
-    data = await file.read()
+    # Bounded read: one byte past the ceiling is enough to know it is over,
+    # and nothing larger is ever copied into the process.
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return JSONResponse({"detail": "file is too large"}, status_code=400)
     try:
         proposal = get_service().upload(data)
     except RuntimeError as e:

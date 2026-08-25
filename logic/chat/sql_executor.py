@@ -31,8 +31,6 @@ ENRICH_MAX_TABLES = 3
 ENRICH_MAX_COLUMNS = 200
 ERROR_MESSAGE_MAX = 1500  # raised from 500 to make room for column hints
 
-_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
-_LINE_COMMENT = re.compile(r"--[^\n]*")
 _FORBIDDEN = re.compile(
     r"(?i)\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXEC|EXECUTE|INTO)\b"
     r"|\b(xp_|sp_)\w*",
@@ -52,26 +50,86 @@ _QUERY_POOL = concurrent.futures.ThreadPoolExecutor(
 )
 
 
-def _normalise(sql: str) -> str:
-    s = _BLOCK_COMMENT.sub(" ", sql)
-    s = _LINE_COMMENT.sub(" ", s)
-    return s.strip()
+class _Unterminated(Exception):
+    """A quoted run or a block comment is never closed."""
 
 
-def _strip_string_literals(s: str) -> str:
-    return re.sub(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"", "", s)
+# Closing delimiter per quoting construct. In all three a doubled closer is an
+# escaped closer rather than the end of the run: '' inside '...', "" inside
+# "..." and ]] inside [...].
+_CLOSERS = {"'": "'", '"': '"', "[": "]"}
+
+
+def _code_only(sql: str) -> str:
+    """``sql`` with every comment and every quoted run replaced by one space.
+
+    This walks the statement the way SQL Server's lexer does rather than
+    pattern-matching it. A regex cannot tell a comment from the characters
+    ``--`` sitting inside a string literal or a [bracketed] identifier, and
+    reading the latter as a comment hides the whole rest of the statement —
+    a second statement after a semicolon included — from every check that
+    follows, while the server still executes it in full.
+
+    Raises _Unterminated when a quote or block comment is never closed: at that
+    point our reading of the statement and the server's have already diverged,
+    so nothing derived from it can be trusted.
+    """
+    out: list[str] = []
+    i, n = 0, len(sql)
+    while i < n:
+        ch = sql[i]
+        closer = _CLOSERS.get(ch)
+        if closer is not None:
+            i += 1
+            while True:
+                j = sql.find(closer, i)
+                if j < 0:
+                    raise _Unterminated(f"unterminated {ch} quoting")
+                if sql[j + 1:j + 2] == closer:
+                    i = j + 2           # escaped closer: the run continues
+                    continue
+                i = j + 1
+                break
+            out.append(" ")
+        elif sql.startswith("--", i):
+            nl = sql.find("\n", i)
+            i = n if nl < 0 else nl     # the newline itself survives as space
+            out.append(" ")
+        elif sql.startswith("/*", i):
+            i += 2
+            depth = 1
+            while depth:
+                # SQL Server nests block comments, so the first */ does not
+                # necessarily close the one we are inside.
+                opened = sql.find("/*", i)
+                closed = sql.find("*/", i)
+                if closed < 0:
+                    raise _Unterminated("unterminated /* comment")
+                if 0 <= opened < closed:
+                    depth += 1
+                    i = opened + 2
+                else:
+                    depth -= 1
+                    i = closed + 2
+            out.append(" ")
+        else:
+            out.append(ch)
+            i += 1
+    return "".join(out)
 
 
 def validate_sql(sql: str) -> QueryError | None:
-    normalised = _normalise(sql)
-    if not normalised:
+    try:
+        code = _code_only(sql).strip()
+    except _Unterminated as e:
+        return QueryError(code="rejected", message=str(e))
+    if not code:
         return QueryError(code="rejected", message="empty SQL")
-    body = _strip_string_literals(normalised).rstrip(";")
-    if ";" in body:
+    if ";" in code.rstrip(";"):
         return QueryError(code="rejected", message="only one statement allowed")
-    if not re.match(r"^\s*(SELECT|WITH)\b", normalised, re.IGNORECASE):
+    if not re.match(r"^\s*(SELECT|WITH)\b", code, re.IGNORECASE):
         return QueryError(code="rejected", message="only SELECT or WITH allowed")
-    m = _FORBIDDEN.search(normalised)
+    m = _FORBIDDEN.search(code)
     if m:
         return QueryError(code="rejected", message=f"forbidden keyword: {m.group(0)}")
     return None
@@ -86,11 +144,14 @@ def _wrap(sql: str) -> str | None:
       * ORDER BY without a matching TOP/OFFSET/FOR XML — invalid in subqueries.
     In both cases we send the user's SQL unwrapped and enforce the row cap
     Python-side in ``run_query``.
+
+    Only ever called on SQL that validate_sql has already accepted, so
+    _code_only cannot raise here.
     """
-    normalised = _normalise(sql)
-    if re.match(r"^\s*WITH\b", normalised, re.IGNORECASE):
+    code = _code_only(sql)
+    if re.match(r"^\s*WITH\b", code, re.IGNORECASE):
         return None
-    if re.search(r"\bORDER\s+BY\b", normalised, re.IGNORECASE):
+    if re.search(r"\bORDER\s+BY\b", code, re.IGNORECASE):
         return None
     body = sql.rstrip().rstrip(";")
     return f"SELECT TOP ({ROW_CAP}) * FROM (\n{body}\n) AS _capped"

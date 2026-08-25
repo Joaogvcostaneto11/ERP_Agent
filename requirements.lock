@@ -17,6 +17,7 @@ hypothesis==6.153.0
 idna==3.16
 iniconfig==2.3.0
 jiter==0.15.0
+nh3==0.3.7
 numpy==2.5.2
 opencv-python-headless==5.0.0.93
 packaging==26.2

@@ -109,5 +109,40 @@ def test_bills_app_is_gated_when_the_password_is_set(monkeypatch):
         assert r.status_code == 401
         assert r.headers["WWW-Authenticate"] == 'Basic realm="Bill Ingestion"'
     finally:
-        monkeypatch.delenv("BILLS_APP_PASSWORD", raising=False)
+        # Empty string, not delenv: reload() calls load_dotenv() again, and a
+        # DELETED key gets refilled from the repo's real .env, leaving every
+        # later test in this file talking to a gated app. Same rule as
+        # tests/conftest.py.
+        monkeypatch.setenv("BILLS_APP_PASSWORD", "")
         importlib.reload(gated)
+
+
+def test_operator_cookie_is_marked_secure_behind_tls(monkeypatch):
+    r = _client(monkeypatch).post("/bills/operator", json={"name": "alice"},
+                                  headers={"X-Forwarded-Proto": "https"})
+    assert "Secure" in r.headers["set-cookie"]
+
+
+def test_upload_rejects_an_oversized_file_without_handing_it_to_the_service(monkeypatch):
+    """The extractors cap their own input, but by then the bytes are already
+    ours. Bound the read itself so an oversized body is refused at the door."""
+    from logic.bills.extract.media import MAX_UPLOAD_BYTES
+
+    class Exploding(StubService):
+        def upload(self, data):
+            raise AssertionError("service must not see an oversized upload")
+
+    monkeypatch.setattr(appmod, "get_service", lambda: Exploding())
+    client = TestClient(appmod.app)
+    client.post("/bills/operator", json={"name": "alice"})
+    oversized = b"%PDF" + b"0" * MAX_UPLOAD_BYTES
+    r = client.post("/bills/upload", files={"file": ("big.pdf", oversized, "application/pdf")})
+    assert r.status_code == 400
+    assert "too large" in r.json()["detail"].lower()
+
+
+def test_security_headers_on_bills(monkeypatch):
+    h = _client(monkeypatch).post("/bills/operator", json={"name": "a"}).headers
+    assert h["X-Content-Type-Options"] == "nosniff"
+    assert "frame-ancestors 'none'" in h["Content-Security-Policy"]
+    assert "script-src 'self'" in h["Content-Security-Policy"]

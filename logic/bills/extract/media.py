@@ -2,6 +2,13 @@ from __future__ import annotations
 
 ACCEPTED = "PDF, JPEG, PNG, WebP or GIF"
 
+# Ceiling on the RAW upload, applied to every accepted type before anything
+# parses it. 25MB clears any real invoice by a wide margin (the scans in
+# bills_examples/ are 75-130KB; a 50MP phone JPEG is ~10-15MB). It lives here
+# rather than in one extractor because both branches need the same answer --
+# when only image.py enforced it, PDFs reached poppler unbounded.
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 
 class UnsupportedMedia(RuntimeError):
     """The uploaded bytes are not a file type we can extract from."""

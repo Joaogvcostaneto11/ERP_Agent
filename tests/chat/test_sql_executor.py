@@ -245,3 +245,15 @@ def test_enrichment_rejects_unsafe_database_identifier():
     # The regex doesn't match the unsafe form anyway, so the table ref isn't
     # extracted — no enrichment.
     assert "Actual columns" not in err.message
+
+
+def test_statement_hidden_behind_a_quoted_comment_never_reaches_the_session():
+    """The validator inspects one string and run_query executes another; this
+    pins the property that matters — a rejected statement reaches no session."""
+    session = FakeSession(rows=[])
+    ex = SqlExecutor(make_factory(session))
+    result = ex.run_query(
+        "WITH c AS (SELECT 1 AS a) SELECT '--' FROM c; DELETE FROM Employees")
+    assert isinstance(result, QueryError)
+    assert result.code == "rejected"
+    assert not any("DELETE" in s for s in session.executed), session.executed

@@ -93,3 +93,13 @@ def test_disabled_when_no_token(tmp_path: Path, monkeypatch):
         assert c.get("/feedback/enabled").json() == {"enabled": False}
         r = c.post("/feedback/draft", json={"question": "q", "sql": "s", "explanation": "e"})
         assert r.status_code == 404
+
+
+def test_non_ascii_feedback_token_is_rejected_not_a_server_error(client):
+    # Header values are bytes on the wire and Starlette decodes them as latin-1,
+    # so a token of raw high bytes reaches _require_feedback as a non-ASCII str.
+    # compare_digest raises TypeError on those, which would surface as a 500
+    # instead of the 403 the header deserves.
+    r = client.post("/feedback/draft", json={"question": "q", "answer": "a"},
+                    headers={"X-Feedback-Token": "sénha".encode("latin-1")})
+    assert r.status_code == 403

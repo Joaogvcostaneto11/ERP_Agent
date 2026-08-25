@@ -38,4 +38,8 @@ def _authorized(header: str, password: str) -> bool:
         _, _, supplied = base64.b64decode(header[6:]).decode("utf-8").partition(":")
     except Exception:
         return False  # malformed base64 or non-UTF-8 is simply not authorized
-    return secrets.compare_digest(supplied, password)
+    # Compare UTF-8 bytes rather than str: compare_digest rejects non-ASCII str
+    # outright, which would turn a non-ASCII supplied password into a 500 and a
+    # non-ASCII *configured* one into a silent permanent lockout. Same reasoning
+    # as logic/bills/app.py's _require_admin.
+    return secrets.compare_digest(supplied.encode("utf-8"), password.encode("utf-8"))

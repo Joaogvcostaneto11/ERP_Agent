@@ -5,15 +5,13 @@ import io
 
 from PIL import Image, ImageOps
 
-from logic.bills.extract.media import UnsupportedMedia
+from logic.bills.extract.media import MAX_UPLOAD_BYTES, UnsupportedMedia
 
 MAX_EDGE = 1568       # the API downsamples past this, so larger is pure cost
 MAX_B64_BYTES = 5 * 1024 * 1024
-# Checked against the RAW upload, before Image.open — MAX_B64_BYTES measures the
-# OUTPUT and so can only fire after a hostile file has already been decoded.
-# 25MB clears any real photo of an invoice by a wide margin (the scans in
-# bills_examples/ are 75-130KB; a 50MP phone JPEG is ~10-15MB).
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+# MAX_UPLOAD_BYTES (from media.py) is checked against the RAW upload, before
+# Image.open — MAX_B64_BYTES measures the OUTPUT and so can only fire after a
+# hostile file has already been decoded.
 # A ~30KB PNG can declare ~150M pixels; Pillow only *warns* below 2x its own
 # MAX_IMAGE_PIXELS (89,478,485) and decodes it in full, ~450MB of RGB once
 # exif_transpose and resize have each taken a copy. Cap the declared pixel count

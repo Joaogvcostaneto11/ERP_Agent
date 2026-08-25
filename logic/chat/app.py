@@ -8,6 +8,7 @@ import secrets
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+import nh3
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -22,7 +23,9 @@ from logic.chat.report_store import ReportNotFound, ReportStore
 from logic.chat.schema_context import SchemaContext
 from logic.chat.service import ChatService
 from logic.chat.sql_executor import SqlExecutor
+from logic.common.cookies import secure_cookie
 from logic.common.password_gate import install_password_gate
+from logic.common.security_headers import install_security_headers
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -87,6 +90,18 @@ app = FastAPI(title="ERP Chat")
 # installs no gate at all.
 install_password_gate(app, os.environ.get("APP_PASSWORD"), realm="ERP Chat")
 
+# The chat UI is the only one that loads scripts from a CDN — marked, DOMPurify
+# and Plotly, each pinned with an SRI hash in ui/chat/index.html. Naming the two
+# hosts here means nothing else can inject a script tag that actually loads.
+# 'unsafe-inline' for styles is unavoidable: Plotly writes <style> elements at
+# runtime, and sanitized report HTML carries style attributes.
+_CSP = ("default-src 'self'; "
+        "script-src 'self' https://cdn.jsdelivr.net https://cdn.plot.ly; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+        "connect-src 'self'; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'none'")
+install_security_headers(app, csp=_CSP)
+
 
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
@@ -100,7 +115,8 @@ def _session_id(request: Request, response: Response) -> str:
     sid = "s_" + secrets.token_hex(12)
     response.set_cookie(
         _SESSION_COOKIE, sid,
-        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,
+        httponly=True, samesite="lax", secure=secure_cookie(request),
+        max_age=60 * 60 * 24 * 7,
     )
     return sid
 
@@ -167,6 +183,42 @@ _PRINT_VIEW_TEMPLATE = """<!doctype html>
 """
 
 
+# Report bodies are written by the model, so this view has to treat them the
+# same way ui/chat/renderers/report.js does — it runs them through DOMPurify
+# before assigning innerHTML. Arriving server-side makes the HTML no more
+# trustworthy: a report can quote whatever a query returned, and this page is
+# served from the app's own origin.
+#
+# The allowlist is what a report is made of: headings, tables, lists and text.
+# Nothing that loads or executes.
+_REPORT_TAGS = {
+    "p", "br", "hr", "div", "span", "blockquote", "pre", "code",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "strong", "b", "em", "i", "u", "s", "small", "sub", "sup",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+    "colgroup", "col", "a",
+}
+_REPORT_ATTRS = {
+    "*": {"class"},
+    "a": {"href", "title"},
+    "th": {"colspan", "rowspan", "scope"},
+    "td": {"colspan", "rowspan"},
+    "col": {"span"},
+    "colgroup": {"span"},
+}
+
+# Belt and braces, the same way the bills rule path pairs _IDENT_RE with the
+# schema probe: even if a tag ever slipped through the sanitizer, this page
+# grants it nothing to run with. `style-src` covers /report.css plus the inline
+# <style> block below; everything else is denied outright.
+_REPORT_CSP = (
+    "default-src 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; font-src 'self'; base-uri 'none'; "
+    "form-action 'none'; frame-ancestors 'none'"
+)
+
+
 @app.get("/report/{report_id}/view")
 def get_report_view(report_id: str) -> Response:
     try:
@@ -175,9 +227,11 @@ def get_report_view(report_id: str) -> Response:
         raise HTTPException(status_code=404, detail="report not found")
     html = _PRINT_VIEW_TEMPLATE.format(
         title=_html.escape(report.title),
-        body=report.html,
+        body=nh3.clean(report.html, tags=_REPORT_TAGS, attributes=_REPORT_ATTRS),
     )
-    return Response(content=html, media_type="text/html")
+    return Response(content=html, media_type="text/html",
+                    headers={"Content-Security-Policy": _REPORT_CSP,
+                             "X-Content-Type-Options": "nosniff"})
 
 
 def _format_sse(event: dict) -> bytes:
@@ -249,7 +303,8 @@ async def post_chat(request: Request) -> StreamingResponse:
     resp = StreamingResponse(_with_keepalive(body_gen(sid)), media_type="text/event-stream")
     resp.set_cookie(
         _SESSION_COOKIE, sid,
-        httponly=True, samesite="lax", max_age=60 * 60 * 24 * 7,
+        httponly=True, samesite="lax", secure=secure_cookie(request),
+        max_age=60 * 60 * 24 * 7,
     )
     return resp
 
@@ -263,7 +318,8 @@ def _require_feedback(request: Request) -> None:
     if not token:
         raise HTTPException(status_code=404, detail="feedback disabled")
     provided = request.headers.get("X-Feedback-Token", "")
-    if not secrets.compare_digest(provided, token):
+    # Bytes, not str — see the note in logic/common/password_gate.py.
+    if not secrets.compare_digest(provided.encode("utf-8"), token.encode("utf-8")):
         raise HTTPException(status_code=403, detail="invalid feedback token")
 
 
