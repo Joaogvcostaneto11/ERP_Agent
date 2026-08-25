@@ -3,7 +3,10 @@ import shutil
 from pathlib import Path
 
 import pytest
+from contextlib import contextmanager
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 import logic.bills.app as appmod
 
@@ -25,10 +28,41 @@ COLUMNS = {
 }
 
 
+def _sqlite_rules_factory(tmp_path):
+    """SQLite stand-in for ERPAgent_BillRules, as tests/bills/test_rule_store.py
+    and test_write_executor.py do for their tables."""
+    eng = create_engine(f"sqlite:///{tmp_path/'rules.db'}")
+    with eng.begin() as c:
+        c.execute(text(
+            "CREATE TABLE ERPAgent_BillRules ("
+            " Version INTEGER NOT NULL PRIMARY KEY, Yaml TEXT NOT NULL,"
+            " Ts TEXT NOT NULL, Action TEXT NOT NULL, Operator TEXT,"
+            " Prose TEXT, Rationale TEXT, Changes TEXT, RevertedTo INTEGER)"))
+    Local = sessionmaker(bind=eng)
+
+    @contextmanager
+    def factory():
+        sess = Local()
+        try:
+            yield sess
+            sess.commit()
+        except Exception:
+            sess.rollback()
+            raise
+        finally:
+            sess.close()
+
+    return factory
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
+    # _RULES_DIR is the seed for an empty table now, not the store itself.
     shutil.copy(_SRC, tmp_path / "purchase_invoice.yaml")
     monkeypatch.setattr(appmod, "_RULES_DIR", tmp_path)
+    monkeypatch.setattr(appmod, "_TABLE_PREFIX", "")
+    monkeypatch.setattr(appmod, "get_bills_write_session",
+                        _sqlite_rules_factory(tmp_path))
     monkeypatch.setattr(appmod, "_WRITE_LOG_PATH", tmp_path / "bills_writes.jsonl")
     monkeypatch.setenv("BILLS_ADMIN_TOKEN", "s3cret")
 
@@ -168,8 +202,9 @@ def test_apply_of_an_invalid_proposal_is_422_and_changes_nothing(client):
 def test_apply_reloads_the_service_so_the_new_mapping_is_live(client):
     client.post("/admin/rules/apply", headers=_h(),
                 json={"proposal": PATCH, "base_version": 1})
-    from logic.bills.rules.store import RuleStore
-    rule = RuleStore(appmod._RULES_DIR).current()
+    # Read back through the app's own accessor, which is what get_service()
+    # rebuilds from — a store built by hand here would prove less.
+    rule = appmod.get_rule_store().current()
     assert rule.lines.fields["supplier_code"].column == "CodigoForn"
     assert appmod._service is None      # reset; rebuilt lazily on next request
     # m1: the probe caches column lists per table, so it must be dropped too —
@@ -230,3 +265,48 @@ def test_draft_stamps_the_real_base_version_over_the_models_guess(client):
     r = client.post("/admin/rules/draft", headers=_h(), json={"prose": "x"})
     assert r.status_code == 200
     assert r.json()["proposal"]["base_version"] == 2
+
+
+def test_an_applied_change_survives_the_packaged_yaml_reverting(client, tmp_path):
+    """The whole point of moving the document into the database.
+
+    Render rebuilds the container from the image on every deploy, so the
+    packaged YAML reappears exactly as it shipped. Restoring it here stands in
+    for that: the applied mapping must still be the one in force.
+    """
+    client.post("/admin/rules/apply", headers=_h(),
+                json={"proposal": PATCH, "base_version": 1})
+    shutil.copy(_SRC, tmp_path / "purchase_invoice.yaml")   # the image comes back
+
+    rule = appmod.get_rule_store().current()
+    assert rule.version == 2
+    assert rule.lines.fields["supplier_code"].column == "CodigoForn"
+
+
+def test_an_unreadable_rule_table_is_503_not_a_silent_fallback(client, monkeypatch):
+    """A missing rule table must not quietly fall back to the packaged YAML —
+    that would write under a mapping the operator had already replaced."""
+    @contextmanager
+    def broken():
+        raise RuntimeError("login failed for user")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(appmod, "get_bills_write_session", broken)
+    r = client.get("/admin/rules/current", headers=_h())
+    assert r.status_code == 503
+
+
+def test_a_rule_table_outage_during_upload_is_503_not_a_bad_request(client, monkeypatch):
+    """/bills/upload builds the service inside `except RuntimeError -> 400`, so
+    an outage there would be reported to the operator as "your file is bad"."""
+    @contextmanager
+    def broken():
+        raise RuntimeError("login failed for user")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(appmod, "get_bills_write_session", broken)
+    appmod.reset_service()
+    client.post("/bills/operator", json={"name": "alice"})
+    r = client.post("/bills/upload",
+                    files={"file": ("x.pdf", b"%PDF-1.4 fake", "application/pdf")})
+    assert r.status_code == 503, f"got {r.status_code}: {r.text[:200]}"

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from dotenv import load_dotenv
 
@@ -19,11 +20,11 @@ from logic.bills.audit_writer import BillAuditWriter
 from logic.bills.extract.media import MAX_UPLOAD_BYTES
 from logic.bills.extract.ocr import pdf_to_text
 from logic.bills.pending import PendingProposalStore
-from logic.bills.rules.loader import RuleLoader
 from logic.bills.rules.proposal import RuleChangeProposal, apply as apply_patch, validate
 from logic.bills.rules.proposer import RuleDraftError, RuleProposer
 from logic.bills.rules.schema_probe import SchemaProbe, SchemaUnavailable
-from logic.bills.rules.store import RuleStore
+from logic.bills.rules.store import (RuleStore, RuleStoreUnavailable,
+                                     RuleVersionNotFound)
 from logic.bills.service import BillService
 from logic.bills.write_executor import BillWriteExecutor
 from logic.common.cookies import secure_cookie
@@ -63,6 +64,15 @@ async def _schema_unavailable(_request: Request, exc: SchemaUnavailable) -> Resp
     return JSONResponse({"detail": str(exc)}, status_code=503)
 
 
+@app.exception_handler(RuleStoreUnavailable)
+async def _rule_store_unavailable(_request: Request,
+                                  exc: RuleStoreUnavailable) -> Response:
+    # The rule document decides which columns a write lands in, so an
+    # unreadable rule table is an outage, not a reason to fall back to the
+    # packaged YAML and write under a mapping that may have been replaced.
+    return JSONResponse({"detail": str(exc)}, status_code=503)
+
+
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
     """Render's health check. Declared here, above the StaticFiles mount at "/",
@@ -92,7 +102,7 @@ def _build_anthropic():
 def get_service() -> BillService:
     global _service
     if _service is None:
-        rule = RuleLoader(_RULES_DIR).rule()
+        rule = get_rule_store().current()
         _service = BillService(
             anthropic_client=_build_anthropic(), ocr_fn=pdf_to_text, rule=rule,
             reader=_read, pending=_pending,
@@ -106,8 +116,8 @@ def get_service() -> BillService:
 
 def reset_service() -> None:
     """Drop the memoised service so the next request rebuilds it from the rule
-    document on disk. RuleLoader parses that document once in __init__, so an
-    applied rule change is invisible until this runs."""
+    document. get_service() reads the store once, so an applied rule change is
+    invisible until this runs."""
     global _service, _schema_probe
     _service = None
     _schema_probe = None
@@ -124,7 +134,10 @@ def get_schema_probe() -> SchemaProbe:
 
 
 def get_rule_store() -> RuleStore:
-    return RuleStore(_RULES_DIR)
+    # _RULES_DIR is the SEED only: it supplies version 1 into an empty table and
+    # is never written back to. See db/migrations/003_bills_rules.sql.
+    return RuleStore(get_bills_write_session, seed_path=_RULES_DIR,
+                     table_prefix=_TABLE_PREFIX)
 
 
 def get_proposer() -> RuleProposer:
@@ -282,17 +295,31 @@ async def admin_rules_apply(request: Request) -> Response:
         return JSONResponse({"detail": f"merged rule is invalid: {e}"},
                             status_code=422)
 
-    store.save(merged)
+    # The admin's own words are the audit record; `rationale` is Claude's
+    # paraphrase and cannot stand in for them. Older clients that send no prose
+    # record an empty string rather than failing the apply.
+    prose = str(body.get("prose") or "").strip()
+    changes = [c.model_dump() for c in proposal.changes]
+    operator = _operator(request)
+    try:
+        store.save(merged, operator=operator, action="apply", prose=prose,
+                   rationale=proposal.rationale, changes=changes)
+    except IntegrityError:
+        # Version is the table's primary key. Two admins who passed the
+        # base_version check above within the same moment collide here instead
+        # of one overwriting the other.
+        return JSONResponse(
+            {"detail": f"version {merged.version} was just written by someone "
+                       "else; re-draft your change"}, status_code=409)
+    # Mirror to the JSONL, as BillAuditWriter does for document writes: the row
+    # is the record of truth, the file is the on-box diagnostic.
     _rule_audit().append({
         "ts": AuditLog.now_iso(), "kind": "rule_change", "action": "apply",
         "from_version": rule.version, "to_version": merged.version,
-        # The admin's own words are the audit record; `rationale` is Claude's
-        # paraphrase and cannot stand in for them. Older clients that send no
-        # prose record an empty string rather than failing the apply.
-        "prose": str(body.get("prose") or "").strip(),
+        "prose": prose,
         "rationale": proposal.rationale,
-        "changes": [c.model_dump() for c in proposal.changes],
-        "operator": _operator(request),
+        "changes": changes,
+        "operator": operator,
     })
     reset_service()
     return JSONResponse({"version": merged.version})
@@ -303,15 +330,16 @@ def admin_rules_revert(version: int, request: Request) -> Response:
     _require_admin(request)
     store = get_rule_store()
     previous = store.current().version
+    operator = _operator(request)
     try:
-        reverted = store.revert(version)
-    except FileNotFoundError:
+        reverted = store.revert(version, operator=operator)
+    except RuleVersionNotFound:
         return JSONResponse({"detail": f"no archived rule for version {version}"},
                             status_code=404)
     _rule_audit().append({
         "ts": AuditLog.now_iso(), "kind": "rule_change", "action": "revert",
         "from_version": previous, "to_version": reverted.version,
-        "reverted_to": version, "operator": _operator(request),
+        "reverted_to": version, "operator": operator,
     })
     reset_service()
     return JSONResponse({"version": reverted.version})

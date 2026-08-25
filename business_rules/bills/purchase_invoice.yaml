@@ -1,3 +1,9 @@
+# SEED ONLY. This file populates ERPAgent_BillRules the first time that table is
+# found empty; after that the DATABASE holds the document in force and the admin
+# panel appends new versions there. Editing this file changes what a FRESH
+# database starts from -- it does not change a running deployment. To change a
+# running one, use the admin panel (or INSERT a new version row).
+# See db/migrations/003_bills_rules.sql.
 document: purchase_invoice
 version: 1
 header:
