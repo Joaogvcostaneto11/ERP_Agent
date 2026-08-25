@@ -88,7 +88,8 @@ app = FastAPI(title="ERP Chat")
 
 # Shared-password gate for public deployment. Unset APP_PASSWORD (local dev)
 # installs no gate at all.
-install_password_gate(app, os.environ.get("APP_PASSWORD"), realm="ERP Chat")
+install_password_gate(app, os.environ.get("APP_PASSWORD"), realm="ERP Chat",
+                      env_var="APP_PASSWORD")
 
 # The chat UI is the only one that loads scripts from a CDN — marked, DOMPurify
 # and Plotly, each pinned with an SRI hash in ui/chat/index.html. Naming the two

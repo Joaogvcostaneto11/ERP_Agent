@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from logic.common.password_gate import install_password_gate
 
 
-def _app(password, **kw):
+def _app(password, *, env_var="APP_PASSWORD", **kw):
     app = FastAPI()
 
     @app.get("/healthz")
@@ -18,7 +18,7 @@ def _app(password, **kw):
     def private():
         return {"secret": True}
 
-    install_password_gate(app, password, realm="Test Realm", **kw)
+    install_password_gate(app, password, realm="Test Realm", env_var=env_var, **kw)
     return TestClient(app)
 
 
@@ -89,3 +89,33 @@ def test_non_ascii_configured_password_still_authenticates():
     # Otherwise a non-ASCII BILLS_APP_PASSWORD/APP_PASSWORD is a silent lockout.
     r = _app("sénha-forte").get("/private", headers=_auth("someone", "sénha-forte"))
     assert r.status_code == 200
+
+
+# --- fail-closed on a deployed host -------------------------------------
+#
+# "Unset = ungated" is right on a laptop and dangerous on Render, where the
+# secret is typed into the dashboard by hand and a blank field would deploy an
+# ungated service that writes to the ERP database. Render sets RENDER=true on
+# every service, so an ungated start there is refused outright.
+
+@pytest.mark.parametrize("marker", ["RENDER", "RENDER_SERVICE_ID"])
+@pytest.mark.parametrize("password", [None, ""])
+def test_deployed_and_ungated_refuses_to_start(monkeypatch, marker, password):
+    monkeypatch.setenv(marker, "true")
+    with pytest.raises(RuntimeError) as exc:
+        _app(password, env_var="BILLS_APP_PASSWORD")
+    # The operator has to learn which variable to set, from the error alone.
+    assert "BILLS_APP_PASSWORD" in str(exc.value)
+
+
+def test_deployed_and_gated_starts_normally(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    client = _app("s3cret", env_var="BILLS_APP_PASSWORD")
+    assert client.get("/private").status_code == 401
+    assert client.get("/private", headers=_auth("u", "s3cret")).status_code == 200
+
+
+def test_an_empty_marker_is_not_a_deployment(monkeypatch):
+    # Render sets RENDER=true; an empty value means the variable is not in play.
+    monkeypatch.setenv("RENDER", "")
+    assert _app(None, env_var="APP_PASSWORD").get("/private").status_code == 200

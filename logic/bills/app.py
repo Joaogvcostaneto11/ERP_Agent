@@ -51,7 +51,7 @@ app = FastAPI(title="Bill Ingestion")
 # secret is deliberately separate from the chat service's APP_PASSWORD: leaking
 # the read-only service must not hand over the one that writes.
 install_password_gate(app, os.environ.get("BILLS_APP_PASSWORD"),
-                      realm="Bill Ingestion")
+                      realm="Bill Ingestion", env_var="BILLS_APP_PASSWORD")
 
 # This UI ships all of its own scripts, so nothing off-origin may load at all.
 _CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")

@@ -46,7 +46,7 @@ app = FastAPI(title="DevCare Operations")
 # third secret, separate from APP_PASSWORD and BILLS_APP_PASSWORD: leaking a
 # read-only service must not hand over one that writes.
 install_password_gate(app, os.environ.get("DEVCARE_APP_PASSWORD"),
-                      realm="DevCare Operations")
+                      realm="DevCare Operations", env_var="DEVCARE_APP_PASSWORD")
 
 # This UI ships all of its own scripts, so nothing off-origin may load at all.
 _CSP = ("default-src 'self'; script-src 'self'; "
